@@ -1,0 +1,24 @@
+format = """
+$os$directory$git_branch$git_status$docker_context\
+$line_break$character"""
+
+[directory]
+style = "bold blue"
+truncate_to_repo = true
+
+[git_branch]
+symbol = "🌱 "
+style = "bold magenta"
+
+[character]
+{{- if .is_work }}
+success_symbol = "[💼 ❯](bold purple)"
+{{- else }}
+success_symbol = "[⚡ ❯](bold green)"
+{{- end }}
+error_symbol = "[❌ ❯](bold red)"
+
+[docker_context]
+symbol = "🐳 "
+style = "bold cyan"
+only_with_files = true

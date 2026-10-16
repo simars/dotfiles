@@ -1,0 +1,46 @@
+# Ensure local bin is always in PATH for interactive non-login shells
+export PATH="$HOME/.local/bin:$PATH"
+
+{{ if eq .chezmoi.os "darwin" -}}
+if [[ -x "/opt/homebrew/bin/brew" ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [[ -x "/usr/local/bin/brew" ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+alias flushdns="sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
+alias brews="brew update && brew upgrade && brew cleanup"
+alias d-up="colima start --cpu 4 --memory 8 --disk 40"
+alias d-down="colima stop"
+{{ else if eq .chezmoi.os "linux" -}}
+alias update="sudo apt-get update && sudo apt-get upgrade -y"
+{{ end -}}
+
+# Global Navigation & Tool Aliases
+alias ll="ls -lah"
+alias g="git"
+alias cz="chezmoi"
+alias tm="tmux new-session -A -s main"
+
+# Container Lifecycle Helpers
+dkill() {
+    for d in */; do
+        if [[ -f "${d}docker-compose.yml" || -f "${d}docker-compose.yaml" ]]; then
+            (cd "$d" && docker compose down)
+        fi
+    done
+}
+alias dprune="docker system prune -a --volumes -f"
+
+# Zsh Completions
+autoload -Uz compinit && compinit -C
+
+# Mise Polyglot Runtime Activation
+export MISE_ENV_AUTO_RELOAD=1
+if command -v mise &> /dev/null; then
+    eval "$(mise activate zsh)"
+fi
+
+# Starship Prompt Activation
+if command -v starship &> /dev/null; then
+    eval "$(starship init zsh)"
+fi
