@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SOURCE_DIR="$(chezmoi source-path)"
+HOOK_DIR="${SOURCE_DIR}/.git/hooks"
+
+if [[ -d "${HOOK_DIR}" ]]; then
+    cat << 'EOF' > "${HOOK_DIR}/pre-commit"
+#!/usr/bin/env bash
+set -e
+
+if ! command -v gitleaks &> /dev/null; then
+    echo "WARNING: 'gitleaks' binary not found. Skipping staged secret scan."
+    exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+echo "==> Running Gitleaks secret scan on staged changes..."
+
+if ! gitleaks protect --staged --verbose --config "${REPO_ROOT}/.gitleaks.toml"; then
+    echo "=========================================================================="
+    echo " COMMIT ABORTED: Gitleaks detected potential unencrypted secrets!"
+    echo " Encrypt sensitive files first using: chezmoi add --encrypt <file>"
+    echo "=========================================================================="
+    exit 1
+fi
+EOF
+    chmod +x "${HOOK_DIR}/pre-commit"
+fi

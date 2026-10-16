@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow encrypted age files, CI mocks, and public age/ssh recipient keys"
+paths = [
+  '''\.age$''',
+  '''\.github/workflows/ci\.yml''',
+  '''key\.txt$'''
+]
+regexes = [
+  '''age1[a-z0-9]{58}''',
+  '''AGE-SECRET-KEY-1[A-Z0-9]{58}''',
+  '''ssh-rsa AAAAB3NzaC1yc2E[A-Za-z0-9+/=]+'''
+]
