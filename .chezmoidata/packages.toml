@@ -1,0 +1,43 @@
+[darwin.brew]
+formulae = [
+    "age",
+    "colima",
+    "curl",
+    "docker",
+    "docker-compose",
+    "fd",
+    "git",
+    "gitleaks",
+    "mise",
+    "neovim",
+    "ripgrep",
+    "shellcheck",
+    "starship",
+    "tmux",
+    "zsh"
+]
+casks = [
+    "alacritty",
+    "font-jetbrains-mono-nerd-font",
+    "iterm2",
+    "warp",
+    "wave"
+]
+
+[ubuntu.apt]
+packages = [
+    "age",
+    "build-essential",
+    "ca-certificates",
+    "curl",
+    "fd-find",
+    "fontconfig",
+    "git",
+    "gnupg",
+    "neovim",
+    "ripgrep",
+    "shellcheck",
+    "tmux",
+    "unzip",
+    "zsh"
+]
