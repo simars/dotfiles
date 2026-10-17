@@ -4,3 +4,9 @@ docs/**
 .github/
 .github/**
 .gitleaks.toml
+# AGENTS.md (and CLAUDE.md, its symlink) are instructions for agents working in
+# this repo. Deployed to $HOME, Claude Code and cursor-agent load them into every
+# session under ~, and ~/CLAUDE.md also stops Claude reading AGENTS.md in repos
+# that rely on it. Keep them repo-only.
+AGENTS.md
+CLAUDE.md
