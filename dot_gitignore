@@ -31,3 +31,6 @@ tmp/**/*
 
 # Tags
 /tags
+
+# Claude Code machine-local settings
+**/.claude/settings.local.json

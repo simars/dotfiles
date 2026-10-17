@@ -95,6 +95,16 @@ Before migration to `chezmoi`, dotfiles were historically tracked via an unmanag
   * Use `config status` or `config diff` to inspect legacy unmigrated files during audits.
   * Never commit new files to `config`. All active workstation dotfiles are strictly managed by `chezmoi`.
   * The `config` alias is preserved in `.zshrc` to protect historical auditability and prevent legacy automation breaks.
+  * `~/.cfg` no longer depends on the retired thoughtbot `~/dotfiles`: its hook shims are gone, `info/exclude` links to the shared list below, and it inherits the global `~/.gitignore`.
+
+### Shared Per-Repo Git Exclude List
+Repositories created under the retired thoughtbot `init.templatedir` link `.git/info/exclude` to one shared list (media, archives, `*.env*`, `*.sql`, `*.csv`, `node_modules/`, Claude Code runtime files), managed by chezmoi at `~/.config/git/info-exclude`.
+
+| Task | Command | Description |
+| :--- | :--- | :--- |
+| **Edit the list** | `chezmoi edit ~/.config/git/info-exclude` | Change patterns once; every linked repo picks them up on `chezmoi apply`. |
+| **Link a new repo** | `ln -sfn ~/.config/git/info-exclude .git/info/exclude` | Opt a fresh clone into the shared list (new clones no longer get it automatically). |
+| **Explain a match** | `git check-ignore -v <path>` | Show which list and line ignores a path (`.git/info/exclude:<line>:<pattern>`). |
 
 ### Chezmoi Workflow Commands
 `chezmoi` manages dotfiles declaratively from `~/.local/share/chezmoi`.
