@@ -53,10 +53,17 @@ dkill() {
 }
 alias dprune="docker system prune -a --volumes -f"
 
-# 4. Zsh Completions
+# 4. History Configuration & Shell Options
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_ALL_DUPS INC_APPEND_HISTORY SHARE_HISTORY
+unsetopt NOMATCH
+
+# 5. Zsh Completions
 autoload -Uz compinit && compinit -C
 
-# 5. Shell Integrations (fzf, zoxide, autosuggestions)
+# 6. Shell Integrations (fzf, zoxide, autosuggestions)
 if [ -f "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
     source "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
     ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=60'
@@ -73,7 +80,7 @@ if command -v zoxide &> /dev/null; then
     eval "$(zoxide init zsh 2>/dev/null)" || true
 fi
 
-# 6. Polyglot Runtimes (mise) & Starship Prompt
+# 7. Polyglot Runtimes (mise) & Starship Prompt
 export MISE_ENV_AUTO_RELOAD=1
 if command -v mise &> /dev/null; then
     eval "$(mise activate zsh)"
@@ -83,7 +90,7 @@ if command -v starship &> /dev/null; then
     eval "$(starship init zsh)"
 fi
 
-# 7. Sourcing Local Files & Secrets (if present)
+# 8. Sourcing Local Files & Secrets (if present)
 if [[ -f "$HOME/.aliases" ]]; then
     source "$HOME/.aliases"
 fi
@@ -95,6 +102,7 @@ fi
 env_files=(
     "$HOME/secrets.env"
     "$HOME/work.env"
+    "$HOME/dotfiles-local/zsh/configs/work/work.secret.env"
 )
 for env_file in "${env_files[@]}"; do
     if [[ -r "$env_file" ]]; then
