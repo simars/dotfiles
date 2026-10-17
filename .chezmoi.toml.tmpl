@@ -10,6 +10,7 @@ encryption = "age"
     is_work = {{ $isWork }}
 
 [age]
+    useBuiltin = false
 {{- if stat (joinPath .chezmoi.homeDir ".ssh/id_rsa") }}
     identity = "{{ .chezmoi.homeDir }}/.ssh/id_rsa"
 {{- else if stat (joinPath .chezmoi.homeDir ".config/chezmoi/key.txt") }}
