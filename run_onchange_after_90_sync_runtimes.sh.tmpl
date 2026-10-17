@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# mise config hash: {{ include "dot_config/mise/config.toml" | sha256sum }}
+set -euo pipefail
+
+if [[ "${CHEZMOI_CI:-false}" == "true" ]]; then
+    echo "==> CI environment detected: skipping mise runtime compilation."
+    exit 0
+fi
+
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+if command -v mise &> /dev/null; then
+    echo "==> Synchronizing Mise language runtimes..."
+    mise install --yes
+fi

@@ -1,0 +1,9 @@
+[tools]
+go = "latest"
+python = "3.12"
+node = "22"
+
+[settings]
+experimental = true
+python_venv_auto_create = true
+python_default_packages_file = "~/.config/mise/default-python-packages"
