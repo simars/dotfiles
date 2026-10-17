@@ -236,7 +236,7 @@ The gitleaks hook is a config-defined hook, which git before 2.54 ignores withou
 | Host | Terminal git | `/usr/bin/git` | Remaining step |
 |---|---|---|---|
 | `Simars-MacBook-Work` | 2.54.0 (Apple; Intel brew git 2.49 unlinked) | 2.54.0 (Xcode 27.1) | None. The native Homebrew changeover brings git 2.56. |
-| `simar-mbp` | 2.56.0 (Homebrew) | 2.50.1 (CLT 26.6 selected) | `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer && sudo xcodebuild -license accept` (Xcode 27.1 is installed and ships 2.54.0) |
+| `simar-mbp` | 2.56.0 (Homebrew) | 2.54.0 (Xcode 27.1 selected) | None: the requirement check passes. |
 | `simars-macbook-32i` | 2.50.1 | 2.50.1 (Xcode 26.2) | Update macOS to 26.7.1; then install the newest Command Line Tools or Xcode 27.1 and select it. |
 | `simars-macbook-16i` | 2.39.2 | 2.39.2 (Xcode 14.3.1) | Same as 32i; the Xcode 14.3.1 selection has to be replaced. |
 
