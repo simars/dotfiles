@@ -5,5 +5,7 @@ node = "22"
 
 [settings]
 experimental = true
-python_venv_auto_create = true
-python_default_packages_file = "~/.config/mise/default-python-packages"
+
+[settings.python]
+uv_venv_auto = true
+default_packages_file = "~/.config/mise/default-python-packages"
