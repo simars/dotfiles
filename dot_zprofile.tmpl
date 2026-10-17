@@ -10,7 +10,12 @@ fi
 # 2. User Binaries & Mise Shims
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
-# 3. macOS Colima Docker Socket Routing
+# 3. macOS Docker Socket Routing
 {{ if eq .chezmoi.os "darwin" -}}
-export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+# Prefer Colima socket if actively running, else allow Docker Desktop
+if [[ -S "${HOME}/.colima/default/docker.sock" ]]; then
+    export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+elif [[ -d "${HOME}/.docker/bin" ]]; then
+    export PATH="$PATH:${HOME}/.docker/bin"
+fi
 {{ end -}}

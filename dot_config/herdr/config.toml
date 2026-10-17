@@ -1,0 +1,70 @@
+# Herdr configuration - Tmux Keybinding Parity
+# Synchronized with standard Ctrl+b tmux bindings
+
+onboarding = false
+
+[keys]
+# Primary Prefix Key
+prefix = "ctrl+b"
+
+# --- Splits ---
+split_vertical = "prefix+%"
+split_horizontal = "prefix+\""
+
+# --- Pane Navigation & Manipulation ---
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+cycle_pane_next = "prefix+o"
+last_pane = "prefix+;"
+zoom = "prefix+z"
+close_pane = "prefix+x"
+
+# --- Tab / Window Management ---
+new_tab = "prefix+c"
+close_tab = "prefix+&"
+rename_tab = "prefix+,"
+next_tab = "prefix+n"
+previous_tab = "prefix+p"
+switch_tab = "prefix+1..9"
+
+# --- Session / Workspace Management ---
+workspace_picker = "prefix+s"
+rename_workspace = "prefix+$"
+detach = "prefix+d"
+
+# --- Scrollback / Copy Mode ---
+edit_scrollback = "prefix+["
+
+# --- Re-homed Herdr Features ---
+settings = "prefix+shift+s"
+open_notification_target = "prefix+shift+o"
+toggle_sidebar = "prefix+b"
+reload_config = "prefix+shift+r"
+help = "prefix+?"
+
+# --- Secondary Mnemonic Splits ---
+[[keys.command]]
+key = "prefix+v"
+type = "shell"
+command = "herdr pane split --current --direction right"
+
+[[keys.command]]
+key = "prefix+minus"
+type = "shell"
+command = "herdr pane split --current --direction down"
+
+# Break pane into new tab (tmux `prefix + !`)
+[[keys.command]]
+key = "prefix+!"
+type = "shell"
+command = "herdr-break-pane"
+
+[ui]
+tab_bar_position = "top"
+mouse_capture = true
+copy_on_select = true
+
+pane_outer_borders = true
+pane_gaps = true

@@ -12,8 +12,6 @@ encryption = "age"
 [age]
 {{- if stat (joinPath .chezmoi.homeDir ".ssh/id_rsa") }}
     identity = "{{ .chezmoi.homeDir }}/.ssh/id_rsa"
-{{- else if stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519") }}
-    identity = "{{ .chezmoi.homeDir }}/.ssh/id_ed25519"
 {{- else if stat (joinPath .chezmoi.homeDir ".config/chezmoi/key.txt") }}
     identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/key.txt"
 {{- end }}
@@ -21,10 +19,6 @@ encryption = "age"
         {{- $sshRsa := joinPath .chezmoi.homeDir ".ssh/id_rsa.pub" -}}
         {{- if stat $sshRsa }}
         {{ include $sshRsa | trim | quote }},
-        {{- end }}
-        {{- $sshEd := joinPath .chezmoi.homeDir ".ssh/id_ed25519.pub" -}}
-        {{- if stat $sshEd }}
-        {{ include $sshEd | trim | quote }},
         {{- end }}
         "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p"
     ]

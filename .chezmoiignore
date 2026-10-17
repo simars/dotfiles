@@ -4,8 +4,3 @@ docs/**
 .github/
 .github/**
 .gitleaks.toml
-
-{{ if ne .chezmoi.os "darwin" }}
-Library/
-Library/**
-{{ end }}

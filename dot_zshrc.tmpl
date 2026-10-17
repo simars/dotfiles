@@ -1,12 +1,40 @@
-# Ensure local bin is always in PATH for interactive non-login shells
+# ==============================================================================
+# Interactive Shell Configuration (.zshrc)
+# ==============================================================================
+
+# 1. Environment & Paths
 export PATH="$HOME/.local/bin:$PATH"
 
+# Architecture-Aware Homebrew
 {{ if eq .chezmoi.os "darwin" -}}
 if [[ -x "/opt/homebrew/bin/brew" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 elif [[ -x "/usr/local/bin/brew" ]]; then
     eval "$(/usr/local/bin/brew shellenv)"
 fi
+{{ end -}}
+
+# Antigravity Binaries & Environment
+if [[ -d "$HOME/.antigravity/antigravity/bin" ]]; then
+    export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
+fi
+if [[ -d "$HOME/.antigravity-ide/antigravity-ide/bin" ]]; then
+    export PATH="$HOME/.antigravity-ide/antigravity-ide/bin:$PATH"
+fi
+if [[ -f "$HOME/.local/bin/env" ]]; then
+    . "$HOME/.local/bin/env"
+fi
+
+# 2. Atlassian Bare Repository Alias (.cfg)
+alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
+
+# 3. Global Navigation & Tool Aliases
+alias ll="ls -lah"
+alias g="git"
+alias cz="chezmoi"
+alias tm="tmux new-session -A -s main"
+
+{{ if eq .chezmoi.os "darwin" -}}
 alias flushdns="sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
 alias brews="brew update && brew upgrade && brew cleanup"
 alias d-up="colima start --cpu 4 --memory 8 --disk 40"
@@ -15,13 +43,7 @@ alias d-down="colima stop"
 alias update="sudo apt-get update && sudo apt-get upgrade -y"
 {{ end -}}
 
-# Global Navigation & Tool Aliases
-alias ll="ls -lah"
-alias g="git"
-alias cz="chezmoi"
-alias tm="tmux new-session -A -s main"
-
-# Container Lifecycle Helpers
+# Container Helpers
 dkill() {
     for d in */; do
         if [[ -f "${d}docker-compose.yml" || -f "${d}docker-compose.yaml" ]]; then
@@ -31,16 +53,51 @@ dkill() {
 }
 alias dprune="docker system prune -a --volumes -f"
 
-# Zsh Completions
+# 4. Zsh Completions
 autoload -Uz compinit && compinit -C
 
-# Mise Polyglot Runtime Activation
+# 5. Shell Integrations (fzf, zoxide, autosuggestions)
+if [ -f "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+    source "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=60'
+fi
+
+if command -v fzf &> /dev/null; then
+    eval "$(fzf --zsh 2>/dev/null)" || true
+fi
+if [ -f "$HOME/.fzf.zsh" ]; then
+    source "$HOME/.fzf.zsh"
+fi
+
+if command -v zoxide &> /dev/null; then
+    eval "$(zoxide init zsh 2>/dev/null)" || true
+fi
+
+# 6. Polyglot Runtimes (mise) & Starship Prompt
 export MISE_ENV_AUTO_RELOAD=1
 if command -v mise &> /dev/null; then
     eval "$(mise activate zsh)"
 fi
 
-# Starship Prompt Activation
 if command -v starship &> /dev/null; then
     eval "$(starship init zsh)"
 fi
+
+# 7. Sourcing Local Files & Secrets (if present)
+if [[ -f "$HOME/.aliases" ]]; then
+    source "$HOME/.aliases"
+fi
+
+if [[ -f "$HOME/.zshrc.local" ]]; then
+    source "$HOME/.zshrc.local"
+fi
+
+env_files=(
+    "$HOME/secrets.env"
+    "$HOME/work.env"
+)
+for env_file in "${env_files[@]}"; do
+    if [[ -r "$env_file" ]]; then
+        source "$env_file"
+    fi
+done

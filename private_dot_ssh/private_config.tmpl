@@ -5,11 +5,21 @@ Host *
     UseKeychain yes
 {{- end }}
 
+Host macstudio
+    HostName macstudio
+    User Simar
+    IdentityFile ~/.ssh/id_rsa
+
+Host simar-works
+    HostName simars.ddns.net
+    User simars
+    IdentityFile ~/.ssh/id_rsa
+
 Host github.com
     HostName ssh.github.com
     Port 443
     User git
-    IdentityFile ~/.ssh/id_ed25519
+    IdentityFile ~/.ssh/id_rsa
 
 {{- if .is_work }}
 Host *.internal.company.com
