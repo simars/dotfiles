@@ -219,12 +219,14 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * `gitleaks` and `duf` have no darwin standalone fallback in `run_onchange_before_00_install_packages.sh.tmpl`. Note that any edit to that script changes its hash and re-runs `brew bundle` on every host.
 * The script's `#!/usr/bin/env bash` resolves to `/usr/local/bin/bash` (x86_64) on a Rosetta-brew Mac, so runtime-detecting installers such as `mise.run` pick x86_64. `#!/bin/bash` runs natively on Apple Silicon and exists on Ubuntu.
 
-### 8.3 Per-Repo Exclude Lists on Other Hosts
-* `simar-mbp` (32 links) and `simars-macbook-16i` (34 links) have dangling `.git/info/exclude` symlinks into the deleted `~/dotfiles`, so those repos already lost their exclude list. `simars-macbook-32i` links point to git's stock template, which has no patterns. §6.3's "zero broken symlinks" covered home-level links only.
-* Linking these to `~/.config/git/info-exclude` adds about 166 ignore patterns on those hosts, a behavior change awaiting a decision. Their dangling thoughtbot hook shims can go at the same time.
+### 8.3 Per-Repo Exclude Lists on Other Hosts (resolved 2026-10-17)
+* Every git dir on `simar-mbp` (38), `simars-macbook-32i` (92) and `simars-macbook-16i` (252) now links `.git/info/exclude` to `~/.config/git/info-exclude`, as does `~/.cfg` on all four hosts. Before, the mbp and 16i links dangled into the deleted `~/dotfiles`, and 32i's pointed to git's stock template with no patterns, so those hosts gained about 166 ignore patterns. §6.3's "zero broken symlinks" had covered home-level links only.
+* The thoughtbot hook shims (3,456 across the three hosts) were removed. On 32i the template `pre-commit` had been rewritten to run `gitleaks --config "$REPO_ROOT/.gitleaks.toml"`; no repo had that file, so it aborted every commit in 93 git dirs.
 
 ### 8.4 Identity and Legacy Leftovers
-* `dot_gitconfig.tmpl` sets the personal email globally. Work repos without a local `user.email` (38 on `Simars-MacBook-Work`) would commit with it; scope a work identity with `includeIf "gitdir:..."` in `~/.gitconfig.local`.
+* Resolved: the work identity lives in `~/.gitconfig.local` (machine-local, not managed by chezmoi) on all four hosts. It includes `~/.gitconfig.work` (`simar.singh@work.example`) for remotes in the `work`, `WORK-ORG-2` and `WORK-ORG-3` orgs and for clones under `~/work/`, `~/WORK-ORG-2/` and `~/WORK-ORG-3/`. A repo's own `user.email` still wins.
+* Resolved: thoughtbot leftovers retired on 32i and 16i with tarballs in `~/.dotfiles.legacy.*.tar.gz`. 16i's `~/dotfiles` was not thoughtbot but a clean clone of this repo at `672f6ff` (the `legacy-backup` branch), and `~/symlinks.dotfiles.thoughtbot` held 20 saved links; both are archived and removed.
 * Retiring the thoughtbot `zsh/configs` left `EDITOR`/`VISUAL` unset, so `alias e="$EDITOR"` expands to nothing; thoughtbot shell functions (`mcd`, `envup`, `change-extension`) and `~/.bin` scripts (`git-up`, `tat`, `replace`) are gone.
-* `simars-macbook-32i` and `simars-macbook-16i` still carry thoughtbot links and `~/dotfiles` (only partly present on 16i).
+* Secret scanning outside this repo is now off everywhere. If wanted, add a global hook that works without a per-repo config (for example `core.hooksPath` or the `pre-commit` framework) rather than reviving the thoughtbot template.
+* `rcm` is still installed on the Intel hosts; uninstall it so a stray `rcup` cannot recreate the links.
 

@@ -466,3 +466,13 @@ First migration attempt on an Apple Silicon machine carried over from an Intel M
 | `simars-macbook-32i` | x86_64 | fast-forward to `36bb53b` (incl. 2 herdr commits) | Same | Same |
 | `simars-macbook-16i` | x86_64 | fast-forward to `36bb53b` | Same | Same |
 
+### 9.5 Same-Day Follow-Up on the Other Hosts
+
+| Host | Exclude links → central | Hook shims removed | Thoughtbot links removed | Legacy dirs | Work identity |
+|---|---|---|---|---|---|
+| `simar-mbp` | 38 (+ `~/.cfg`) | 342 | 0 | `~/dotfiles` already gone | `~/.gitconfig.local` + `.work`; 5/5 work repos resolve to `@work.example` |
+| `simars-macbook-32i` | 92 (+ `~/.cfg`) | 837 | 48 | thoughtbot `~/dotfiles` archived and removed | 7/7 |
+| `simars-macbook-16i` | 252 (+ `~/.cfg`) | 2,277 | 41 | `~/dotfiles` (`legacy-backup` clone) and `~/symlinks.dotfiles.thoughtbot` archived and removed | 28/28 |
+
+Verification: `git check-ignore -v` in work trees reports `.git/info/exclude:88:*.env*`, `:125:*.sql` and `:21:node_modules/`; no dangling `info/exclude` links; `~/.cfg` `fsck` clean on every host; `chezmoi status` clean. `chezmoi init` on 32i regenerated its config, which differed from the template only by a trailing newline.
+

@@ -147,6 +147,7 @@ The configuration strictly separates shared, tracked dotfiles from machine-speci
 | `~/.aliases.local` | Sourced at end of `~/.aliases` | Machine-specific shell aliases, hardware shortcuts, or team-specific alias overrides. |
 | `~/.zshrc.local` | Sourced at end of `~/.zshrc` | Host-specific Zsh functions, custom prompt overrides, local PATH additions, or private configurations. |
 | `~/.gitconfig.local` | Included via `~/.gitconfig` | Machine-specific Git configurations, alternative email addresses, or hardware GPG/SSH signing keys. |
+| `~/.gitconfig.work` | `includeIf` in `~/.gitconfig.local` | Work email for `work`, `WORK-ORG-2` and `WORK-ORG-3` remotes or clones under `~/work/`, `~/WORK-ORG-2/`, `~/WORK-ORG-3/`. Check with `git config --show-origin user.email`. |
 | `~/secrets.env` | Sourced if readable by `~/.zshrc` | Local environment variables, personal API tokens, and development secrets (never committed to Git). |
 | `~/work.secret.env`<br>`~/work.env`<br>`~/dotfiles-local/.../work.secret.env` | Sourced if readable by `~/.zshrc` | Corporate/enterprise environment credentials, staging tokens, and internal endpoint variables. |
 
