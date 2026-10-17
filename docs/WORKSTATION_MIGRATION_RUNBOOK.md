@@ -104,12 +104,12 @@ chezmoi apply -v
 ```
 
 **What happens during apply:**
-1. Packages are installed via `brew bundle --no-upgrade` or `apt-get` (including `vim`, `neovim`, and `herdr`).
-2. Core standalone tools (`starship`, `mise`, `age`, `zoxide`, `fzf`, `herdr`, `neovim`) fall back to standalone release binaries if package managers skip unbottled packages on legacy architectures.
+1. Packages are installed via `brew bundle --no-upgrade` or `apt-get` (including `vim`, `neovim`, and `herdr`, alongside modern CLI utilities `eza`, `bat`, `btop`, `duf`, `dust`, `httpie`, `jq`, and `fx`).
+2. Core standalone tools (`starship`, `mise`, `age`, `zoxide`, `fzf`, `herdr`, `neovim`, `bat`, `dust`, `fx`) fall back to standalone release binaries in `~/.local/bin` if package managers skip unbottled packages on legacy architectures (such as Intel macOS Tier 3 deprecation).
 3. LunarVim (`lvim`) is automatically installed via upstream installer once `nvim` and polyglot runtimes are available.
-4. Templates are rendered to `$HOME` (including `.config/herdr/config.toml`, `.vimrc`, `.config/nvim/init.lua`).
+4. Templates are rendered to `$HOME` (including `.config/herdr/config.toml`, `.vimrc`, `.config/nvim/init.lua`, and `.aliases`).
 5. Post-apply hooks install the Gitleaks pre-commit secret scanner.
-6. Language runtimes are synced via `mise install --yes` (Go, Python 3.12, Node 22).
+6. Language runtimes are synced via `mise install --yes` (Go, Python 3.12 + `httpie`, Node 22).
 
 ### Phase 6: Post-Apply Verification Matrix
 Execute all verification commands in a clean login interactive shell:
@@ -121,22 +121,35 @@ zsh -lic 'TERM=xterm-256color starship prompt && echo "PATH: $PATH"'
 # 2. Core CLI Tools & Terminal Orchestrator
 zsh -lic 'which zoxide fzf rg tmux age gitleaks herdr && herdr --version'
 
-# 3. Editor Ecosystem (Vim, Neovim, LunarVim)
+# 3. Modern CLI Utilities
+zsh -lic 'which eza bat btop duf dust http jq fx'
+
+# 4. Modern & Legacy Shell Aliases
+zsh -lic 'type fp ll lt ltree preview dfh duh top'
+zsh -lic 'type b && type migrate && type s'
+if alias config &>/dev/null; then
+    zsh -lic 'config status --short'
+fi
+
+# 5. Dynamic FZF Bat Preview Verification
+zsh -lic 'head -n 20 ~/.zshrc | bat --style=numbers --color=always'
+
+# 6. Editor Ecosystem (Vim, Neovim, LunarVim)
 zsh -lic 'which vim && vim --version | head -n 1'
 zsh -lic 'which nvim && nvim --version | head -n 1'
 zsh -lic 'which lvim && lvim --version | head -n 1'
 
-# 4. Directory Navigation Functions
+# 7. Directory Navigation Functions
 zsh -lic 'type z && type zi'
 
-# 5. Language Runtimes
+# 8. Language Runtimes
 zsh -lic 'mise current && go version && python --version && node --version'
 
-# 6. Git & SSH Configuration
+# 9. Git & SSH Configuration
 zsh -lic 'git config user.email && git config core.editor'
 ssh -T -p 443 git@ssh.github.com
 
-# 7. Hybrid Age Round-Trip Test
+# 10. Hybrid Age Round-Trip Test
 TMP_DIR=$(mktemp -d)
 TMP_KEY="$TMP_DIR/key.txt"
 TMP_PUB=$(age-keygen -o "$TMP_KEY" 2>&1 | grep "Public key:" | awk '{print $3}')
@@ -145,12 +158,6 @@ ENCRYPTED=$(echo "$MSG" | chezmoi encrypt --age-recipient "$TMP_PUB")
 DECRYPTED=$(echo "$ENCRYPTED" | age -d -i "$TMP_KEY")
 [[ "$DECRYPTED" == "$MSG" ]] && echo "SUCCESS: Age crypto verified"
 rm -rf "$TMP_DIR"
-
-# 8. Legacy Alias Invariant Check
-zsh -lic 'type ll && type b && type migrate && type s'
-if alias config &>/dev/null; then
-    zsh -lic 'config status --short'
-fi
 ```
 
 ### Phase 7: Retiring Legacy Repositories
@@ -176,6 +183,6 @@ Once all verifications pass on a machine migrating from thoughtbot `rcm`:
 
 | Platform | Homebrew Prefix | Binary Fallbacks | Package Hook Notes |
 |---|---|---|---|
-| **Apple Silicon macOS** | `/opt/homebrew` | Native bottles | Tier 1 official support; zero source builds. |
-| **Intel macOS** | `/usr/local` | `~/.local/bin` | Enforces `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1`. |
-| **Ubuntu Linux** | N/A (`apt`) | `~/.local/bin` | Uses `sudo apt-get` with noninteractive debconf. |
+| **Apple Silicon macOS** | `/opt/homebrew` | Native bottles | Tier 1 official support; zero source builds; all modern CLI tools natively bottled. |
+| **Intel macOS** | `/usr/local` | `~/.local/bin` | Enforces `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1`. Homebrew Tier 3 skips unbottled rust/C++ formulae; standalone GitHub binaries (`bat`, `dust`, `fx`) and mise Python (`httpie`) provide resilient fallbacks. |
+| **Ubuntu Linux** | N/A (`apt`) | `~/.local/bin` | Uses `sudo apt-get` with noninteractive debconf; standalone GitHub binaries for tools not in standard apt repos. |

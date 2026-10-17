@@ -131,10 +131,10 @@ chezmoi apply -v
 ```
 
 Monitor during execution:
-1. **Package Provisioning:** Homebrew `brew bundle --no-upgrade` or Apt package installations (including `vim`, `neovim`, and `herdr`).
-2. **Resilient Binary Fallbacks:** Standalone binaries (`herdr`, `neovim`, `age`, `starship`, `mise`, `fzf`, `zoxide`) automatically downloaded if Homebrew skips unbottled formulae on Intel macOS.
+1. **Package Provisioning:** Homebrew `brew bundle --no-upgrade` or Apt package installations (including `vim`, `neovim`, `herdr`, and modern CLI utilities: `eza`, `bat`, `btop`, `duf`, `dust`, `httpie`, `jq`, `fx`).
+2. **Resilient Binary Fallbacks:** Standalone binaries (`herdr`, `neovim`, `age`, `starship`, `mise`, `fzf`, `zoxide`, `bat`, `dust`, `fx`) automatically downloaded into `~/.local/bin` if Homebrew skips unbottled formulae on Intel macOS.
 3. **Editor Automation:** LunarVim (`lvim`) installed automatically via unattended installer once `neovim` and runtimes are present.
-4. **Runtime Compilation:** `mise install --yes` (Node 22, Go latest, Python 3.12 + pip/ruff/black/pytest).
+4. **Runtime Compilation:** `mise install --yes` (Node 22, Go latest, Python 3.12 + httpie/pip/ruff/black/pytest).
 5. **Post-Apply Hooks:** Gitleaks pre-commit hook in `~/.local/share/chezmoi/.git/hooks/pre-commit` and Keychain enrollment.
 
 ---
@@ -149,22 +149,35 @@ zsh -lic 'TERM=xterm-256color starship prompt && echo "PATH: $PATH"'
 # 2. Core CLI Tools & Terminal Orchestrator
 zsh -lic 'which zoxide fzf rg tmux age gitleaks herdr && herdr --version'
 
-# 3. Editor Ecosystem (Vim, Neovim, LunarVim)
+# 3. Modern CLI Utilities
+zsh -lic 'which eza bat btop duf dust http jq fx'
+
+# 4. Modern & Legacy Shell Aliases
+zsh -lic 'type fp ll lt ltree preview dfh duh top'
+zsh -lic 'type b && type migrate && type s'
+if alias config &>/dev/null; then
+    zsh -lic 'config status --short'
+fi
+
+# 5. Dynamic FZF Bat Preview Verification
+zsh -lic 'head -n 20 ~/.zshrc | bat --style=numbers --color=always'
+
+# 6. Editor Ecosystem (Vim, Neovim, LunarVim)
 zsh -lic 'which vim && vim --version | head -n 1'
 zsh -lic 'which nvim && nvim --version | head -n 1'
 zsh -lic 'which lvim && lvim --version | head -n 1'
 
-# 4. Directory Navigation Functions
+# 7. Directory Navigation Functions
 zsh -lic 'type z && type zi'
 
-# 5. Polyglot Runtimes
+# 8. Polyglot Runtimes
 zsh -lic 'mise current && go version && python --version && node --version'
 
-# 6. Git & SSH Configuration
+# 9. Git & SSH Configuration
 zsh -lic 'git config user.email && git config core.editor'
 ssh -T -p 443 git@ssh.github.com
 
-# 7. Hybrid Age Round-Trip Test
+# 10. Hybrid Age Round-Trip Test
 TMP_DIR=$(mktemp -d)
 TMP_KEY="$TMP_DIR/key.txt"
 TMP_PUB=$(age-keygen -o "$TMP_KEY" 2>&1 | grep "Public key:" | awk '{print $3}')
@@ -173,12 +186,6 @@ ENCRYPTED=$(echo "$MSG" | chezmoi encrypt --age-recipient "$TMP_PUB")
 DECRYPTED=$(echo "$ENCRYPTED" | age -d -i "$TMP_KEY")
 [[ "$DECRYPTED" == "$MSG" ]] && echo "SUCCESS: Age crypto verified"
 rm -rf "$TMP_DIR"
-
-# 8. Legacy Alias / Invariant Verification
-zsh -lic 'type ll && type b && type migrate && type s'
-if alias config &>/dev/null; then
-    zsh -lic 'config status --short'
-fi
 ```
 
 ---
@@ -214,3 +221,4 @@ Once all verifications pass:
 | `Host key verification failed` during headless clone | GitHub SSH host key not pre-cached in `~/.ssh/known_hosts`. | Add `StrictHostKeyChecking accept-new` to SSH client config (`private_dot_ssh/private_config.tmpl`). |
 | LunarVim installer fails with permission denied | Git clones over SSH via `insteadOf = https://github.com/` without agent. | Connect to remote machine with SSH agent forwarding: `ssh -A <host>`. |
 | Unbottled `herdr` or `neovim` on Intel macOS | Homebrew Tahoe x86_64 lacks bottles for modern formulae. | Bootstrap script automatically downloads official standalone binaries into `~/.local/bin`. |
+| Unbottled modern CLI utilities on Intel macOS (`bat`, `dust`, `fx`, `eza`) | Homebrew Tier 3 deprecation skips unbottled formulae under `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1`. | Automated standalone fallbacks in bootstrap hook for `bat`, `dust`, `fx` into `~/.local/bin`; `httpie` via `default-python-packages`; guarded `ll` alias safely degrades to `ls -lah`. |

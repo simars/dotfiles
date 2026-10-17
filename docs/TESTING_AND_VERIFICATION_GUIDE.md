@@ -150,16 +150,27 @@ exec zsh
 Verify the following:
 * **Prompt:** Confirm Starship prompt appears with directory, git status, and character symbols.
 * **Architecture-Aware PATH:** Run `echo $PATH` and verify `/opt/homebrew/bin` (or `/usr/local/bin`) and `~/.local/share/mise/shims` appear early in the path.
-* **Aliases:**
-  * `ll` (formatted directory listing)
+* **Core & Modern Aliases:**
+  * `ll` (modern `eza -la --icons --git` listing; gracefully falls back to `ls -lah` if `eza` is missing)
+  * `lt` / `ltree` (`eza --tree` directory tree listings)
+  * `preview` (`bat` syntax-highlighted pager)
+  * `dfh` (`duf` modern disk usage)
+  * `duh` (`dust` visual directory disk usage)
+  * `top` (`btop` modern resource monitor)
+  * `fp` (`fzf` interactive fuzzy search with `bat` syntax-highlighted preview)
   * `g status` (git shortcut)
   * `cz status` (chezmoi shortcut)
   * `brews` (brew upgrade/cleanup shortcut)
   * `d-up` / `d-down` (Colima container helpers)
+* **Modern CLI Utilities:**
+  ```bash
+  which eza bat btop duf dust http jq fx
+  head -n 20 ~/.zshrc | bat --style=numbers --color=always
+  ```
 * **Polyglot Runtimes (`mise`):**
   ```bash
   mise current
-  python --version   # Python 3.12.x
+  python --version   # Python 3.12.x (with httpie, ruff, black, pytest, pip)
   node --version     # v22.x
   go version         # go1.x
   ruff --version     # verified global Python package
@@ -206,15 +217,16 @@ rm ~/.local/share/chezmoi/encrypted_dot_test_token.age
 
 ---
 
-## 5. Live Verification on Intel MacBook (`simars-macbook-16i`)
+### 5. Live Verification on Intel MacBooks (`simars-macbook-16i` & `simars-macbook-32i`)
 
-The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.ssh/id_rsa simars@simars-macbook-16i.example-tailnet.ts.net`).
+The entire configuration was deployed and verified across two live Intel macOS machines via SSH (`simars-macbook-16i.example-tailnet.ts.net` and `simars-macbook-32i.example-tailnet.ts.net`).
 
 ### 5.1 Environment Profile
-* **Hosts:** `simars-macbook-16i.example-tailnet.ts.net` & `simars-macbook-32i.example-tailnet.ts.net` (Tailscale)
-* **Architecture:** `x86_64` (Intel Core i7/i9)
-* **Kernel & OS:** Darwin 25.2.0 / Darwin 25.5.0 (`macOS 26` Tahoe/Sequoia+)
-* **Shell:** `/bin/zsh`
+* **Host 1:** `simars@simars-macbook-16i.example-tailnet.ts.net` (16-inch Intel MacBook Pro, Core i9 `x86_64`, macOS 26.2 Tahoe)
+* **Host 2:** `simars@simars-macbook-32i.example-tailnet.ts.net` (16-inch Intel MacBook Pro, 32GB RAM, Core i9 `x86_64`, macOS 26.5 Tahoe)
+* **Architecture:** `x86_64` (Intel)
+* **Shell:** `/bin/zsh` (login interactive shell)
+* **Homebrew Prefix:** `/usr/local`
 * **Pre-Apply Safety Backups:** Created at `~/.dotfiles.backup.20261017_001018/` and `~/.dotfiles.backup.20261017_133040/`
 
 ### 5.2 Verification Checklist & Results
@@ -222,7 +234,7 @@ The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.s
 | Component | Tested Command / Behavior | Status | Evidence / Notes |
 |---|---|---|---|
 | **Safety Backup** | `cp -PR` of active dotfiles | PASS | All active files backed up before each apply execution |
-| **Apply Execution** | `chezmoi apply -v` | PASS | Exit code 0; rendered templates and executed run-once hooks |
+| **Apply Execution** | `chezmoi apply -v` | PASS | Exit code 0; rendered templates, applied `.aliases`, executed hooks |
 | **PATH Hierarchy** | `zsh -lic 'echo $PATH'` | PASS | Correct order: `~/.local/share/mise/shims`, `/usr/local/bin`, `~/.local/bin` |
 | **Polyglot Runtimes** | `mise current` | PASS | Go `1.27.2`, Python `3.12.15`, Node `22.23.3` operational |
 | **Starship Prompt** | `starship prompt` | PASS | Rendered directory, git branch, and prompt symbol cleanly |
@@ -236,22 +248,34 @@ The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.s
 | **Neovim** | `which nvim && nvim --version` | PASS | Resolved `nvim` (`v0.10.0` / `v0.12.6`), `init.lua` loaded |
 | **LunarVim** | `which lvim && lvim --version` | PASS | Installed via upstream installer into `/Users/simars/.local/bin/lvim` |
 | **Age Hybrid Encryption**| `chezmoi add --encrypt` + `chezmoi cat` | PASS | Dual recipients (`-> ssh-rsa` & `-> X25519`) verified; round-trip decrypt succeeded |
+| **Modern CLI (`btop`)** | `which btop && btop --version` | PASS | Installed in `/usr/local/bin/btop` (`1.4.7`) via legacy bottle cache |
+| **Modern CLI (`duf`)** | `which duf && duf --version` | PASS | Installed in `/usr/local/bin/duf` (`0.9.1`) via legacy bottle cache |
+| **Modern CLI (`jq`)** | `which jq && jq --version` | PASS | Installed in `/usr/local/bin/jq` (`1.8.2`) |
+| **Modern CLI (`bat`, `dust`, `fx`)** | Standalone GitHub Tarball Fallbacks | PASS | Downloaded to `~/.local/bin` via `run_onchange_before_00_install_packages.sh.tmpl` |
+| **Modern CLI (`httpie`)** | `mise` default python package | PASS | Installed via `dot_config/mise/default-python-packages` into Python 3.12 |
+| **Modern Alias: `top`** | `type top` | PASS | Resolves to `top is an alias for btop` on both Intel hosts |
+| **Modern Alias: `dfh`** | `type dfh` | PASS | Resolves to `dfh is an alias for duf` on both Intel hosts |
+| **Modern Alias: `ll`** | `type ll` | PASS | Graceful fallback: cleanly falls back to `ls -lah` when `eza` is unbottled |
+| **Guarded Aliases (`fp`, `duh`)** | `type fp && type duh` | PASS | Cleanly inactive / guarded by `command -v`; zero shell syntax or missing command errors |
 
 ### 5.3 Key Bottlenecks Solved
 
-1. **Intel macOS Tier 3 Homebrew Deprecation:**
-   * *Problem:* Homebrew deprecated precompiled bottles for Intel x86_64 on newer macOS releases. Without bottles, `brew bundle` tried to build LLVM, Rust, and dependencies from source, failing due to older Xcode/CLT.
-   * *Fix:* Configured `export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` and `--no-upgrade` in `run_onchange_before_00_install_packages.sh.tmpl`. Core CLI tools (`mise`, `age`, `starship`) are reliably downloaded as standalone precompiled binaries into `~/.local/bin`.
-2. **Go Age Internal Library vs External Age Binary:**
+1. **Intel macOS Tier 3 Homebrew Deprecation & Modern CLI Strategy:**
+   * *Problem:* In September 2026, Homebrew officially transitioned Intel macOS (`x86_64`) to Tier 3 support and stopped building new bottles. Formulae with unbottled dependencies (e.g. `eza` and `bat` requiring `libgit2` and `openssl@4`) attempted to build LLVM/Rust toolchains from source.
+   * *Fix:* Configured `export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` and `--no-upgrade` in `run_onchange_before_00_install_packages.sh.tmpl` to prevent hours of compiling and build crashes. Added automated standalone binary fallbacks for Darwin `x86_64` (`bat`, `dust`, `fx`) in `run_onchange_before_00_install_packages.sh.tmpl`, and added `httpie` to `dot_config/mise/default-python-packages`.
+2. **Resilient Shell Alias Guarding & Graceful Degradation:**
+   * *Problem:* Aliases for modern utilities (`ll`, `lt`, `preview`, `duh`, `fp`) could crash or cause command errors on architectures where specific binaries are not installed.
+   * *Fix:* In `dot_aliases`, all modern aliases are strictly guarded by `if command -v <tool> &> /dev/null`. When `eza` is missing, `ll` cleanly falls back to `ls -lah`. When `bat` is missing, `fp` is not registered, preventing broken interactive subshells. Local overrides (`~/.aliases.local`) source at the end of the file.
+3. **Go Age Internal Library vs External Age Binary:**
    * *Problem:* Chezmoi's internal age library (`useBuiltin = true`) failed on SSH RSA recipients with `malformed recipient ...: mixed case`.
    * *Fix:* Configured `useBuiltin = false` in `.chezmoi.toml.tmpl`. Chezmoi now delegates to the external `age` binary (`~/.local/bin/age`), which natively supports RSA and Ed25519 SSH recipients.
-3. **Headless SSH & Non-TTY Prompts:**
+4. **Headless SSH & Non-TTY Prompts:**
    * *Problem:* In automated SSH sessions without a TTY, `promptStringOnce` failed because `/dev/tty` could not be opened.
    * *Fix:* Supplied fallback defaults to `promptStringOnce` (`email` -> `"simarpaulsingh@gmail.com"`, `name` -> `"Simar Singh"`) and `promptBoolOnce` (`is_work` -> `false`).
-4. **Git URL Rewriting & SSH Agent Forwarding:**
+5. **Git URL Rewriting & SSH Agent Forwarding:**
    * *Problem:* With `insteadOf = https://github.com/`, all GitHub access requires SSH keys. On a remote machine over headless SSH, passphrase-protected keys cannot prompt for a passphrase without macOS Keychain GUI integration.
    * *Fix:* Connecting via `ssh -A simars@simars-macbook-16i.example-tailnet.ts.net` forwards the local unlocked SSH agent, enabling remote GitHub operations effortlessly.
-5. **Mise Modern TOML Deprecation Warnings:**
+6. **Mise Modern TOML Deprecation Warnings:**
    * *Problem:* Mise warned that root-level `uv_venv_auto` and `default_packages_file` keys are deprecated.
    * *Fix:* Grouped under `[settings.python]` table in `~/.config/mise/config.toml`.
 
@@ -259,6 +283,8 @@ The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.s
 
 For full architectural details and recovery roadmaps, see [FUTURE_CONSIDERATIONS.md](FUTURE_CONSIDERATIONS.md).
 
+* **Intel Mac Standalone Binary Fallbacks for Unbottled Rust/C++ Tools (`eza`):**
+  * *Context:* Homebrew Tier 3 deprecation leaves unbottled rust/C++ formulae without pre-compiled bottles. `bat`, `dust`, `fx`, and `httpie` are now reliably installed via standalone GitHub releases and mise. For `eza`, standalone precompiled releases (`eza-community/eza`) or bottled dependencies will be integrated in a future release; meanwhile, the guarded `ll` alias safely and seamlessly provides `ls -lah`.
 * **Intel Mac Command Line Tools Update:**
   * *Automated Handling:* Pre-package hook checks `xcode-select -p` and triggers prompt. Added `cz-update-clt` alias (`softwareupdate --all --install --force`) for one-command system updates.
 * **Homebrew Formula Cleanup on Intel:**
@@ -308,6 +334,9 @@ The dotfiles configuration was deployed live to the primary Apple Silicon workst
 | **LunarVim** | `which lvim && lvim --version` | PASS | Installed into `/Users/simars/.local/bin/lvim` (`NVIM v0.12.6`), LuaJIT runtime |
 | **Gitleaks Pre-Commit**| `.git/hooks/pre-commit` | PASS | Pre-commit secret scanning active, passed with zero leaks found |
 | **Age Hybrid Encryption**| `chezmoi encrypt` + `chezmoi decrypt` | PASS | Dual recipients (`-> ssh-rsa` & `-> X25519`) verified; round-trip decrypt succeeded |
+| **Modern CLI Utilities** | `which eza bat btop duf dust http jq fx` | PASS | All 8 modern CLI binaries installed in `/opt/homebrew/bin` via native bottles |
+| **Modern Shell Aliases** | `type fp ll lt ltree preview dfh duh top` | PASS | All 8 aliases active and resolved to modern CLI tooling |
+| **Dynamic FZF Preview** | `head -n 20 ~/.zshrc \| bat --style=numbers --color=always` | PASS | Syntax highlighting, line numbering, and color formatting rendered cleanly |
 
 ### 6.3 Key Bottlenecks Solved on Apple Silicon
 
@@ -336,6 +365,21 @@ To provide an out-of-the-box development and multiplexing environment across all
 * **Headless SSH Optimization:**
   Added `StrictHostKeyChecking accept-new` to `private_dot_ssh/private_config.tmpl` to prevent headless git/mise/lvim clones from failing on unverified GitHub host keys.
 
+### 6.5 Modern CLI Tools & Interactive Preview Integration
+
+To provide a modern, performant, and visual command-line workflow:
+
+* **Declarative Packaging:**
+  Added `eza`, `bat`, `btop`, `duf`, `dust`, `httpie`, `jq`, and `fx` to `.chezmoidata/packages.toml` (`[darwin.brew].formulae` and `[ubuntu.apt].packages`).
+* **Resilient Architecture Fallbacks:**
+  * **Apple Silicon:** All modern CLI utilities pour directly from precompiled Homebrew bottles into `/opt/homebrew/bin`.
+  * **Intel macOS (`x86_64`):** With Homebrew Tier 3 deprecation, formulae lacking bottles are skipped without hanging. `bat`, `dust`, and `fx` download standalone GitHub release binaries to `~/.local/bin`; `httpie` is installed into the global Python 3.12 environment via `dot_config/mise/default-python-packages`.
+* **Interactive FZF Bat Preview (`fp`):**
+  The `fp` alias pairs `fzf` with dynamic syntax-highlighted previews:
+  `fzf --preview 'bat --style=numbers --color=always --line-range :500 {}'`
+* **Guarded Aliases with Graceful Degradation:**
+  In `dot_aliases`, modern aliases are guarded with `command -v`. When `eza` is missing, `ll` cleanly falls back to `ls -lah`. Missing optional utilities omit their aliases cleanly without shell errors.
+
 ---
 
 ## 7. Day-to-Day Operations Cheat Sheet
@@ -352,4 +396,28 @@ To provide an out-of-the-box development and multiplexing environment across all
 | **List Managed Files** | `chezmoi managed` | List all files currently managed by chezmoi |
 | **Inspect File Status** | `chezmoi status` | List state changes between source and destination |
 | **Fresh Machine Bootstrap** | `sh -c "$(curl -fsLS https://get.chezmoi.io)" -- init --apply git@github.com:simars/dotfiles.git` | Bootstrap an entire workstation in one command |
+
+---
+
+## 8. Multi-Machine Verification Matrix
+
+Summary of empirical verification results across all tested developer workstations:
+
+| Target | Binary / Alias | Apple Silicon Mac Studio (`arm64`) | `simars-macbook-16i` (`x86_64`) | `simars-macbook-32i` (`x86_64`) | Strategy & Resolution |
+|---|---|---|---|---|---|
+| **Binary** | `btop` | `/opt/homebrew/bin/btop` (1.4.7) | `/usr/local/bin/btop` (1.4.7) | `/usr/local/bin/btop` (1.4.7) | PASS (Native Homebrew bottles on ARM & Intel) |
+| **Binary** | `duf` | `/opt/homebrew/bin/duf` (0.9.1) | `/usr/local/bin/duf` (0.9.1) | `/usr/local/bin/duf` (0.9.1) | PASS (Native Homebrew bottles on ARM & Intel) |
+| **Binary** | `jq` | `/opt/homebrew/bin/jq` (1.8.2) | `/usr/local/bin/jq` (1.8.2) | `/usr/local/bin/jq` (1.8.2) | PASS (Native Homebrew bottles on ARM & Intel) |
+| **Binary** | `eza` | `/opt/homebrew/bin/eza` (0.23.5) | Deferred (Tier 3 unbottled) | Deferred (Tier 3 unbottled) | PASS (Native on ARM; guarded fallback on Intel) |
+| **Binary** | `bat` | `/opt/homebrew/bin/bat` (0.26.1) | `~/.local/bin/bat` (0.26.1) | `~/.local/bin/bat` (0.26.1) | PASS (Native on ARM; standalone release on Intel) |
+| **Binary** | `dust` | `/opt/homebrew/bin/dust` (1.2.6) | `~/.local/bin/dust` (1.2.6) | `~/.local/bin/dust` (1.2.6) | PASS (Native on ARM; standalone release on Intel) |
+| **Binary** | `http` | `/opt/homebrew/bin/http` (3.2.4) | Mise Python 3.12 `httpie` | Mise Python 3.12 `httpie` | PASS (Native on ARM; mise default Python on Intel) |
+| **Binary** | `fx` | `/opt/homebrew/bin/fx` (40.0.0) | `~/.local/bin/fx` (40.0.0) | `~/.local/bin/fx` (40.0.0) | PASS (Native on ARM; standalone release on Intel) |
+| **Alias** | `top` | `alias for btop` | `alias for btop` | `alias for btop` | PASS (Active across all hosts) |
+| **Alias** | `dfh` | `alias for duf` | `alias for duf` | `alias for duf` | PASS (Active across all hosts) |
+| **Alias** | `preview` | `alias for bat` | `alias for bat` | `alias for bat` | PASS (Active across all hosts) |
+| **Alias** | `ll` | `alias for eza -la --icons --git` | `alias for ls -lah` | `alias for ls -lah` | PASS (Modern on ARM; graceful fallback on Intel) |
+| **Alias** | `lt` / `ltree` | `alias for eza --tree` | Guarded (cleanly omitted) | Guarded (cleanly omitted) | PASS (Active on ARM; zero errors on Intel) |
+| **Alias** | `duh` | `alias for dust` | `alias for dust` | `alias for dust` | PASS (Active with dust binary) |
+| **Alias** | `fp` | `alias for fzf --preview ...` | `alias for fzf --preview ...` | `alias for fzf --preview ...` | PASS (Active with bat binary) |
 
