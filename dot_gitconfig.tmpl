@@ -1,0 +1,25 @@
+[user]
+    name = {{ .name }}
+    email = {{ .email }}
+
+[core]
+    autocrlf = input
+{{- if eq .chezmoi.os "darwin" }}
+    editor = code --wait
+{{- else }}
+    editor = nvim
+{{- end }}
+
+[init]
+    defaultBranch = main
+
+[pull]
+    rebase = true
+
+[color]
+    ui = auto
+
+{{- if .is_work }}
+[url "git@github.com:corporate-org/"]
+    insteadOf = https://github.com/corporate-org/
+{{- end }}

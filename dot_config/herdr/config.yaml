@@ -1,0 +1,20 @@
+leader: "ctrl+b"
+
+bindings:
+  split_horizontal: "%"
+  split_vertical: '"'
+  new_pane: "c"
+  close_pane: "x"
+  nav_left: "h"
+  nav_down: "j"
+  nav_up: "k"
+  nav_right: "l"
+  nav_left_alt: "left"
+  nav_down_alt: "down"
+  nav_up_alt: "up"
+  nav_right_alt: "right"
+
+settings:
+  shell: "zsh"
+  mouse_events: true
+  synchronize_on_start: false
