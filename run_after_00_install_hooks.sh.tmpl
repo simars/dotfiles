@@ -9,6 +9,13 @@ if [[ -d "${HOOK_DIR}" ]]; then
 #!/usr/bin/env bash
 set -e
 
+# Canary: git older than the minimum silently skips the global gitleaks hook in every other repo.
+GIT_MIN="{{ .requirements.git.min }}"
+GIT_V="$(git --version | awk '{print $3}')"
+if [[ "$(printf '%s\n%s\n' "$GIT_V" "$GIT_MIN" | sort -V | head -n 1)" != "$GIT_MIN" ]]; then
+    echo "WARNING: git $GIT_V is older than $GIT_MIN: the global gitleaks hook is NOT scanning your other repos."
+fi
+
 if ! command -v gitleaks &> /dev/null; then
     echo "WARNING: 'gitleaks' binary not found. Skipping staged secret scan."
     exit 0

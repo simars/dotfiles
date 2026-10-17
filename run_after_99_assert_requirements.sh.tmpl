@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Assert minimum tool versions after every apply. A failure here means the global
+# gitleaks pre-commit hook is not protecting commits on this machine.
+set -uo pipefail
+
+if [[ "${CHEZMOI_CI:-false}" == "true" ]]; then
+    echo "==> CI environment detected: skipping requirement assertions."
+    exit 0
+fi
+
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+GIT_MIN="{{ .requirements.git.min }}"
+failed=0
+
+# version_ge A B: succeed when version A >= version B
+version_ge() {
+    [[ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" == "$2" ]]
+}
+
+git_version() {
+    "$1" --version 2> /dev/null | awk '{print $3}' | sed 's/[^0-9.].*//'
+}
+
+check_git() {
+    local bin="$1" role="$2" fix="$3" v
+    v="$(git_version "$bin")"
+    if [[ -z "$v" ]]; then
+        echo "FAIL: $role ($bin) does not run. Fix: $fix"
+        failed=1
+    elif ! version_ge "$v" "$GIT_MIN"; then
+        echo "FAIL: $role is git $v ($bin); the gitleaks hook needs >= $GIT_MIN. Fix: $fix"
+        failed=1
+    else
+        echo "OK:   $role is git $v ($bin)"
+    fi
+}
+
+{{ if eq .chezmoi.os "darwin" -}}
+# Terminal git: whichever git leads PATH in a login shell
+check_git "$(command -v git)" "terminal git" "brew install git (Apple Silicon), or update Xcode / Command Line Tools to 27.1+"
+
+# Apple git: GUI apps launched from the Dock use /usr/bin/git, which follows xcode-select
+if ! xcode-select -p &> /dev/null; then
+    echo "FAIL: no Xcode or Command Line Tools selected, so /usr/bin/git cannot run. Fix: xcode-select --install"
+    failed=1
+else
+    check_git /usr/bin/git "Apple /usr/bin/git ($(xcode-select -p))" \
+        "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer (Xcode 27.1+), or install Command Line Tools for Xcode 27.1+ (softwareupdate --list)"
+fi
+{{- else }}
+check_git "$(command -v git)" "git" "sudo add-apt-repository -y ppa:git-core/ppa && sudo apt-get install -y git"
+{{- end }}
+
+if command -v gitleaks &> /dev/null; then
+    echo "OK:   gitleaks $(gitleaks version 2> /dev/null) ($(command -v gitleaks))"
+else
+{{- if eq .chezmoi.os "darwin" }}
+    echo "FAIL: gitleaks is not installed, so the pre-commit hook skips scanning. Fix: brew install gitleaks"
+{{- else }}
+    echo "FAIL: gitleaks is not installed, so the pre-commit hook skips scanning. Fix: install the release binary from https://github.com/gitleaks/gitleaks/releases into /usr/local/bin"
+{{- end }}
+    failed=1
+fi
+
+if [[ "$failed" -ne 0 ]]; then
+    echo "==> Requirement check failed: commits on this machine are not fully secret-scanned."
+    exit 1
+fi

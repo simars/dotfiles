@@ -106,6 +106,18 @@ Repositories created under the retired thoughtbot `init.templatedir` link `.git/
 | **Link a new repo** | `ln -sfn ~/.config/git/info-exclude .git/info/exclude` | Opt a fresh clone into the shared list (new clones no longer get it automatically). |
 | **Explain a match** | `git check-ignore -v <path>` | Show which list and line ignores a path (`.git/info/exclude:<line>:<pattern>`). |
 
+### Secret Scanning on Commit (Git 2.54+)
+Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` through the `hook.gitleaks` entry in `~/.gitconfig`. It scans only the staged changes, uses the repo's own `.gitleaks.toml` if present, and redacts what it reports. A repo's own `.git/hooks/pre-commit` still runs after it.
+
+| Task | Command | Description |
+| :--- | :--- | :--- |
+| **See active hooks** | `git hook list pre-commit` | Lists `gitleaks` plus any repo hook. Empty output means this git is older than 2.54 and nothing is scanned. |
+| **False positive** | `gitleaks:allow` comment on the line | Lets that line through; for findings you cannot annotate, add their fingerprint to `.gitleaksignore`. |
+| **Skip once** | `git commit --no-verify` | Bypasses all pre-commit hooks for this commit only. |
+| **Opt a repo out** | `git config hook.gitleaks.enabled false` | Disables the scan in the current repo only. |
+| **Scan by hand** | `gitleaks git --pre-commit --staged --redact` | Same check the hook runs, without committing. |
+| **Check requirements** | `git --version` and `/usr/bin/git --version` | Both must be >= 2.54 (`.chezmoidata/requirements.toml`). Every `chezmoi apply` asserts this and that `gitleaks` is installed, printing the fix and failing until met. |
+
 ### Chezmoi Workflow Commands
 `chezmoi` manages dotfiles declaratively from `~/.local/share/chezmoi`.
 

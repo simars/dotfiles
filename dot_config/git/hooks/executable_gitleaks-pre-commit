@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Global secret scan for every repository, run by git 2.54+ through the
+# `hook.gitleaks` entry in ~/.gitconfig. It scans only the staged changes and
+# uses the repo's own .gitleaks.toml when present, else gitleaks' built-in rules.
+
+# GUI apps start git with a minimal PATH, so also look in the usual install locations.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+if ! command -v gitleaks &> /dev/null; then
+    echo "WARNING: 'gitleaks' binary not found. Skipping staged secret scan." >&2
+    exit 0
+fi
+
+# Exit code 3 means a finding; any other failure is gitleaks itself failing,
+# for example on a malformed .gitleaks.toml.
+gitleaks git --pre-commit --staged --redact --no-banner --log-level warn --exit-code 3
+status=$?
+
+case "$status" in
+    0)
+        exit 0
+        ;;
+    3)
+        cat >&2 << 'EOF'
+==========================================================================
+ COMMIT BLOCKED: gitleaks found a possible secret in the staged changes
+ (redacted above).
+   Real secret:     unstage it, remove it, and rotate it.
+   False positive:  add a `gitleaks:allow` comment on that line, or list
+                    the finding in .gitleaksignore.
+   Skip once:       git commit --no-verify
+==========================================================================
+EOF
+        exit 1
+        ;;
+    *)
+        echo "COMMIT BLOCKED: gitleaks failed to run (exit $status, error above). This is not a secret finding: fix the repo's .gitleaks.toml, or commit with --no-verify." >&2
+        exit 1
+        ;;
+esac
