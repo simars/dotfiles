@@ -117,8 +117,28 @@ sudo apt-get install -y \
 
 # Normalize fd-find binary name to fd on Ubuntu
 mkdir -p "$HOME/.local/bin"
+export PATH="$HOME/.local/bin:$PATH"
 if command -v fdfind &> /dev/null && ! command -v fd &> /dev/null; then
     ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
+fi
+
+# Normalize batcat binary name to bat on Debian/Ubuntu
+if command -v batcat &> /dev/null && ! command -v bat &> /dev/null; then
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
+fi
+
+if ! command -v eza &> /dev/null; then
+    echo "==> Installing eza fallback..."
+    EZA_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
+    curl -fsSL "https://github.com/eza-community/eza/releases/latest/download/eza_${EZA_ARCH}-unknown-linux-gnu.tar.gz" | tar -xz -C "$HOME/.local/bin" eza 2>/dev/null || true
+fi
+
+if ! command -v fx &> /dev/null; then
+    echo "==> Installing fx fallback..."
+    FX_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
+    curl -fsSL "https://github.com/antonmedv/fx/releases/latest/download/fx_linux_${FX_ARCH}" -o "$HOME/.local/bin/fx" 2>/dev/null || true
+    chmod +x "$HOME/.local/bin/fx" 2>/dev/null || true
 fi
 
 # Install Starship if missing
