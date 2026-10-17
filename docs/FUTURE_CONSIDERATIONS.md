@@ -204,3 +204,26 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 | **Apple Silicon Prefix & Bottles**| ✅ Native Resolution | Dynamic `/opt/homebrew` shellenv + Tier 1 native bottle pouring |
 | **SSH-RSA Mixed Case Error** | ✅ External Binary Engine | `useBuiltin = false` delegates to native `age` binary |
 
+---
+
+## 8. Deferred Items from the `Simars-MacBook-Work` Migration (2026-10-17)
+
+### 8.1 Native Homebrew Changeover (`Simars-MacBook-Work`)
+* The machine runs an Intel Homebrew under Rosetta with Command Line Tools 11.7, which refuses to install on macOS 26. Update the CLT, install `/opt/homebrew`, then re-run the package script. Installing Homebrew does not change the script's hash, so `chezmoi apply` alone will not re-run it.
+* `mise` and its runtimes are x86_64 (the `mise.run` fallback ran under Rosetta `bash`). Reinstall natively once `/opt/homebrew/bin/mise` exists.
+* Remove the `~/.local/bin` fallbacks (`bat`, `dust`, `fx`, `duf`, `gitleaks`, `age`, `herdr`, `mise`) once native bottles replace them; they lead PATH and would shadow Homebrew.
+* `brew uninstall rcm` so a stray `rcup` cannot recreate the thoughtbot symlinks.
+
+### 8.2 Install Script Gaps
+* `gitleaks` and `duf` have no darwin standalone fallback in `run_onchange_before_00_install_packages.sh.tmpl`. Note that any edit to that script changes its hash and re-runs `brew bundle` on every host.
+* The script's `#!/usr/bin/env bash` resolves to `/usr/local/bin/bash` (x86_64) on a Rosetta-brew Mac, so runtime-detecting installers such as `mise.run` pick x86_64. `#!/bin/bash` runs natively on Apple Silicon and exists on Ubuntu.
+
+### 8.3 Per-Repo Exclude Lists on Other Hosts
+* `simar-mbp` (32 links) and `simars-macbook-16i` (34 links) have dangling `.git/info/exclude` symlinks into the deleted `~/dotfiles`, so those repos already lost their exclude list. `simars-macbook-32i` links point to git's stock template, which has no patterns. §6.3's "zero broken symlinks" covered home-level links only.
+* Linking these to `~/.config/git/info-exclude` adds about 166 ignore patterns on those hosts, a behavior change awaiting a decision. Their dangling thoughtbot hook shims can go at the same time.
+
+### 8.4 Identity and Legacy Leftovers
+* `dot_gitconfig.tmpl` sets the personal email globally. Work repos without a local `user.email` (38 on `Simars-MacBook-Work`) would commit with it; scope a work identity with `includeIf "gitdir:..."` in `~/.gitconfig.local`.
+* Retiring the thoughtbot `zsh/configs` left `EDITOR`/`VISUAL` unset, so `alias e="$EDITOR"` expands to nothing; thoughtbot shell functions (`mcd`, `envup`, `change-extension`) and `~/.bin` scripts (`git-up`, `tat`, `replace`) are gone.
+* `simars-macbook-32i` and `simars-macbook-16i` still carry thoughtbot links and `~/dotfiles` (only partly present on 16i).
+

@@ -421,3 +421,48 @@ Summary of empirical verification results across all tested developer workstatio
 | **Alias** | `duh` | `alias for dust` | `alias for dust` | `alias for dust` | PASS (Active with dust binary) |
 | **Alias** | `fp` | `alias for fzf --preview ...` | `alias for fzf --preview ...` | `alias for fzf --preview ...` | PASS (Active with bat binary) |
 
+---
+
+## 9. Live Verification on `Simars-MacBook-Work` (Apple Silicon, Rosetta Homebrew)
+
+First migration attempt on an Apple Silicon machine carried over from an Intel Mac: the hardware is `arm64`, but Homebrew is the Intel `/usr/local` install running under Rosetta. The native `/opt/homebrew` changeover is deferred (see `FUTURE_CONSIDERATIONS.md` §8).
+
+### 9.1 Environment Profile
+* **Host:** `Simars-MacBook-Work` (Apple M2 Max, 32 GB), macOS 26.6.2 (Darwin 25.6.0)
+* **Homebrew:** `/usr/local`, x86_64 under Rosetta (161 formulae, Command Line Tools 11.7)
+* **chezmoi:** v2.73.2, native `arm64` in `~/.local/bin`, so `.chezmoi.arch` renders `arm64`
+* **Legacy state:** thoughtbot `rcm` (`~/dotfiles` + `~/dotfiles-local`) alongside the bare repo `~/.cfg`
+* **Backups:** `~/.dotfiles.legacy.20261017_163746.tar.gz`; `~/.dotfiles.backup.20261017_163746/` with a full symlink manifest and a generated `restore-legacy-symlinks.sh`
+
+### 9.2 Verification Checklist & Results
+
+| Component | Tested Command / Behavior | Status | Evidence / Notes |
+|---|---|---|---|
+| **Modern CLI (8/8)** | `which eza bat btop duf dust http jq fx` | PASS | `eza`, `btop`, `jq` in `/usr/local/bin` (x86_64); `bat`, `dust`, `fx`, `duf` in `~/.local/bin` (arm64 releases); `http` from mise Python 3.12 |
+| **Guarded Aliases** | `type fp ll lt ltree preview dfh duh top` | PASS | All 8 resolve; `ls`, `cat`, `df`, `du` still the system binaries |
+| **Bare Repo Invariant** | `config status --short`, `config fsck` | PASS | Alias active, `fsck` clean, 382 tracked files, no remaining dependency on `~/dotfiles` |
+| **Polyglot Runtimes** | `mise current` | PASS | Go 1.27.2, Node 22.23.3, Python 3.12.15 (x86_64 builds: the `mise.run` fallback ran under Rosetta `bash`) |
+| **Cheatsheet** | `cheat`, `~/.cheatsheet.md` | PASS | Renders through `bat`; contains "Modern CLI & Observability Tools" |
+| **Agent Instructions** | repo-only checks | PASS | `AGENTS.md`, `CLAUDE.md`, `.agents/rules/` exist only in the source dir; no `~/AGENTS.md` or `~/CLAUDE.md` |
+| **Age Hybrid Encryption** | `chezmoi encrypt --age-recipient` + `age -d` | PASS | Round trip succeeded; configured recipients carry `ssh-rsa` and `X25519` stanzas; `age` v1.3.2 arm64 |
+| **Gitleaks** | `gitleaks detect --source ~/.local/share/chezmoi -v` | PASS | No leaks; pre-commit hook active and run on each commit |
+| **PATH Hierarchy** | `zsh -lic 'print -l $path'` | PASS | mise runtimes, mise shims, `~/.local/bin`, then `/usr/local/bin` |
+| **GitHub SSH** | `ssh -T git@github.com` | PASS | Authenticated with the deployed `~/.ssh/config` |
+| **Legacy Retirement** | `find ~ -lname "$HOME/dotfiles/*"` | PASS | 0 live links outside the backup; `~/dotfiles` removed after verification |
+| **Per-Repo Excludes** | `git check-ignore -v` probes | PASS | 320 `.git/info/exclude` links repointed to `~/.config/git/info-exclude`; ignore decisions identical before and after; 2,889 dead thoughtbot hook shims removed |
+
+### 9.3 Key Bottlenecks Solved
+1. **Intel Homebrew refuses to install on macOS 26:** `Error: Your Command Line Tools (CLT) does not support macOS 26.` Every missing formula failed in `brew bundle`. The arm64 standalone fallbacks covered `bat`, `dust`, `fx`, `age` and `herdr`; `gitleaks` and `duf` have no darwin fallback, so their official v8.30.1 / v0.9.1 `darwin_arm64` releases were installed into `~/.local/bin` after checksum verification.
+2. **`~/.cfg` depended on `~/dotfiles`:** its hooks, `info/exclude` and repo-local `core.excludesfile` all pointed into the thoughtbot checkout. Hooks removed, `info/exclude` repointed to the shared list, `core.excludesfile` unset so it inherits the global `~/.gitignore`.
+3. **Repo exclude lists lived in `~/dotfiles`:** 320 git dirs created under `init.templatedir=~/.git_template` symlinked `.git/info/exclude` into the checkout. The list is now chezmoi-managed at `~/.config/git/info-exclude`.
+4. **Host lines in the thoughtbot `zshrc`:** Windsurf, pnpm, Docker Desktop completions and LM Studio moved to `dotfiles-local/zshrc.local`; the `mysql-client@8.4` lookup now checks both Homebrew prefixes explicitly.
+5. **`~/.gitignore` was a hard link to `~/dotfiles/gitignore`:** chezmoi's atomic write replaced it; the local `**/.claude/settings.local.json` pattern was carried into `dot_gitignore`.
+
+### 9.4 Rollout of `c2a5402` to the Other Hosts
+
+| Host | Arch | `~/.cfg` | chezmoi apply | Home-level agent files |
+|---|---|---|---|---|
+| `simar-mbp` (`Simars-MacBook-Pro-13`) | arm64 | fast-forward to `36bb53b` | Pending set matched expectations exactly; applied | `~/AGENTS.md`, `~/CLAUDE.md`, `~/.agents/rules/maintain-cheatsheet.md` removed |
+| `simars-macbook-32i` | x86_64 | fast-forward to `36bb53b` (incl. 2 herdr commits) | Same | Same |
+| `simars-macbook-16i` | x86_64 | fast-forward to `36bb53b` | Same | Same |
+
