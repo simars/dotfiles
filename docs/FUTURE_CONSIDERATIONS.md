@@ -173,6 +173,17 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * **Format-Preserving Decryption:** Setting `useBuiltin = false` under `[age]` ensures chezmoi delegates directly to `/opt/homebrew/bin/age`, which parses SSH RSA keys and Ed25519 keys without error.
 * **Passphrase Lifecycle:** When decrypting with passphrase-protected SSH keys (`~/.ssh/id_rsa`), macOS Keychain integration via `ssh-add --apple-load-keychain` and `ssh-add --apple-use-keychain` provides persistent credentials across login sessions.
 
+### 6.3 Thoughtbot RCM Retirement & Asset Adoption
+* **Legacy Directory Retirement:** The historical `~/dotfiles` repository (managed by thoughtbot's `rcm`) was fully retired and deleted after essential assets were promoted directly into chezmoi:
+  * `dot_gitignore`: Global git ignore (`~/.gitignore`).
+  * `dot_gitmessage`: Commit message template (`~/.gitmessage`).
+  * `dot_aliases`: Core development aliases (`~/.aliases`).
+  * `dot_vimrc`: Standalone classic vim configuration (`~/.vimrc`).
+  * `dot_psqlrc`, `dot_gemrc`, `dot_rspec`: Database and language tool preferences.
+  * Migration specs and design plans preserved in `docs/superpowers/`.
+* **Zero Broken Symlinks:** All dangling thoughtbot symlinks (`~/.rcrc`, `~/.bin`, `~/.git_template`, `~/.zsh`, `~/.vimrc.bundles`) were cleanly pruned.
+* **Safety Archive:** A full tarball backup of the legacy repository was created at `~/.dotfiles.legacy.*.tar.gz` before removal.
+
 ---
 
 ## 7. Matrix Summary of Automated Chezmoi Handling

@@ -1,0 +1,33 @@
+# Compiled Python files
+*.pyc
+*.pyo
+__pycache__/
+
+# Editor and OS debris
+*.sw[nop]
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment and sensitive keys
+.env
+.env.local
+
+# Dependency and package caches
+.bundle
+.byebug_history
+/node_modules/
+/bower_components/
+/vendor
+
+# Logs and databases
+/log
+log/*.log
+db/*.sqlite3
+rerun.txt
+/tmp
+tmp/**/*
+
+# Tags
+/tags

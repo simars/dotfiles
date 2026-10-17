@@ -1,0 +1,55 @@
+" ==============================================================================
+" Classic Vim Configuration (~/.vimrc)
+" ==============================================================================
+
+set encoding=utf-8
+
+" Leader Key
+let mapleader = " "
+let maplocalleader = " "
+
+" Ergonomics & Editing
+set backspace=indent,eol,start
+set nobackup
+set nowritebackup
+set noswapfile
+set history=100
+set ruler
+set showcmd
+set incsearch
+set hlsearch
+set laststatus=2
+set autowrite
+set modelines=0
+set nomodeline
+
+" Syntax & Colors
+if (&t_Co > 2 || has("gui_running")) && !exists("syntax_on")
+  syntax on
+endif
+
+filetype plugin indent on
+
+" Indentation (Tabs to Spaces)
+set tabstop=4
+set shiftwidth=4
+set shiftround
+set expandtab
+
+" Line Numbers & UI
+set number
+set relativenumber
+set signcolumn=yes
+
+" Window Splits
+set splitbelow
+set splitright
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-h> <C-w>h
+nnoremap <C-l> <C-w>l
+
+" Local configuration override (if present)
+if filereadable(expand("~/.vimrc.local"))
+  source ~/.vimrc.local
+endif

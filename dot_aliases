@@ -1,0 +1,23 @@
+# ==============================================================================
+# General & Development Shell Aliases
+# ==============================================================================
+
+# Core Unix helpers
+alias ll="ls -lah"
+alias ln="ln -v"
+alias mkdir="mkdir -p"
+alias e="$EDITOR"
+alias v="$VISUAL"
+
+# Bundler & Rails
+alias b="bundle"
+alias migrate="bin/rails db:migrate db:rollback && bin/rails db:migrate db:test:prepare"
+alias s="rspec"
+
+# Path Inspection
+alias path='echo $PATH | tr -s ":" "\n"'
+
+# Local user alias overrides (if present)
+if [[ -f "$HOME/.aliases.local" ]]; then
+    source "$HOME/.aliases.local"
+fi
