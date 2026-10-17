@@ -103,7 +103,7 @@ Before migration to `chezmoi`, dotfiles were historically tracked via an unmanag
 | :--- | :--- | :--- |
 | `cz` | `chezmoi` | Shorthand alias for `chezmoi`. |
 | `chezmoi diff` | Inspect Changes | Compare managed dotfiles in `$HOME` against templates/sources without modifying disk. |
-| `chezmoi diff <file>` | Inspect Specific File | Diff a specific target file (e.g. `chezmoi diff dot_cheatsheet.md`). |
+| `chezmoi diff <file>` | Inspect Specific File | Diff a specific target file (e.g. `chezmoi diff ~/.cheatsheet.md`). |
 | `chezmoi apply -v` | Apply State | Render templates and apply desired dotfiles to `$HOME` with verbose progress. |
 | `chezmoi cd` | Source Repository | Change working directory directly into `~/.local/share/chezmoi`. |
 | `chezmoi status` | Status Check | List all managed files that differ from the source state. |
