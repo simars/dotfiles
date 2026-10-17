@@ -53,6 +53,28 @@ if command -v btop &> /dev/null; then
     alias top="btop"
 fi
 
+# Workstation Cheatsheet Viewer
+cheat() {
+  local sheet="$HOME/.cheatsheet.md"
+  if [ ! -f "$sheet" ]; then
+    sheet="$HOME/.local/share/chezmoi/docs/CHEATSHEET.md"
+  fi
+
+  if [ ! -f "$sheet" ]; then
+    echo "Error: Cheatsheet not found at ~/.cheatsheet.md or ~/.local/share/chezmoi/docs/CHEATSHEET.md" >&2
+    return 1
+  fi
+
+  if command -v bat &> /dev/null; then
+    bat --style=plain --paging=auto "$sheet"
+  elif command -v less &> /dev/null; then
+    less -RF "$sheet"
+  else
+    cat "$sheet"
+  fi
+}
+alias cheatsheet="cheat"
+
 # ==============================================================================
 # Local User Overrides (~/.aliases.local)
 # ==============================================================================
