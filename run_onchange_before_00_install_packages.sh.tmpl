@@ -24,7 +24,7 @@ elif [[ -x "/usr/local/bin/brew" ]]; then
 fi
 
 echo "==> Synchronizing Homebrew Formulae & Casks via Brew Bundle..."
-brew bundle --file=/dev/stdin <<EOF
+if ! brew bundle --no-upgrade --file=/dev/stdin <<EOF
 {{ range $packages.darwin.brew.formulae -}}
 brew {{ . | quote }}
 {{ end -}}
@@ -32,6 +32,29 @@ brew {{ . | quote }}
 cask {{ . | quote }}
 {{ end -}}
 EOF
+then
+    echo "WARNING: Some Homebrew packages could not be installed (e.g. unbottled on this architecture). Continuing..."
+fi
+
+# Standalone binary fallbacks for core CLI tools if Homebrew skipped them
+mkdir -p "$HOME/.local/bin"
+export PATH="$HOME/.local/bin:$PATH"
+
+if ! command -v starship &> /dev/null; then
+    echo "==> Installing Starship prompt fallback..."
+    curl -sS https://starship.rs/install.sh | sh -s -- --yes --bin-dir "$HOME/.local/bin"
+fi
+
+if ! command -v mise &> /dev/null; then
+    echo "==> Installing Mise runtime manager fallback..."
+    curl https://mise.run | sh
+fi
+
+if ! command -v age &> /dev/null; then
+    echo "==> Installing Age encryption fallback..."
+    AGE_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
+    curl -fsSL "https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-darwin-${AGE_ARCH}.tar.gz" | tar -xz -C "$HOME/.local/bin" --strip-components=1 age/age age/age-keygen
+fi
 
 {{ else if eq .chezmoi.os "linux" -}}
 echo "==> Starting Ubuntu Linux Bootstrap ({{ .chezmoi.arch }})..."
