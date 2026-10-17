@@ -95,6 +95,26 @@ if ! command -v docker &> /dev/null; then
     sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 fi
 
+# Install 1Password CLI on Linux if missing
+if ! command -v op &> /dev/null; then
+    echo "==> Installing 1Password CLI..."
+    curl -sS https://downloads.1password.com/linux/keys/1password.asc | sudo gpg --dearmor --output /usr/share/keyrings/1password-archive-keyring.gpg 2>/dev/null || true
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main' | sudo tee /etc/apt/sources.list.d/1password.list > /dev/null || true
+    sudo apt-get update -y && sudo apt-get install -y 1password-cli || true
+fi
+
+# Install Bitwarden CLI on Linux if missing
+if ! command -v bw &> /dev/null; then
+    echo "==> Installing Bitwarden CLI..."
+    mkdir -p "$HOME/.local/bin"
+    curl -fsSL "https://vault.bitwarden.com/download/?app=cli&platform=linux" -o /tmp/bw.zip 2>/dev/null || true
+    if [[ -f /tmp/bw.zip ]]; then
+        unzip -q -o /tmp/bw.zip -d "$HOME/.local/bin" 2>/dev/null || true
+        chmod +x "$HOME/.local/bin/bw" 2>/dev/null || true
+        rm -f /tmp/bw.zip
+    fi
+fi
+
 if ! getent group docker > /dev/null; then
     sudo groupadd docker
 fi

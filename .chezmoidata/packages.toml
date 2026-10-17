@@ -1,6 +1,7 @@
 [darwin.brew]
 formulae = [
     "age",
+    "bitwarden-cli",
     "colima",
     "curl",
     "docker",
@@ -17,6 +18,7 @@ formulae = [
     "zsh"
 ]
 casks = [
+    "1password-cli",
     "alacritty",
     "font-jetbrains-mono-nerd-font",
     "iterm2",

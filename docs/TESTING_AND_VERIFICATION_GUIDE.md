@@ -67,6 +67,35 @@ When `chezmoi apply` or `chezmoi diff` decrypts a secret, `.chezmoi.toml.tmpl` d
 * **`.gitleaks.toml`**: Blocks unencrypted secrets, while allowing encrypted `.age` files and public recipient strings (`ssh-rsa`, `ssh-ed25519`, `age1...`). Private keys (`AGE-SECRET-KEY-1...`, `key.txt`) are excluded from the allowlist and git-ignored.
 * **Pre-commit Hook:** Automatically installed in `~/.local/share/chezmoi/.git/hooks/pre-commit` via `run_after_00_install_hooks.sh.tmpl`.
 
+### 2.4 Multi-Provider Secret Architecture (1Password + Bitwarden + Age)
+`chezmoi` supports querying multiple secret providers concurrently at template render time:
+
+1. **1Password (`op` CLI)**:
+   * **Setup:** In 1Password Desktop App: `Settings -> Developer -> Check "Integrate with 1Password CLI"`.
+   * **In Templates:**
+     ```ini
+     # Secret reference URI
+     aws_secret_key = {{ onepasswordRead "op://Personal/AWS/secret_access_key" }}
+     
+     # Full item inspection
+     {{ $gh := onepassword "GitHub Personal Token" "Personal" }}
+     export GITHUB_TOKEN="{{ $gh.password }}"
+     ```
+2. **Bitwarden (`bw` CLI)**:
+   * **Setup:** `bw login` and export session: `export BW_SESSION="$(bw unlock --raw)"`.
+   * **In Templates:**
+     ```bash
+     {{ $item := bitwarden "item" "OpenAI API Key" }}
+     export OPENAI_API_KEY="{{ $item.notes }}"
+     
+     {{ $fields := bitwardenFields "item" "CustomService" }}
+     export SERVICE_KEY="{{ $fields.apiKey.value }}"
+     ```
+3. **Layered Strategy:**
+   * **`age` (Hybrid):** For initial bootstrap secrets (`~/.ssh/id_rsa`, git signing keys) needed before browser/app login.
+   * **1Password:** For macOS desktop workflows with Touch ID authentication.
+   * **Bitwarden:** For shared team credentials and server automation.
+
 ---
 
 ## 3. Preservation Invariants & Rollback Safety
