@@ -217,7 +217,7 @@ rm ~/.local/share/chezmoi/encrypted_dot_test_token.age
 
 ---
 
-### 5. Live Verification on Intel MacBooks (`simars-macbook-16i` & `simars-macbook-32i`)
+## 5. Live Verification on Intel MacBooks (`simars-macbook-16i` & `simars-macbook-32i`)
 
 The entire configuration was deployed and verified across two live Intel macOS machines via SSH (`simars-macbook-16i.example-tailnet.ts.net` and `simars-macbook-32i.example-tailnet.ts.net`).
 
