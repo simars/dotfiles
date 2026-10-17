@@ -57,6 +57,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Link Repository to Chezmoi Source Path
+        run: |
+          mkdir -p "$HOME/.local/share"
+          ln -sf "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
+
       - name: Install chezmoi & age
         run: |
           if [[ "${{ runner.os }}" == "macOS" ]]; then
