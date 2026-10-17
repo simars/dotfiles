@@ -1,0 +1,91 @@
+name: CI Dotfiles Matrix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-and-lint:
+    name: Security Scan & ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks Secret Detector
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shellcheck
+
+      - name: Validate Non-Template Shell Scripts
+        run: |
+          find . -type f -name "*.sh" -not -name "*.tmpl" -exec shellcheck {} +
+
+  test-matrix:
+    name: Test Apply (${{ matrix.os }})
+    needs: security-and-lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: macos-13
+            arch: x86_64
+          - os: macos-14
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      CHEZMOI_CI: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install chezmoi & age
+        run: |
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            brew install chezmoi age
+          else
+            sh -c "$(curl -fsLS https://get.chezmoi.io)" -- -b "$HOME/.local/bin"
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+            sudo apt-get update -y && sudo apt-get install -y age
+          fi
+
+      - name: Generate Mock Age Identity Key
+        run: |
+          mkdir -p ~/.config/chezmoi
+          age-keygen -o ~/.config/chezmoi/key.txt
+          chmod 600 ~/.config/chezmoi/key.txt
+
+      - name: Initialize chezmoi & Render Config
+        run: |
+          chezmoi init \
+            --source="$GITHUB_WORKSPACE" \
+            --promptString "What is your Git email address=ci-bot@example.com" \
+            --promptString "What is your Git full name=CI Runner" \
+            --promptBool "Is this a work machine=false"
+
+      - name: Verify Template Compilation (chezmoi diff)
+        run: chezmoi diff
+
+      - name: Execute Dry-Run Apply
+        run: chezmoi apply --dry-run --verbose
+
+      - name: Execute Full Apply in Isolated Runner
+        run: chezmoi apply --verbose
