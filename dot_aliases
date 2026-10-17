@@ -17,10 +17,6 @@ alias s="rspec"
 # Path Inspection
 alias path='echo $PATH | tr -s ":" "\n"'
 
-# Local user alias overrides (if present)
-if [[ -f "$HOME/.aliases.local" ]]; then
-    source "$HOME/.aliases.local"
-fi
 
 # ==============================================================================
 # Modern CLI Tool Enhancements
@@ -55,4 +51,11 @@ fi
 # btop: Resource & GPU monitor
 if command -v btop &> /dev/null; then
     alias top="btop"
+fi
+
+# ==============================================================================
+# Local User Overrides (~/.aliases.local)
+# ==============================================================================
+if [[ -f "$HOME/.aliases.local" ]]; then
+    source "$HOME/.aliases.local"
 fi
