@@ -99,6 +99,25 @@ if ! command -v nvim &> /dev/null; then
     curl -fsSL "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-macos-${NVIM_ARCH}.tar.gz" | tar -xz -C "$HOME/.local" --strip-components=1
 fi
 
+if ! command -v bat &> /dev/null; then
+    echo "==> Installing bat fallback..."
+    BAT_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
+    curl -fsSL "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-${BAT_ARCH}-apple-darwin.tar.gz" | tar -xz -C "$HOME/.local/bin" --strip-components=1 "bat-v0.26.1-${BAT_ARCH}-apple-darwin/bat" 2>/dev/null || true
+fi
+
+if ! command -v dust &> /dev/null; then
+    echo "==> Installing dust fallback..."
+    DUST_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
+    curl -fsSL "https://github.com/bootandy/dust/releases/download/v1.2.6/dust-v1.2.6-${DUST_ARCH}-apple-darwin.tar.gz" | tar -xz -C "$HOME/.local/bin" --strip-components=1 "dust-v1.2.6-${DUST_ARCH}-apple-darwin/dust" 2>/dev/null || true
+fi
+
+if ! command -v fx &> /dev/null; then
+    echo "==> Installing fx fallback..."
+    FX_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
+    curl -fsSL "https://github.com/antonmedv/fx/releases/download/40.0.0/fx_darwin_${FX_ARCH}" -o "$HOME/.local/bin/fx" 2>/dev/null || true
+    chmod +x "$HOME/.local/bin/fx" 2>/dev/null || true
+fi
+
 if ! command -v lvim &> /dev/null; then
     echo "==> Installing LunarVim..."
     bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies || true

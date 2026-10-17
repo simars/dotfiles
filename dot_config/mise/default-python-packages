@@ -3,3 +3,4 @@ wheel
 ruff
 black
 pytest
+httpie
