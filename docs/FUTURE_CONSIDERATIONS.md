@@ -209,6 +209,7 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 ## 8. Deferred Items from the `Simars-MacBook-Work` Migration (2026-10-17)
 
 ### 8.1 Native Homebrew Changeover (`Simars-MacBook-Work`)
+* **Kickoff prompt:** [`NATIVE_HOMEBREW_KICKOFF.md`](NATIVE_HOMEBREW_KICKOFF.md) holds a ready-to-paste session prompt with the ordered steps and verification.
 * The machine runs an Intel Homebrew under Rosetta with Command Line Tools 11.7, which refuses to install on macOS 26. Update the CLT, install `/opt/homebrew`, then re-run the package script. Installing Homebrew does not change the script's hash, so `chezmoi apply` alone will not re-run it.
 * `mise` and its runtimes are x86_64 (the `mise.run` fallback ran under Rosetta `bash`). Reinstall natively once `/opt/homebrew/bin/mise` exists.
 * Remove the `~/.local/bin` fallbacks (`bat`, `dust`, `fx`, `duf`, `gitleaks`, `age`, `herdr`, `mise`) once native bottles replace them; they lead PATH and would shadow Homebrew.
