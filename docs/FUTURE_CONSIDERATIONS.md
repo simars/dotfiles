@@ -213,7 +213,7 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * The machine runs an Intel Homebrew under Rosetta with Command Line Tools 11.7, which refuses to install on macOS 26. Update the CLT, install `/opt/homebrew`, then re-run the package script. Installing Homebrew does not change the script's hash, so `chezmoi apply` alone will not re-run it.
 * `mise` and its runtimes are x86_64 (the `mise.run` fallback ran under Rosetta `bash`). Reinstall natively once `/opt/homebrew/bin/mise` exists.
 * Remove the `~/.local/bin` fallbacks (`bat`, `dust`, `fx`, `duf`, `gitleaks`, `age`, `herdr`, `mise`) once native bottles replace them; they lead PATH and would shadow Homebrew.
-* `brew uninstall rcm` so a stray `rcup` cannot recreate the thoughtbot symlinks.
+* Resolved: `rcm` was uninstalled from all four hosts on 2026-10-17, so a stray `rcup` cannot recreate the thoughtbot symlinks.
 
 ### 8.2 Install Script Gaps
 * `gitleaks` and `duf` have no darwin standalone fallback in `run_onchange_before_00_install_packages.sh.tmpl`. Note that any edit to that script changes its hash and re-runs `brew bundle` on every host.
@@ -228,5 +228,5 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * Resolved: thoughtbot leftovers retired on 32i and 16i with tarballs in `~/.dotfiles.legacy.*.tar.gz`. 16i's `~/dotfiles` was not thoughtbot but a clean clone of this repo at `672f6ff` (the `legacy-backup` branch), and `~/symlinks.dotfiles.thoughtbot` held 20 saved links; both are archived and removed.
 * Retiring the thoughtbot `zsh/configs` left `EDITOR`/`VISUAL` unset, so `alias e="$EDITOR"` expands to nothing; thoughtbot shell functions (`mcd`, `envup`, `change-extension`) and `~/.bin` scripts (`git-up`, `tat`, `replace`) are gone.
 * Secret scanning outside this repo is now off everywhere. If wanted, add a global hook that works without a per-repo config (for example `core.hooksPath` or the `pre-commit` framework) rather than reviving the thoughtbot template.
-* `rcm` is still installed on the Intel hosts; uninstall it so a stray `rcup` cannot recreate the links.
+* Resolved: `rcm` uninstalled from all four hosts (Homebrew, no dependents).
 

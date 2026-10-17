@@ -24,7 +24,7 @@ Steps, in order. Ask me before doing anything not listed:
 5. Formulae: compare `/usr/local/bin/brew leaves` with the Brewfile tracked in ~/.cfg, and show me the list before installing natively (include mysql-client@8.4, gh and openjdk if still used).
 6. mise: `brew install mise`, remove ~/.local/bin/mise, then `rm -rf ~/.local/share/mise/installs && mise install` (the existing x86 install directories count as installed). Check that `file "$(mise which node)"` reports arm64.
 7. Remove each ~/.local/bin fallback (bat dust fx duf gitleaks age herdr) only after /opt/homebrew/bin/<tool> exists.
-8. Run `/usr/local/bin/brew uninstall rcm` and `gh auth login -h github.com`. Ask me before retiring the Intel brew itself.
+8. Run `gh auth login -h github.com` (rcm was already uninstalled on 2026-10-17). Ask me before retiring the Intel brew itself.
 9. Verify: `brew --prefix` is /opt/homebrew; `file $(whence -p eza bat btop duf dust jq fx mise git gitleaks)` all report arm64; `mise doctor`; `node -p process.arch`; `go version`; PATH order. Then re-run the full Step 5 suite (the 8 binaries, guarded aliases, config co-existence, mise ls/current, cheat, the repo-only agent checks, the age round trip, gitleaks).
 10. Record the results in TESTING_AND_VERIFICATION_GUIDE.md §9 and close out §8.1 in FUTURE_CONSIDERATIONS.md.
 ```
