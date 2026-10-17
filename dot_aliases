@@ -21,3 +21,38 @@ alias path='echo $PATH | tr -s ":" "\n"'
 if [[ -f "$HOME/.aliases.local" ]]; then
     source "$HOME/.aliases.local"
 fi
+
+# ==============================================================================
+# Modern CLI Tool Enhancements
+# ==============================================================================
+
+# eza: Modern directory listing with git status & icons
+if command -v eza &> /dev/null; then
+    alias ll="eza -la --icons --git"
+    alias lt="eza --tree --level=2 --icons"
+    alias ltree="eza --tree --icons"
+fi
+
+# bat: Syntax-highlighted viewer & dynamic interactive preview
+if command -v bat &> /dev/null; then
+    alias preview="bat"
+    if command -v fzf &> /dev/null; then
+        # Preview files dynamically using fzf and bat as you type
+        alias fp="fzf --preview 'bat --style=numbers --color=always --line-range :500 {}'"
+    fi
+fi
+
+# duf: Human-friendly disk usage table
+if command -v duf &> /dev/null; then
+    alias dfh="duf"
+fi
+
+# dust: Visual disk usage tree
+if command -v dust &> /dev/null; then
+    alias duh="dust"
+fi
+
+# btop: Resource & GPU monitor
+if command -v btop &> /dev/null; then
+    alias top="btop"
+fi
