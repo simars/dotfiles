@@ -12,7 +12,7 @@ nano ~/.config/chezmoi/key.txt
 chmod 600 ~/.config/chezmoi/key.txt
 
 # Or ensure your SSH key is present:
-ls -la ~/.ssh/id_rsa # or ~/.ssh/id_ed25519
+ls -la ~/.ssh/id_rsa
 ```
 
 ### 2. Initialize & Apply Dotfiles
@@ -49,7 +49,7 @@ newgrp docker
   `{{ onepasswordRead "op://vault/item/field" }}` or `{{ (onepassword "Item" "Vault").password }}`
 * **Bitwarden:** `bitwarden-cli` is auto-installed. Unlock with `bw login` / `export BW_SESSION="$(bw unlock --raw)"` and retrieve secrets with:
   `{{ (bitwarden "item" "ItemName").notes }}` or `{{ (bitwardenFields "item" "ItemName").fieldName.value }}`
-* **Hybrid Age:** Encrypt standalone secret files directly using `chezmoi add --encrypt ~/.ssh/id_work`. Unlocks with `~/.ssh/id_rsa`, `~/.ssh/id_ed25519`, or `key.txt`.
+* **Hybrid Age:** Encrypt standalone secret files directly using `chezmoi add --encrypt ~/.ssh/id_work`. Unlocks with `~/.ssh/id_rsa` or `key.txt`.
 
 
 ## Directory Structure Overview

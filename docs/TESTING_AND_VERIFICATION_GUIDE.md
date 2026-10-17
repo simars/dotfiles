@@ -50,17 +50,16 @@ This guide documents the architecture, migration safety, testing procedures, and
 
 ### 2.1 Multi-Recipient Architecture
 Files encrypted with `chezmoi add --encrypt` are simultaneously encrypted for:
-1. **Your Personal SSH Key:** `~/.ssh/id_rsa.pub` (or `~/.ssh/id_ed25519.pub`).
+1. **Your Personal SSH Key:** `~/.ssh/id_rsa.pub`.
 2. **Automation Fallback Age Key:** `age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p` (used in GitHub Actions CI or secondary devices without private SSH keys).
 
 ### 2.2 Dynamic Decryption Resolution
 When `chezmoi apply` or `chezmoi diff` decrypts a secret, `.chezmoi.toml.tmpl` dynamically selects the identity:
-* If `~/.ssh/id_rsa` exists, it uses your SSH key.
-* Otherwise, if `~/.ssh/id_ed25519` exists, it uses your Ed25519 SSH key.
-* Otherwise, if `~/.config/chezmoi/key.txt` exists, it uses the native age private key.
+* If `~/.ssh/id_rsa` exists on the workstation, it uses your primary SSH key (`~/.ssh/id_rsa`).
+* Otherwise, if `~/.config/chezmoi/key.txt` exists (such as in headless or CI environments), it uses the native age private key.
 
 ### 2.3 Secret Leak Prevention
-* **`.gitleaks.toml`**: Blocks unencrypted secrets, while allowing encrypted `.age` files and public recipient strings (`ssh-rsa`, `ssh-ed25519`, `age1...`). Private keys (`AGE-SECRET-KEY-1...`, `key.txt`) are excluded from the allowlist and git-ignored.
+* **`.gitleaks.toml`**: Blocks unencrypted secrets, while allowing encrypted `.age` files and public recipient strings (`ssh-rsa`, `age1...`). Private keys (`AGE-SECRET-KEY-1...`, `key.txt`) are excluded from the allowlist and git-ignored.
 * **Pre-commit Hook:** Automatically installed in `~/.local/share/chezmoi/.git/hooks/pre-commit` via `run_after_00_install_hooks.sh.tmpl`.
 
 ### 2.4 Multi-Provider Secret Architecture (1Password + Bitwarden + Age)
@@ -136,8 +135,7 @@ During this initial run:
 2. `chezmoi` renders configurations into `$HOME`.
 3. `run_onchange_before_00_install_packages.sh.tmpl` verifies Homebrew dependencies via `brew bundle`.
 4. `run_onchange_after_90_sync_runtimes.sh.tmpl` installs `mise` runtimes (Go, Python 3.12, Node 22).
-5. `run_onchange_after_95_vscode_extensions.sh.tmpl` synchronizes VS Code extensions.
-6. `run_after_00_install_hooks.sh.tmpl` arms the local Gitleaks pre-commit hook.
+5. `run_after_00_install_hooks.sh.tmpl` arms the local Gitleaks pre-commit hook.
 
 ### Phase 3: Shell & Environment Validation
 Open a new shell session:
@@ -178,7 +176,7 @@ Test keybinding synchronization across `tmux` and `herdr`:
 * **Neovim:**
   Launch `nvim`. On first launch, `lazy.nvim` automatically clones and bootstraps Tokyo Night colorscheme, Treesitter syntax highlighting, and Telescope search (`<leader>ff`).
 * **VS Code:**
-  Launch `code`. Confirm Tokyo Night theme, JetBrains Mono font, relative line numbers, and installed extensions (`golang.go`, `ms-python.python`, `gitlens`, `prettier`).
+  VS Code is managed via native VS Code Settings Sync (independent of chezmoi to preserve macOS `0700` `~/Library` security permissions). Verify that your extensions and settings sync seamlessly through your Microsoft/GitHub login.
 
 ### Phase 6: Hybrid Encryption Round-Trip Test
 Verify secret encryption and decryption using your SSH key:
