@@ -37,7 +37,11 @@ check_git() {
 
 {{ if eq .chezmoi.os "darwin" -}}
 # Terminal git: whichever git leads PATH in a login shell
-check_git "$(command -v git)" "terminal git" "brew install git (Apple Silicon), or update Xcode / Command Line Tools to 27.1+"
+{{ if eq .chezmoi.arch "arm64" -}}
+check_git "$(command -v git)" "terminal git" "brew install git"
+{{- else -}}
+check_git "$(command -v git)" "terminal git" "install Xcode 27.1+ (or its Command Line Tools) and select it with xcode-select; Intel Homebrew has no git bottle"
+{{- end }}
 
 # Apple git: GUI apps launched from the Dock use /usr/bin/git, which follows xcode-select
 if ! xcode-select -p &> /dev/null; then
