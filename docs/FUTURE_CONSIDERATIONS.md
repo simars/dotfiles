@@ -160,7 +160,22 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 
 ---
 
-## 6. Matrix Summary of Automated Chezmoi Handling
+## 6. Apple Silicon (`arm64`) Workstation Invariants & Lifecycle
+
+### 6.1 Native Architecture & Homebrew (`/opt/homebrew`)
+* **Prefix Isolation:** Unlike Intel (`/usr/local`), Apple Silicon Homebrew lives strictly in `/opt/homebrew`. `dot_zprofile.tmpl` and `dot_zshrc.tmpl` dynamically test `[[ -x "/opt/homebrew/bin/brew" ]]` before falling back to `/usr/local`.
+* **Tier 1 Bottle Availability:** Apple Silicon on contemporary macOS versions receives precompiled official bottles for almost all formulae and casks, making source compilation fallbacks unnecessary.
+* **Pre-existing Cask Adoptions:** Applications installed prior to chezmoi adoption (e.g. manual downloads in `/Applications/`) must be adopted using `brew install --cask --force <app>` to avoid bundle install collisions.
+* **Metadata Keg Tab Hygiene:** If Homebrew flags circular dependencies (e.g. `libtiff`, `webp`) caused by stale local bottle tabs, run `brew reinstall <formulae>` to refresh local dependency receipts.
+
+### 6.2 External Age Binary & SSH RSA Recipient Handling
+* **Native Homebrew Age:** On Apple Silicon, `age` is installed via Homebrew to `/opt/homebrew/bin/age`.
+* **Format-Preserving Decryption:** Setting `useBuiltin = false` under `[age]` ensures chezmoi delegates directly to `/opt/homebrew/bin/age`, which parses SSH RSA keys and Ed25519 keys without error.
+* **Passphrase Lifecycle:** When decrypting with passphrase-protected SSH keys (`~/.ssh/id_rsa`), macOS Keychain integration via `ssh-add --apple-load-keychain` and `ssh-add --apple-use-keychain` provides persistent credentials across login sessions.
+
+---
+
+## 7. Matrix Summary of Automated Chezmoi Handling
 
 | Consideration | Managed By Chezmoi | Implementation Mechanism |
 |---|---|---|
@@ -169,3 +184,6 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 | **Keychain Passphrase** | ✅ SSH Config + Shell Startup | `UseKeychain yes` in `~/.ssh/config` + `ssh-add --apple-load-keychain` in `.zprofile` |
 | **`zi` & `zoxide` Availability** | ✅ Package Registry + Fallback | Added to `packages.toml` + fallback binary curl installer |
 | **Intel Source Fallback Hangs**| ✅ Build Protection | `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` + `--no-upgrade` |
+| **Apple Silicon Prefix & Bottles**| ✅ Native Resolution | Dynamic `/opt/homebrew` shellenv + Tier 1 native bottle pouring |
+| **SSH-RSA Mixed Case Error** | ✅ External Binary Engine | `useBuiltin = false` delegates to native `age` binary |
+

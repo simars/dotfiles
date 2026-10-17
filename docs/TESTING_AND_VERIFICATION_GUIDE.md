@@ -266,7 +266,56 @@ For full architectural details and recovery roadmaps, see [FUTURE_CONSIDERATIONS
 
 ---
 
-## 6. Day-to-Day Operations Cheat Sheet
+## 6. Live Verification on Apple Silicon Mac Studio (`Darwin arm64`)
+
+The dotfiles configuration was deployed live to the primary Apple Silicon workstation (`arm64`).
+
+### 6.1 Environment Profile
+* **Host:** `Simars-MacBook-Pro-13.local` (Apple Silicon Mac Studio / M-series `arm64`)
+* **Architecture:** `arm64` (Apple Silicon)
+* **Kernel & OS:** Darwin 25.6.0 (`macOS 26.6` Tahoe)
+* **Homebrew Prefix:** `/opt/homebrew`
+* **Shell:** `/bin/zsh`
+* **Pre-Apply Safety Backup:** Created at `~/.dotfiles.backup.20261017_121837/`
+
+### 6.2 Verification Checklist & Results
+
+| Component | Tested Command / Behavior | Status | Evidence / Notes |
+|---|---|---|---|
+| **Safety Backup** | `cp -PR` of active dotfiles | PASS | All active files & configs backed up to `~/.dotfiles.backup.20261017_121837/` |
+| **Homebrew Cask Adoption**| `brew install --cask --force wave` | PASS | Successfully adopted existing `/Applications/Wave.app` into Homebrew |
+| **Dependency Tab Cleanup**| `brew reinstall libtiff webp` | PASS | Cleared stale keg tab circular dependency warning |
+| **Apply Execution** | `chezmoi apply -v` | PASS | Exit code 0; rendered all templates and executed hooks |
+| **Homebrew Bundle** | Native `arm64` bottle installations | PASS | All formulae (`age`, `colima`, `gitleaks`, `mise`, `neovim`, `zsh`) & casks installed |
+| **PATH Hierarchy** | `zsh -lic 'echo $PATH'` | PASS | Correct order: `mise` runtimes, `/Users/simars/.local/share/mise/shims`, `/Users/simars/.local/bin`, `/opt/homebrew/bin` |
+| **Polyglot Runtimes** | `mise current` | PASS | Go `1.27.2`, Python `3.12.15`, Node `22.23.3` operational (`arm64` native) |
+| **Default Python Tools** | `pip`, `wheel`, `ruff`, `black`, `pytest` | PASS | Installed automatically into Mise Python 3.12 environment |
+| **Starship Prompt** | `TERM=xterm-256color starship prompt` | PASS | Rendered directory, git branch, and `⚡ ❯` symbol cleanly |
+| **Directory Navigation** | `zoxide` and `zi` | PASS | `which zoxide` -> `/opt/homebrew/bin/zoxide`, `z` and `zi` shell functions active |
+| **Core Utilities** | `fzf`, `rg`, `nvim`, `tmux`, `age`, `gitleaks` | PASS | All binaries resolved in `/opt/homebrew/bin` |
+| **Git Configuration** | `git config user.email` | PASS | Resolved `Simar Singh <simarpaulsingh@gmail.com>`, editor `code --wait` |
+| **Bare Repo Invariant** | `config status --short` | PASS | Aliased to `git --git-dir=$HOME/.cfg/ --work-tree=$HOME`, zero regressions |
+| **Untouched Storage** | Verify `~/.cfg`, `~/dotfiles`, `~/dotfiles-local` | PASS | All legacy repositories and local env files preserved intact |
+| **GitHub SSH Auth** | `ssh -T -p 443 git@ssh.github.com` | PASS | `Hi simars! You've successfully authenticated, but GitHub does not provide shell access.` |
+| **Tmux Config** | `tmux -f ~/.tmux.conf start-server` | PASS | Exit code 0, vi-keys, mouse support, and reload bindings active |
+| **Gitleaks Pre-Commit**| `.git/hooks/pre-commit` | PASS | Pre-commit secret scanning active, passed with zero leaks found |
+| **Age Hybrid Encryption**| `chezmoi encrypt` + `chezmoi decrypt` | PASS | Dual recipients (`-> ssh-rsa` & `-> X25519`) verified; round-trip decrypt succeeded |
+
+### 6.3 Key Bottlenecks Solved on Apple Silicon
+
+1. **Homebrew Keg Tab Circular Dependency (`libtiff`, `webp`):**
+   * *Problem:* A stale tab in local Homebrew metadata flagged `Formulae dependency graph sorting found a circular dependency: libtiff, webp` on every brew command.
+   * *Fix:* Executed `brew reinstall libtiff webp` which refreshed the bottle receipts from Homebrew API, eliminating the warning.
+2. **Cask Application Overwrite Collision (`Wave.app`):**
+   * *Problem:* `/Applications/Wave.app` was installed manually before chezmoi migration. `brew bundle` would error on cask collision.
+   * *Fix:* Adopted via `brew install --cask --force wave` before running apply, bringing the existing app into declarative Homebrew management.
+3. **Age Binary Integration with Chezmoi:**
+   * *Problem:* Chezmoi's built-in age Go library fails on `ssh-rsa` recipients with mixed-case format errors.
+   * *Fix:* Verified `useBuiltin = false` in `.chezmoi.toml.tmpl` seamlessly invokes `/opt/homebrew/bin/age` on Apple Silicon, flawlessly encrypting for both RSA SSH keys and the automation fallback key.
+
+---
+
+## 7. Day-to-Day Operations Cheat Sheet
 
 | Task | Command | Description |
 |---|---|---|
@@ -280,3 +329,4 @@ For full architectural details and recovery roadmaps, see [FUTURE_CONSIDERATIONS
 | **List Managed Files** | `chezmoi managed` | List all files currently managed by chezmoi |
 | **Inspect File Status** | `chezmoi status` | List state changes between source and destination |
 | **Fresh Machine Bootstrap** | `sh -c "$(curl -fsLS https://get.chezmoi.io)" -- init --apply git@github.com:simars/dotfiles.git` | Bootstrap an entire workstation in one command |
+
