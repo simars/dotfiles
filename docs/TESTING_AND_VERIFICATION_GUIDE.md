@@ -18,18 +18,15 @@ This guide documents the architecture, migration safety, testing procedures, and
 ├── .gitleaks.toml                     # Secret scanner allowlist configuration
 ├── .gitignore                         # Local key and OS artifact exclusion
 ├── .chezmoi.toml.tmpl                 # Interactive init config + hybrid encryption setup
-├── .chezmoiignore                     # OS-specific filter (ignores macOS Library on Linux)
+├── .chezmoiignore                     # Repository metadata exclusion
 ├── .chezmoidata/
 │   └── packages.toml                  # Declarative package definitions (Homebrew + APT)
 ├── README.md                          # Bootstrap instructions & cheat sheet
 ├── docs/
 │   └── TESTING_AND_VERIFICATION_GUIDE.md # This guide
-├── Library/Application Support/Code/User/
-│   └── symlink_settings.json.tmpl     # macOS symlink to ~/.config/Code/User/settings.json
 ├── dot_config/
-│   ├── Code/User/settings.json.tmpl   # Canonical VS Code editor configuration
 │   ├── alacritty/alacritty.toml       # GPU-accelerated terminal styling (Tokyo Night)
-│   ├── herdr/config.yaml              # Terminal orchestrator mapped to Ctrl+b bindings
+│   ├── herdr/config.toml              # Terminal orchestrator mapped to Ctrl+b bindings
 │   ├── mise/
 │   │   ├── config.toml                # Go (latest), Python (3.12), Node (22) tool definitions
 │   │   └── default-python-packages    # Global packages (ruff, black, pytest, pip)
@@ -41,11 +38,10 @@ This guide documents the architecture, migration safety, testing procedures, and
 ├── dot_zprofile.tmpl                  # Architecture-aware Homebrew & mise shims
 ├── dot_zshrc.tmpl                     # Aliases, Docker helpers, mise & starship activation
 ├── private_dot_ssh/
-│   └── private_config.tmpl            # Port 443 SSH routing for GitHub + conditional work hosts
+│   └── private_config.tmpl            # Port 443 SSH routing for GitHub + personal hosts
 ├── run_after_00_install_hooks.sh.tmpl # Installs Gitleaks pre-commit hook into chezmoi git repo
 ├── run_onchange_before_00_install_packages.sh.tmpl # Homebrew / APT automated package installer
-├── run_onchange_after_90_sync_runtimes.sh.tmpl    # Automatic mise tool installer
-└── run_onchange_after_95_vscode_extensions.sh.tmpl# Automatic VS Code extension installer
+└── run_onchange_after_90_sync_runtimes.sh.tmpl    # Automatic mise tool installer
 ```
 
 ---
