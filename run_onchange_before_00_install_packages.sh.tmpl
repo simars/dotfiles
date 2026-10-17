@@ -86,6 +86,24 @@ if ! command -v fzf &> /dev/null; then
     curl -fsSL "https://github.com/junegunn/fzf/releases/download/v0.56.3/fzf-0.56.3-darwin_${FZF_ARCH}.tar.gz" | tar -xz -C "$HOME/.local/bin" fzf 2>/dev/null || true
 fi
 
+if ! command -v herdr &> /dev/null; then
+    echo "==> Installing Herdr standalone fallback..."
+    HERDR_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
+    curl -fsSL "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-${HERDR_ARCH}" -o "$HOME/.local/bin/herdr"
+    chmod +x "$HOME/.local/bin/herdr"
+fi
+
+if ! command -v nvim &> /dev/null; then
+    echo "==> Installing Neovim standalone fallback..."
+    NVIM_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}x86_64{{ end }}"
+    curl -fsSL "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-macos-${NVIM_ARCH}.tar.gz" | tar -xz -C "$HOME/.local" --strip-components=1
+fi
+
+if ! command -v lvim &> /dev/null; then
+    echo "==> Installing LunarVim..."
+    bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies || true
+fi
+
 {{ else if eq .chezmoi.os "linux" -}}
 echo "==> Starting Ubuntu Linux Bootstrap ({{ .chezmoi.arch }})..."
 export DEBIAN_FRONTEND=noninteractive
@@ -129,6 +147,24 @@ fi
 if ! command -v zoxide &> /dev/null; then
     echo "==> Installing Zoxide directory jumper..."
     curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
+fi
+
+if ! command -v herdr &> /dev/null; then
+    echo "==> Installing Herdr standalone fallback..."
+    HERDR_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
+    curl -fsSL "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-linux-${HERDR_ARCH}" -o "$HOME/.local/bin/herdr"
+    chmod +x "$HOME/.local/bin/herdr"
+fi
+
+if ! command -v nvim &> /dev/null; then
+    echo "==> Installing Neovim standalone fallback..."
+    NVIM_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}x86_64{{ end }}"
+    curl -fsSL "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-linux-${NVIM_ARCH}.tar.gz" | tar -xz -C "$HOME/.local" --strip-components=1
+fi
+
+if ! command -v lvim &> /dev/null; then
+    echo "==> Installing LunarVim..."
+    bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies || true
 fi
 
 # Install JetBrainsMono Nerd Font on Linux if missing

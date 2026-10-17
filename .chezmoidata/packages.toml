@@ -10,12 +10,14 @@ formulae = [
     "fzf",
     "git",
     "gitleaks",
+    "herdr",
     "mise",
     "neovim",
     "ripgrep",
     "shellcheck",
     "starship",
     "tmux",
+    "vim",
     "zoxide",
     "zsh"
 ]
@@ -44,6 +46,7 @@ packages = [
     "shellcheck",
     "tmux",
     "unzip",
+    "vim",
     "zoxide",
     "zsh"
 ]
