@@ -81,6 +81,7 @@ newgrp docker
 │   └── packages.toml                  # Declarative package definitions (Homebrew + APT)
 ├── README.md                          # Bootstrap instructions & cheat sheet
 ├── docs/
+│   ├── FUTURE_CONSIDERATIONS.md          # Platform lifecycle roadmap & remediation
 │   └── TESTING_AND_VERIFICATION_GUIDE.md # Comprehensive runbook
 ├── dot_config/
 │   ├── alacritty/alacritty.toml       # GPU-accelerated terminal styling (Tokyo Night)

@@ -1,0 +1,13 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+SSH_KEY="$HOME/.ssh/id_rsa"
+if [[ -f "$SSH_KEY" ]] && [[ -t 0 ]]; then
+    KEY_FP=$(ssh-keygen -lf "$SSH_KEY" 2>/dev/null | awk '{print $2}' || true)
+    if [[ -n "$KEY_FP" ]] && ! ssh-add -l 2>/dev/null | grep -q "$KEY_FP"; then
+        echo "==> Enrolling SSH identity into macOS Keychain..."
+        ssh-add --apple-use-keychain "$SSH_KEY" 2>/dev/null || true
+    fi
+fi
+{{ end -}}

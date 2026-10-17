@@ -23,6 +23,7 @@ This guide documents the architecture, migration safety, testing procedures, and
 │   └── packages.toml                  # Declarative package definitions (Homebrew + APT)
 ├── README.md                          # Bootstrap instructions & cheat sheet
 ├── docs/
+│   ├── FUTURE_CONSIDERATIONS.md          # Platform lifecycle roadmap & remediation
 │   └── TESTING_AND_VERIFICATION_GUIDE.md # This guide
 ├── dot_config/
 │   ├── alacritty/alacritty.toml       # GPU-accelerated terminal styling (Tokyo Night)
@@ -250,14 +251,18 @@ The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.s
    * *Problem:* Mise warned that root-level `uv_venv_auto` and `default_packages_file` keys are deprecated.
    * *Fix:* Grouped under `[settings.python]` table in `~/.config/mise/config.toml`.
 
-### 5.4 Deferred / Future Considerations
+### 5.4 Deferred / Future Considerations & Chezmoi Handling
+
+For full architectural details and recovery roadmaps, see [FUTURE_CONSIDERATIONS.md](FUTURE_CONSIDERATIONS.md).
 
 * **Intel Mac Command Line Tools Update:**
-  Running `softwareupdate --all --install --force` or updating Command Line Tools will allow compiling native C extensions if needed in the future.
+  * *Automated Handling:* Pre-package hook checks `xcode-select -p` and triggers prompt. Added `cz-update-clt` alias (`softwareupdate --all --install --force`) for one-command system updates.
 * **Homebrew Formula Cleanup on Intel:**
-  The Intel MacBook has several older formulas in `/usr/local/Cellar`. Running `brew autoremove` and pruning unused taps can be done at leisure.
+  * *Automated Handling:* Automated `brew autoremove && brew cleanup -s` executes in `run_onchange_before_00_install_packages.sh.tmpl`. Added `cz-brew-prune` alias to `.zshrc`.
 * **Keychain Unlock for Remote Secondary Machine:**
-  Running `ssh-add --apple-use-keychain ~/.ssh/id_rsa` in a local Terminal app on the Intel MacBook will store the passphrase in the macOS Keychain so headless sessions without `-A` can also access GitHub directly.
+  * *Automated Handling:* `.zprofile` preloads Keychain credentials via `ssh-add --apple-load-keychain`. Added `run_once_after_10_ssh_keychain.sh.tmpl` which automatically enrolls `~/.ssh/id_rsa` into macOS Keychain when run interactively.
+* **Interactive Navigation (`zi` / `zoxide`):**
+  * *Automated Handling:* Added `zoxide` and `fzf` to `packages.toml` with standalone curl fallbacks so `z` and `zi` are guaranteed to work across all architectures.
 
 ---
 

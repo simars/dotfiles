@@ -36,7 +36,9 @@ alias tm="tmux new-session -A -s main"
 
 {{ if eq .chezmoi.os "darwin" -}}
 alias flushdns="sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
-alias brews="brew update && brew upgrade && brew cleanup"
+alias brews="brew update && brew upgrade && brew cleanup && brew autoremove"
+alias cz-brew-prune="brew autoremove && brew cleanup -s"
+alias cz-update-clt="softwareupdate --all --install --force"
 alias d-up="colima start --cpu 4 --memory 8 --disk 40"
 alias d-down="colima stop"
 {{ else if eq .chezmoi.os "linux" -}}

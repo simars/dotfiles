@@ -18,4 +18,7 @@ if [[ -S "${HOME}/.colima/default/docker.sock" ]]; then
 elif [[ -d "${HOME}/.docker/bin" ]]; then
     export PATH="$PATH:${HOME}/.docker/bin"
 fi
+
+# 4. macOS Keychain SSH Identity Preload
+ssh-add --apple-load-keychain 2>/dev/null || true
 {{ end -}}

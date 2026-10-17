@@ -7,6 +7,7 @@ formulae = [
     "docker",
     "docker-compose",
     "fd",
+    "fzf",
     "git",
     "gitleaks",
     "mise",
@@ -15,6 +16,7 @@ formulae = [
     "shellcheck",
     "starship",
     "tmux",
+    "zoxide",
     "zsh"
 ]
 casks = [
@@ -34,6 +36,7 @@ packages = [
     "curl",
     "fd-find",
     "fontconfig",
+    "fzf",
     "git",
     "gnupg",
     "neovim",
@@ -41,5 +44,6 @@ packages = [
     "shellcheck",
     "tmux",
     "unzip",
+    "zoxide",
     "zsh"
 ]

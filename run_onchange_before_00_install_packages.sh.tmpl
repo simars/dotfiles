@@ -12,6 +12,12 @@ fi
 {{ if eq .chezmoi.os "darwin" -}}
 echo "==> Starting macOS Bootstrap ({{ .chezmoi.arch }})..."
 
+# Verify Xcode Command Line Tools presence
+if ! xcode-select -p &>/dev/null; then
+    echo "==> Xcode Command Line Tools missing. Triggering install..."
+    xcode-select --install 2>/dev/null || true
+fi
+
 # Evaluate existing Homebrew installation if present
 if [[ -x "/opt/homebrew/bin/brew" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -43,6 +49,10 @@ EOF
     then
         echo "WARNING: Some Homebrew packages could not be installed (e.g. unbottled on this architecture). Continuing..."
     fi
+
+    echo "==> Pruning orphaned Homebrew dependencies and cleaning cache..."
+    brew autoremove || true
+    brew cleanup -s || true
 fi
 
 # Standalone binary fallbacks for core CLI tools if Homebrew skipped them
@@ -63,6 +73,17 @@ if ! command -v age &> /dev/null; then
     echo "==> Installing Age encryption fallback..."
     AGE_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
     curl -fsSL "https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-darwin-${AGE_ARCH}.tar.gz" | tar -xz -C "$HOME/.local/bin" --strip-components=1 age/age age/age-keygen
+fi
+
+if ! command -v zoxide &> /dev/null; then
+    echo "==> Installing Zoxide directory jumper fallback..."
+    curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
+fi
+
+if ! command -v fzf &> /dev/null; then
+    echo "==> Installing fzf fallback..."
+    FZF_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
+    curl -fsSL "https://github.com/junegunn/fzf/releases/download/v0.56.3/fzf-0.56.3-darwin_${FZF_ARCH}.tar.gz" | tar -xz -C "$HOME/.local/bin" fzf 2>/dev/null || true
 fi
 
 {{ else if eq .chezmoi.os "linux" -}}
@@ -102,6 +123,12 @@ if ! command -v gitleaks &> /dev/null; then
     if [[ "$ARCH" == "amd64" ]]; then GL_ARCH="x64"; else GL_ARCH="arm64"; fi
     curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_${GL_ARCH}.tar.gz" \
         | sudo tar -xz -C /usr/local/bin gitleaks
+fi
+
+# Install Zoxide if missing
+if ! command -v zoxide &> /dev/null; then
+    echo "==> Installing Zoxide directory jumper..."
+    curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
 fi
 
 # Install JetBrainsMono Nerd Font on Linux if missing
