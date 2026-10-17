@@ -31,6 +31,7 @@ fi
 
 if command -v brew &> /dev/null; then
     echo "==> Synchronizing Homebrew Formulae & Casks via Brew Bundle..."
+    export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1
     if ! brew bundle --no-upgrade --file=/dev/stdin <<EOF
 {{ range $packages.darwin.brew.formulae -}}
 brew {{ . | quote }}
