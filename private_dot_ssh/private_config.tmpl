@@ -1,6 +1,7 @@
 Host *
     AddKeysToAgent yes
     IdentitiesOnly yes
+    StrictHostKeyChecking accept-new
 {{- if eq .chezmoi.os "darwin" }}
     UseKeychain yes
 {{- end }}

@@ -231,6 +231,10 @@ The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.s
 | **Git Configuration** | `git config user.email` | PASS | Resolved `Simar Singh <simarpaulsingh@gmail.com>`, editor `code --wait` |
 | **GitHub SSH Auth** | `ssh -T -p 443 git@ssh.github.com` | PASS | `Hi simars! You've successfully authenticated, but GitHub does not provide shell access.` |
 | **Tmux Config** | `tmux -f ~/.tmux.conf start-server` | PASS | Exit code 0, all vi-keys and mouse settings validated |
+| **Herdr Multiplexer** | `which herdr && herdr --version` | PASS | Resolved `/Users/simars/.local/bin/herdr` (`herdr 0.9.5` standalone binary) |
+| **Classic Vim** | `which vim && vim --version` | PASS | System `/usr/bin/vim` (Vim 9.1) functional with `.vimrc` settings |
+| **Neovim** | `which nvim && nvim --version` | PASS | Resolved `/Users/simars/.local/bin/nvim` (`v0.12.6` standalone fallback) |
+| **LunarVim** | `which lvim && lvim --version` | PASS | Installed via upstream installer into `/Users/simars/.local/bin/lvim` (`NVIM v0.12.6`) |
 | **Age Hybrid Encryption**| `chezmoi add --encrypt` + `chezmoi cat` | PASS | Created age header with both `-> ssh-rsa` and `-> X25519` recipients; decrypted cleanly |
 
 ### 5.3 Key Bottlenecks Solved
@@ -298,6 +302,10 @@ The dotfiles configuration was deployed live to the primary Apple Silicon workst
 | **Untouched Storage** | Verify `~/.cfg`, `~/dotfiles`, `~/dotfiles-local` | PASS | All legacy repositories and local env files preserved intact |
 | **GitHub SSH Auth** | `ssh -T -p 443 git@ssh.github.com` | PASS | `Hi simars! You've successfully authenticated, but GitHub does not provide shell access.` |
 | **Tmux Config** | `tmux -f ~/.tmux.conf start-server` | PASS | Exit code 0, vi-keys, mouse support, and reload bindings active |
+| **Herdr Multiplexer** | `which herdr && herdr --version` | PASS | Resolved `/opt/homebrew/bin/herdr` (`0.9.5`), tmux parity bindings active |
+| **Classic Vim** | `which vim && vim --version` | PASS | Resolved `/opt/homebrew/bin/vim` (`VIM 9.2`), `.vimrc` configurations active |
+| **Neovim** | `which nvim && nvim --version` | PASS | Resolved `/opt/homebrew/bin/nvim` (`v0.12.6`), `init.lua` loaded |
+| **LunarVim** | `which lvim && lvim --version` | PASS | Installed into `/Users/simars/.local/bin/lvim` (`NVIM v0.12.6`), LuaJIT runtime |
 | **Gitleaks Pre-Commit**| `.git/hooks/pre-commit` | PASS | Pre-commit secret scanning active, passed with zero leaks found |
 | **Age Hybrid Encryption**| `chezmoi encrypt` + `chezmoi decrypt` | PASS | Dual recipients (`-> ssh-rsa` & `-> X25519`) verified; round-trip decrypt succeeded |
 
@@ -312,6 +320,21 @@ The dotfiles configuration was deployed live to the primary Apple Silicon workst
 3. **Age Binary Integration with Chezmoi:**
    * *Problem:* Chezmoi's built-in age Go library fails on `ssh-rsa` recipients with mixed-case format errors.
    * *Fix:* Verified `useBuiltin = false` in `.chezmoi.toml.tmpl` seamlessly invokes `/opt/homebrew/bin/age` on Apple Silicon, flawlessly encrypting for both RSA SSH keys and the automation fallback key.
+
+### 6.4 Core Tools Expansion (Herdr, Vim, Neovim, LunarVim)
+
+To provide an out-of-the-box development and multiplexing environment across all machines:
+
+* **Declarative Packaging:**
+  Added `herdr` and `vim` to `.chezmoidata/packages.toml` (`[darwin.brew].formulae` and `[ubuntu.apt].packages`).
+* **Resilient Architecture Fallbacks (`run_onchange_before_00_install_packages.sh.tmpl`):**
+  * **Apple Silicon:** Homebrew installs precompiled bottles for `herdr`, `vim`, and `neovim`.
+  * **Intel macOS:** Because Homebrew on Intel macOS (Tier 3) skips unbottled formulae, the package hook automatically downloads standalone binaries for `herdr` (`0.9.5`) and `neovim` (`0.12.6`) directly from official GitHub releases into `~/.local/bin`. System `/usr/bin/vim` remains operational.
+  * **Linux:** APT installs `vim` and `neovim`; standalone binary fallback exists for `herdr`.
+* **LunarVim (`lvim`) Automation:**
+  Automatically installed via upstream installer (`bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies`) once `neovim` and polyglot runtimes are ready.
+* **Headless SSH Optimization:**
+  Added `StrictHostKeyChecking accept-new` to `private_dot_ssh/private_config.tmpl` to prevent headless git/mise/lvim clones from failing on unverified GitHub host keys.
 
 ---
 

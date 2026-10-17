@@ -104,11 +104,12 @@ chezmoi apply -v
 ```
 
 **What happens during apply:**
-1. Packages are installed via `brew bundle --no-upgrade` or `apt-get`.
-2. Core standalone tools (`starship`, `mise`, `age`, `zoxide`, `fzf`) fall back to standalone curl binaries if package managers skip them.
-3. Templates are rendered to `$HOME`.
-4. Post-apply hooks install the Gitleaks pre-commit secret scanner.
-5. Language runtimes are synced via `mise install --yes`.
+1. Packages are installed via `brew bundle --no-upgrade` or `apt-get` (including `vim`, `neovim`, and `herdr`).
+2. Core standalone tools (`starship`, `mise`, `age`, `zoxide`, `fzf`, `herdr`, `neovim`) fall back to standalone release binaries if package managers skip unbottled packages on legacy architectures.
+3. LunarVim (`lvim`) is automatically installed via upstream installer once `nvim` and polyglot runtimes are available.
+4. Templates are rendered to `$HOME` (including `.config/herdr/config.toml`, `.vimrc`, `.config/nvim/init.lua`).
+5. Post-apply hooks install the Gitleaks pre-commit secret scanner.
+6. Language runtimes are synced via `mise install --yes` (Go, Python 3.12, Node 22).
 
 ### Phase 6: Post-Apply Verification Matrix
 Execute all verification commands in a clean login interactive shell:
@@ -117,20 +118,25 @@ Execute all verification commands in a clean login interactive shell:
 # 1. Prompt and PATH
 zsh -lic 'TERM=xterm-256color starship prompt && echo "PATH: $PATH"'
 
-# 2. Core CLI Tools
-zsh -lic 'which zoxide fzf rg nvim tmux age gitleaks'
+# 2. Core CLI Tools & Terminal Orchestrator
+zsh -lic 'which zoxide fzf rg tmux age gitleaks herdr && herdr --version'
 
-# 3. Directory Navigation Functions
+# 3. Editor Ecosystem (Vim, Neovim, LunarVim)
+zsh -lic 'which vim && vim --version | head -n 1'
+zsh -lic 'which nvim && nvim --version | head -n 1'
+zsh -lic 'which lvim && lvim --version | head -n 1'
+
+# 4. Directory Navigation Functions
 zsh -lic 'type z && type zi'
 
-# 4. Language Runtimes
+# 5. Language Runtimes
 zsh -lic 'mise current && go version && python --version && node --version'
 
-# 5. Git & SSH Configuration
+# 6. Git & SSH Configuration
 zsh -lic 'git config user.email && git config core.editor'
 ssh -T -p 443 git@ssh.github.com
 
-# 6. Hybrid Age Round-Trip Test
+# 7. Hybrid Age Round-Trip Test
 TMP_DIR=$(mktemp -d)
 TMP_KEY="$TMP_DIR/key.txt"
 TMP_PUB=$(age-keygen -o "$TMP_KEY" 2>&1 | grep "Public key:" | awk '{print $3}')
@@ -140,7 +146,7 @@ DECRYPTED=$(echo "$ENCRYPTED" | age -d -i "$TMP_KEY")
 [[ "$DECRYPTED" == "$MSG" ]] && echo "SUCCESS: Age crypto verified"
 rm -rf "$TMP_DIR"
 
-# 7. Legacy Alias Invariant Check
+# 8. Legacy Alias Invariant Check
 zsh -lic 'type ll && type b && type migrate && type s'
 if alias config &>/dev/null; then
     zsh -lic 'config status --short'

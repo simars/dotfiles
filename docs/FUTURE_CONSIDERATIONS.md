@@ -21,11 +21,15 @@ This document outlines key future considerations, platform lifecycle changes, an
   ```
   This skips unbottled formulae instead of locking the system into endless source compilation.
 * **Resilient Standalone Binaries:**
-  For critical CLI tools that must always exist regardless of Homebrew's state, chezmoi auto-provisions precompiled binaries into `~/.local/bin`:
+  For critical CLI tools and editors that must always exist regardless of Homebrew's state, chezmoi auto-provisions precompiled binaries into `~/.local/bin`:
   * `age` (via official GitHub tarball)
   * `mise` (via official install script)
   * `starship` (via starship.rs installer)
   * `zoxide` (via official install script)
+  * `fzf` (via official GitHub tarball)
+  * `herdr` (via official GitHub release standalone binary)
+  * `neovim` (via official GitHub release archive into `~/.local`)
+  * `lunarvim` (via official unattended bootstrap installer once `neovim` is present)
 
 ---
 
@@ -112,10 +116,12 @@ Chezmoi solves this end-to-end:
    Host *
        AddKeysToAgent yes
        IdentitiesOnly yes
+       StrictHostKeyChecking accept-new
    {{- if eq .chezmoi.os "darwin" }}
        UseKeychain yes
    {{- end }}
    ```
+   *Note: `StrictHostKeyChecking accept-new` automatically trusts and records new host keys (e.g. GitHub/GitLab) into `known_hosts` while still blocking unexpected host key changes, eliminating `Host key verification failed` during headless tool bootstrapping.*
 2. **Automatic Keychain Identity Loading (`dot_zprofile.tmpl`):**
    Ensure keys saved in Keychain are automatically loaded into `ssh-agent` on shell startup:
    ```bash
