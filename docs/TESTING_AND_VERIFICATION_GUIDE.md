@@ -53,10 +53,14 @@ Files encrypted with `chezmoi add --encrypt` are simultaneously encrypted for:
 1. **Your Personal SSH Key:** `~/.ssh/id_rsa.pub`.
 2. **Automation Fallback Age Key:** `age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p` (used in GitHub Actions CI or secondary devices without private SSH keys).
 
-### 2.2 Dynamic Decryption Resolution
+### 2.2 Dynamic Decryption Resolution & External Age Engine
 When `chezmoi apply` or `chezmoi diff` decrypts a secret, `.chezmoi.toml.tmpl` dynamically selects the identity:
 * If `~/.ssh/id_rsa` exists on the workstation, it uses your primary SSH key (`~/.ssh/id_rsa`).
+* If `~/.ssh/id_ed25519` exists, it uses your Ed25519 SSH key.
 * Otherwise, if `~/.config/chezmoi/key.txt` exists (such as in headless or CI environments), it uses the native age private key.
+
+> [!NOTE]
+> `.chezmoi.toml.tmpl` specifies `useBuiltin = false` under `[age]`. Chezmoi's internal Go age implementation rejects `ssh-rsa` recipients with `malformed recipient ...: mixed case`. Setting `useBuiltin = false` delegates encryption to the external `age` binary (`~/.local/bin/age` or `/opt/homebrew/bin/age`), which natively and robustly supports RSA and Ed25519 SSH recipients.
 
 ### 2.3 Secret Leak Prevention
 * **`.gitleaks.toml`**: Blocks unencrypted secrets, while allowing encrypted `.age` files and public recipient strings (`ssh-rsa`, `age1...`). Private keys (`AGE-SECRET-KEY-1...`, `key.txt`) are excluded from the allowlist and git-ignored.
@@ -201,7 +205,63 @@ rm ~/.local/share/chezmoi/encrypted_dot_test_token.age
 
 ---
 
-## 5. Day-to-Day Operations Cheat Sheet
+## 5. Live Verification on Intel MacBook (`simars-macbook-16i`)
+
+The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.ssh/id_rsa simars@simars-macbook-16i.example-tailnet.ts.net`).
+
+### 5.1 Environment Profile
+* **Host:** `simars-macbook-16i.example-tailnet.ts.net` (Tailscale)
+* **Architecture:** `x86_64` (Intel Core i7/i9)
+* **Kernel & OS:** Darwin 25.2.0 (`macOS 26.2` Tahoe/Sequoia+)
+* **Shell:** `/bin/zsh`
+* **Pre-Apply Safety Backup:** Created at `~/.dotfiles.backup.20261017_001018/`
+
+### 5.2 Verification Checklist & Results
+
+| Component | Tested Command / Behavior | Status | Evidence / Notes |
+|---|---|---|---|
+| **Safety Backup** | `cp -PR` of active dotfiles | PASS | All active files backed up to `~/.dotfiles.backup.20261017_001018/` |
+| **Apply Execution** | `chezmoi apply -v --force` | PASS | Exit code 0; rendered templates and executed run-once hooks |
+| **PATH Hierarchy** | `zsh -lic 'echo $PATH'` | PASS | Correct order: `~/.local/share/mise/shims`, `/usr/local/bin`, `~/.local/bin` |
+| **Polyglot Runtimes** | `mise current` | PASS | Go `1.27.2`, Python `3.12.15`, Node `22.23.3` operational |
+| **Starship Prompt** | `starship prompt` | PASS | Rendered directory, git branch, and prompt symbol cleanly |
+| **Zsh Environment** | `HISTFILE`, `HISTSIZE=50000` | PASS | History persistence, `unsetopt NOMATCH`, and local config sourcing |
+| **Legacy Sourcing** | Sourcing `dotfiles-local/` | PASS | Sourced `work.secret.env`, `~/.aliases`, `~/.zshrc.local` without errors |
+| **Git Configuration** | `git config user.email` | PASS | Resolved `Simar Singh <simarpaulsingh@gmail.com>`, editor `code --wait` |
+| **GitHub SSH Auth** | `ssh -T -p 443 git@ssh.github.com` | PASS | `Hi simars! You've successfully authenticated, but GitHub does not provide shell access.` |
+| **Tmux Config** | `tmux -f ~/.tmux.conf start-server` | PASS | Exit code 0, all vi-keys and mouse settings validated |
+| **Age Hybrid Encryption**| `chezmoi add --encrypt` + `chezmoi cat` | PASS | Created age header with both `-> ssh-rsa` and `-> X25519` recipients; decrypted cleanly |
+
+### 5.3 Key Bottlenecks Solved
+
+1. **Intel macOS Tier 3 Homebrew Deprecation:**
+   * *Problem:* Homebrew deprecated precompiled bottles for Intel x86_64 on newer macOS releases. Without bottles, `brew bundle` tried to build LLVM, Rust, and dependencies from source, failing due to older Xcode/CLT.
+   * *Fix:* Configured `export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` and `--no-upgrade` in `run_onchange_before_00_install_packages.sh.tmpl`. Core CLI tools (`mise`, `age`, `starship`) are reliably downloaded as standalone precompiled binaries into `~/.local/bin`.
+2. **Go Age Internal Library vs External Age Binary:**
+   * *Problem:* Chezmoi's internal age library (`useBuiltin = true`) failed on SSH RSA recipients with `malformed recipient ...: mixed case`.
+   * *Fix:* Configured `useBuiltin = false` in `.chezmoi.toml.tmpl`. Chezmoi now delegates to the external `age` binary (`~/.local/bin/age`), which natively supports RSA and Ed25519 SSH recipients.
+3. **Headless SSH & Non-TTY Prompts:**
+   * *Problem:* In automated SSH sessions without a TTY, `promptStringOnce` failed because `/dev/tty` could not be opened.
+   * *Fix:* Supplied fallback defaults to `promptStringOnce` (`email` -> `"simarpaulsingh@gmail.com"`, `name` -> `"Simar Singh"`) and `promptBoolOnce` (`is_work` -> `false`).
+4. **Git URL Rewriting & SSH Agent Forwarding:**
+   * *Problem:* With `insteadOf = https://github.com/`, all GitHub access requires SSH keys. On a remote machine over headless SSH, passphrase-protected keys cannot prompt for a passphrase without macOS Keychain GUI integration.
+   * *Fix:* Connecting via `ssh -A simars@simars-macbook-16i.example-tailnet.ts.net` forwards the local unlocked SSH agent, enabling remote GitHub operations effortlessly.
+5. **Mise Modern TOML Deprecation Warnings:**
+   * *Problem:* Mise warned that root-level `uv_venv_auto` and `default_packages_file` keys are deprecated.
+   * *Fix:* Grouped under `[settings.python]` table in `~/.config/mise/config.toml`.
+
+### 5.4 Deferred / Future Considerations
+
+* **Intel Mac Command Line Tools Update:**
+  Running `softwareupdate --all --install --force` or updating Command Line Tools will allow compiling native C extensions if needed in the future.
+* **Homebrew Formula Cleanup on Intel:**
+  The Intel MacBook has several older formulas in `/usr/local/Cellar`. Running `brew autoremove` and pruning unused taps can be done at leisure.
+* **Keychain Unlock for Remote Secondary Machine:**
+  Running `ssh-add --apple-use-keychain ~/.ssh/id_rsa` in a local Terminal app on the Intel MacBook will store the passphrase in the macOS Keychain so headless sessions without `-A` can also access GitHub directly.
+
+---
+
+## 6. Day-to-Day Operations Cheat Sheet
 
 | Task | Command | Description |
 |---|---|---|

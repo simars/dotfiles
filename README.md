@@ -49,7 +49,24 @@ newgrp docker
   `{{ onepasswordRead "op://vault/item/field" }}` or `{{ (onepassword "Item" "Vault").password }}`
 * **Bitwarden:** `bitwarden-cli` is auto-installed. Unlock with `bw login` / `export BW_SESSION="$(bw unlock --raw)"` and retrieve secrets with:
   `{{ (bitwarden "item" "ItemName").notes }}` or `{{ (bitwardenFields "item" "ItemName").fieldName.value }}`
-* **Hybrid Age:** Encrypt standalone secret files directly using `chezmoi add --encrypt ~/.ssh/id_work`. Unlocks with `~/.ssh/id_rsa` or `key.txt`.
+* **Hybrid Age:** Encrypt standalone secret files directly using `chezmoi add --encrypt ~/.ssh/id_work`. Unlocks with `~/.ssh/id_rsa` or `key.txt`. Uses the external `age` binary (`useBuiltin = false`) to natively support `ssh-rsa` and `ssh-ed25519` key formats.
+
+---
+
+## Cross-Platform & Remote Management Notes
+
+* **Apple Silicon vs. Intel macOS:**
+  * Apple Silicon (`arm64`): Homebrew installs to `/opt/homebrew`, full precompiled bottle coverage.
+  * Intel (`x86_64`): Homebrew lives in `/usr/local`. Because newer macOS versions (macOS 26+) are Tier 3 / deprecated for Intel x86_64 in Homebrew, `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` and `--no-upgrade` are enforced to prevent hours of compiling unbottled dependencies from source. Core tools (`mise`, `age`, `starship`) are automatically provisioned as standalone precompiled binaries into `~/.local/bin`.
+* **Remote Machine Management (`ssh -A`):**
+  * Dotfiles configure Git to route GitHub URLs through `ssh.github.com:443`.
+  * When administering secondary machines over SSH headlessly, connect with agent forwarding:
+    ```bash
+    ssh -A <user>@<host>
+    ```
+    This allows remote `git`, `chezmoi update`, and GitHub access to authenticate seamlessly using your workstation's unlocked agent without storing unencrypted keys or typing passphrases.
+* **Non-Interactive / Headless Bootstrap:**
+  * `.chezmoi.toml.tmpl` includes fallback defaults (`simarpaulsingh@gmail.com`, `Simar Singh`, `is_work = false`) so automated or headless installations run cleanly without requiring an interactive TTY.
 
 
 ## Directory Structure Overview
