@@ -189,8 +189,8 @@ rm -rf "$TMP_DIR"
 
 # 11. Workstation Cheatsheet & Agentic Maintenance Verification
 zsh -lic 'type cheat && cheat | head -n 20'
-test -f ~/.cheatsheet.md && grep -q "Modern CLI Utilities" ~/.cheatsheet.md && echo "SUCCESS: ~/.cheatsheet.md verified"
-test -f ~/AGENTS.md && diff -u AGENTS.md ~/AGENTS.md && echo "SUCCESS: ~/AGENTS.md synchronized"
+test -f ~/.cheatsheet.md && grep -q "Modern CLI & Observability Tools" ~/.cheatsheet.md && echo "SUCCESS: ~/.cheatsheet.md verified"
+test -f ~/AGENTS.md && diff -u ~/.local/share/chezmoi/AGENTS.md ~/AGENTS.md && echo "SUCCESS: ~/AGENTS.md synchronized"
 ```
 
 #### Multi-Platform Subsystem Verification Matrix
@@ -199,7 +199,7 @@ test -f ~/AGENTS.md && diff -u AGENTS.md ~/AGENTS.md && echo "SUCCESS: ~/AGENTS.
 |---|---|---|---|---|---|
 | **Cheatsheet Command** | `type cheat && cheat \| head -n 20` | Function active (`bat` pager) | Function active (`bat` or `less`) | Function active (`bat` or `less`) | Sourced via `~/.aliases`, renders formatted cheatsheet with graceful fallback |
 | **Cheatsheet File** | `test -f ~/.cheatsheet.md` | Present & up-to-date | Present & up-to-date | Present & up-to-date | Managed via `dot_cheatsheet.md.tmpl`, rendered from single source `docs/CHEATSHEET.md` |
-| **Agentic Invariants** | `test -f ~/AGENTS.md && diff -u AGENTS.md ~/AGENTS.md` | Present & in-sync | Present & in-sync | Present & in-sync | Managed via `dot_AGENTS.md.tmpl`, enforces non-negotiable cheatsheet maintenance |
+| **Agentic Invariants** | `test -f ~/AGENTS.md && diff -u ~/.local/share/chezmoi/AGENTS.md ~/AGENTS.md` | Present & in-sync | Present & in-sync | Present & in-sync | Managed via `AGENTS.md`, enforces non-negotiable cheatsheet maintenance |
 | **Prompt & Shell** | `starship prompt` | Native `/opt/homebrew` | Native `/usr/local` / `~/.local/bin` | Native `~/.local/bin` | Fast, deterministic prompt with git status & exit codes |
 | **Core Utilities** | `which zoxide fzf rg tmux age gitleaks herdr` | Native Homebrew bottles | Native bottles / fallback binaries | Standalone release binaries | Zero compilation overhead; modern CLI tools installed |
 | **Observability Tools** | `which eza bat btop duf dust http jq fx` | Native Homebrew bottles | Homebrew / `~/.local/bin` / `mise` | APT / `~/.local/bin` / `mise` | Guarded aliases degrade safely on Tier 3 Intel |

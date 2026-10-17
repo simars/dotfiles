@@ -73,6 +73,9 @@ cheat() {
     cat "$sheet"
   fi
 }
+cheatsheet() {
+  cheat "$@"
+}
 alias cheatsheet="cheat"
 
 # ==============================================================================
