@@ -211,18 +211,18 @@ rm ~/.local/share/chezmoi/encrypted_dot_test_token.age
 The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.ssh/id_rsa simars@simars-macbook-16i.example-tailnet.ts.net`).
 
 ### 5.1 Environment Profile
-* **Host:** `simars-macbook-16i.example-tailnet.ts.net` (Tailscale)
+* **Hosts:** `simars-macbook-16i.example-tailnet.ts.net` & `simars-macbook-32i.example-tailnet.ts.net` (Tailscale)
 * **Architecture:** `x86_64` (Intel Core i7/i9)
-* **Kernel & OS:** Darwin 25.2.0 (`macOS 26.2` Tahoe/Sequoia+)
+* **Kernel & OS:** Darwin 25.2.0 / Darwin 25.5.0 (`macOS 26` Tahoe/Sequoia+)
 * **Shell:** `/bin/zsh`
-* **Pre-Apply Safety Backup:** Created at `~/.dotfiles.backup.20261017_001018/`
+* **Pre-Apply Safety Backups:** Created at `~/.dotfiles.backup.20261017_001018/` and `~/.dotfiles.backup.20261017_133040/`
 
 ### 5.2 Verification Checklist & Results
 
 | Component | Tested Command / Behavior | Status | Evidence / Notes |
 |---|---|---|---|
-| **Safety Backup** | `cp -PR` of active dotfiles | PASS | All active files backed up to `~/.dotfiles.backup.20261017_001018/` |
-| **Apply Execution** | `chezmoi apply -v --force` | PASS | Exit code 0; rendered templates and executed run-once hooks |
+| **Safety Backup** | `cp -PR` of active dotfiles | PASS | All active files backed up before each apply execution |
+| **Apply Execution** | `chezmoi apply -v` | PASS | Exit code 0; rendered templates and executed run-once hooks |
 | **PATH Hierarchy** | `zsh -lic 'echo $PATH'` | PASS | Correct order: `~/.local/share/mise/shims`, `/usr/local/bin`, `~/.local/bin` |
 | **Polyglot Runtimes** | `mise current` | PASS | Go `1.27.2`, Python `3.12.15`, Node `22.23.3` operational |
 | **Starship Prompt** | `starship prompt` | PASS | Rendered directory, git branch, and prompt symbol cleanly |
@@ -232,10 +232,10 @@ The entire system was field-tested on a live Intel machine via SSH (`ssh -i ~/.s
 | **GitHub SSH Auth** | `ssh -T -p 443 git@ssh.github.com` | PASS | `Hi simars! You've successfully authenticated, but GitHub does not provide shell access.` |
 | **Tmux Config** | `tmux -f ~/.tmux.conf start-server` | PASS | Exit code 0, all vi-keys and mouse settings validated |
 | **Herdr Multiplexer** | `which herdr && herdr --version` | PASS | Resolved `/Users/simars/.local/bin/herdr` (`herdr 0.9.5` standalone binary) |
-| **Classic Vim** | `which vim && vim --version` | PASS | System `/usr/bin/vim` (Vim 9.1) functional with `.vimrc` settings |
-| **Neovim** | `which nvim && nvim --version` | PASS | Resolved `/Users/simars/.local/bin/nvim` (`v0.12.6` standalone fallback) |
-| **LunarVim** | `which lvim && lvim --version` | PASS | Installed via upstream installer into `/Users/simars/.local/bin/lvim` (`NVIM v0.12.6`) |
-| **Age Hybrid Encryption**| `chezmoi add --encrypt` + `chezmoi cat` | PASS | Created age header with both `-> ssh-rsa` and `-> X25519` recipients; decrypted cleanly |
+| **Classic Vim** | `which vim && vim --version` | PASS | System / Homebrew `vim` (Vim 9.1) functional with `.vimrc` settings |
+| **Neovim** | `which nvim && nvim --version` | PASS | Resolved `nvim` (`v0.10.0` / `v0.12.6`), `init.lua` loaded |
+| **LunarVim** | `which lvim && lvim --version` | PASS | Installed via upstream installer into `/Users/simars/.local/bin/lvim` |
+| **Age Hybrid Encryption**| `chezmoi add --encrypt` + `chezmoi cat` | PASS | Dual recipients (`-> ssh-rsa` & `-> X25519`) verified; round-trip decrypt succeeded |
 
 ### 5.3 Key Bottlenecks Solved
 
