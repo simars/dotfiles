@@ -476,3 +476,25 @@ First migration attempt on an Apple Silicon machine carried over from an Intel M
 
 Verification: `git check-ignore -v` in work trees reports `.git/info/exclude:88:*.env*`, `:125:*.sql` and `:21:node_modules/`; no dangling `info/exclude` links; `~/.cfg` `fsck` clean on every host; `chezmoi status` clean. `chezmoi init` on 32i regenerated its config, which differed from the template only by a trailing newline.
 
+---
+
+## 10. Global Secret-Scanning Hook Verification (2026-10-17)
+
+The hook (`hook.gitleaks` in `~/.gitconfig`, running `~/.config/git/hooks/gitleaks-pre-commit`) was tested in a sandbox with a throwaway global config and repos, on git 2.54.0 (Apple, `Simars-MacBook-Work`) and 2.56.0 (Homebrew, `simar-mbp`). Both versions gave identical results.
+
+| Scenario | Result |
+|---|---|
+| Clean commit | Committed |
+| Commit with a synthetic `ghp_` token | Blocked (exit 1); the token value never appears in the output |
+| `git hook list pre-commit` | Lists `gitleaks` |
+| `git commit --no-verify` | Committed (bypass works) |
+| Repo with its own `.git/hooks/pre-commit` | Both run; the repo hook runs after gitleaks, even when gitleaks blocks |
+| `git config hook.gitleaks.enabled false` | Repo opted out |
+| Bare repo + separate work tree (the `config` alias) | Clean commit passes, secret blocked |
+| Minimal launchd PATH (GUI apps) | Blocked: the hook adds the usual install locations to PATH |
+| Malformed `.gitleaks.toml` | Blocked as "gitleaks failed to run", not as a finding (gitleaks exits 3 for findings, 1 for errors) |
+| 10,201 staged files (52 MB) | Scanned in 2.6 s |
+| Git 2.49 / 2.50.1 (older) | Configuration ignored silently: the secret was committed, which is why the version is asserted |
+
+Rollout: on `Simars-MacBook-Work` the assertion passes and a live test with the real `~/.gitconfig` blocked a synthetic token. On `simar-mbp`, `simars-macbook-32i` and `simars-macbook-16i` the files deployed and `chezmoi apply` exits 1 with the per-check fixes listed in `FUTURE_CONSIDERATIONS.md` §8.5.
+

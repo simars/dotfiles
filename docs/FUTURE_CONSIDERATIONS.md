@@ -227,6 +227,19 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * Resolved: the work identity lives in `~/.gitconfig.local` (machine-local, not managed by chezmoi) on all four hosts. It includes `~/.gitconfig.work` (`simar.singh@work.example`) for remotes in the `work`, `WORK-ORG-2` and `WORK-ORG-3` orgs and for clones under `~/work/`, `~/WORK-ORG-2/` and `~/WORK-ORG-3/`. A repo's own `user.email` still wins.
 * Resolved: thoughtbot leftovers retired on 32i and 16i with tarballs in `~/.dotfiles.legacy.*.tar.gz`. 16i's `~/dotfiles` was not thoughtbot but a clean clone of this repo at `672f6ff` (the `legacy-backup` branch), and `~/symlinks.dotfiles.thoughtbot` held 20 saved links; both are archived and removed.
 * Retiring the thoughtbot `zsh/configs` left `EDITOR`/`VISUAL` unset, so `alias e="$EDITOR"` expands to nothing; thoughtbot shell functions (`mcd`, `envup`, `change-extension`) and `~/.bin` scripts (`git-up`, `tat`, `replace`) are gone.
-* Secret scanning outside this repo is now off everywhere. If wanted, add a global hook that works without a per-repo config (for example `core.hooksPath` or the `pre-commit` framework) rather than reviving the thoughtbot template.
+* Resolved: a global gitleaks pre-commit hook (config-defined, Git 2.54+) now replaces the per-repo thoughtbot template; see §8.5 for the git versions it depends on.
 * Resolved: `rcm` uninstalled from all four hosts (Homebrew, no dependents).
+
+### 8.5 Git 2.54+ for the Global Secret Scan
+The gitleaks hook is a config-defined hook, which git before 2.54 ignores without any warning. `run_after_99_assert_requirements` checks the terminal git and Apple's `/usr/bin/git` (used by GUI apps) after every apply. As of 2026-10-17:
+
+| Host | Terminal git | `/usr/bin/git` | Remaining step |
+|---|---|---|---|
+| `Simars-MacBook-Work` | 2.54.0 (Apple; Intel brew git 2.49 unlinked) | 2.54.0 (Xcode 27.1) | None. The native Homebrew changeover brings git 2.56. |
+| `simar-mbp` | 2.56.0 (Homebrew) | 2.50.1 (CLT 26.6 selected) | `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer && sudo xcodebuild -license accept` (Xcode 27.1 is installed and ships 2.54.0) |
+| `simars-macbook-32i` | 2.50.1 | 2.50.1 (Xcode 26.2) | Update macOS to 26.7.1; then install the newest Command Line Tools or Xcode 27.1 and select it. |
+| `simars-macbook-16i` | 2.39.2 | 2.39.2 (Xcode 14.3.1) | Same as 32i; the Xcode 14.3.1 selection has to be replaced. |
+
+* Xcode 27.1 ships Apple Git-157 (2.54.0). The git bundled with "Command Line Tools for Xcode 27.0", the only CLT offered so far (on `simar-mbp`), has not been checked; verify `/usr/bin/git --version` after installing it.
+* Intel Homebrew has no git bottle for macOS 26, so on the Intel hosts the Apple toolchain is the upgrade path.
 
