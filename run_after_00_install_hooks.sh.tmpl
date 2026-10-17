@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOURCE_DIR="$(chezmoi source-path)"
-HOOK_DIR="${SOURCE_DIR}/.git/hooks"
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+HOOK_DIR="{{ .chezmoi.sourceDir }}/.git/hooks"
 
 if [[ -d "${HOOK_DIR}" ]]; then
     cat << 'EOF' > "${HOOK_DIR}/pre-commit"
