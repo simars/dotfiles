@@ -14,6 +14,19 @@ elif [[ -x "/usr/local/bin/brew" ]]; then
 fi
 {{ end -}}
 
+# Default editor: the first of nvim, vim and vi on PATH; a value already in the environment wins.
+# This must run before ~/.aliases is sourced, because `alias e="$EDITOR"` expands when it is defined.
+if [[ -z "${EDITOR:-}" ]]; then
+    for _editor in nvim vim vi; do
+        if command -v "$_editor" &> /dev/null; then
+            export EDITOR="$_editor"
+            break
+        fi
+    done
+    unset _editor
+fi
+export VISUAL="${VISUAL:-$EDITOR}"
+
 # Antigravity Binaries & Environment
 if [[ -d "$HOME/.antigravity/antigravity/bin" ]]; then
     export PATH="$HOME/.antigravity/antigravity/bin:$PATH"

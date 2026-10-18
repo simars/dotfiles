@@ -150,6 +150,15 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `mise current` | Active Versions | Display currently active versions for all tools in active shell:<br>`mise current` |
 | `mise prune` | Cleanup Runtimes | Uninstall unused and outdated runtime versions:<br>`mise prune -y` |
 
+### Default Editor
+`~/.zshrc` sets `EDITOR` to the first of `nvim`, `vim` and `vi` found on `PATH`, and `VISUAL` to the same unless it is already set. A value already in the environment wins, so to choose another editor export both in `~/.zshenv`, which zsh reads before `~/.zshrc`. This runs before `~/.aliases` is read, so the aliases below get the chosen editor.
+
+| Command | Purpose | Example |
+| :--- | :--- | :--- |
+| `e <file>` | Open in `$EDITOR` | `e notes.md` (the same program `git commit` and `chezmoi edit` use) |
+| `v <file>` | Open in `$VISUAL` | `v notes.md` |
+| `echo $EDITOR $VISUAL` | See which editor was picked | Prints `nvim nvim` where Neovim is installed, `vim vim` otherwise |
+
 ---
 
 ## 5. Machine-Specific Customization Points
