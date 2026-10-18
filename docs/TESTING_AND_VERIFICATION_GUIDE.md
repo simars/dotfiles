@@ -529,6 +529,37 @@ Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `
 * The exit 1 on the Intel hosts comes from `run_after_99_assert_requirements`, which is working as intended (see `FUTURE_CONSIDERATIONS.md` §8.5).
 * Verified on every host: `chezmoi status` empty apart from the always-run scripts, `~/.cfg` at `77f3d6a` with no changes and a clean `fsck`, `~/.cheatsheet.md` carrying the new section 6, no merge commits.
 
+### 9.8 Standalone git on the Intel Hosts: Rollout of `d87ec39` (2026-10-18)
+
+`d87ec39` builds a pinned git 2.56.0 into `~/.local` on Intel Macs and turns the Apple-git check into a `WARN` there (design and rationale: `FUTURE_CONSIDERATIONS.md` §8.5). It reached the other hosts as a git bundle (`03ed4b4..d87ec39`), the same way as §9.7. It was not yet pushed to GitHub when this section was written.
+
+**The check, tested before rollout** (rendered per architecture, `bash -n` and shellcheck clean):
+
+| Scenario | Result |
+|---|---|
+| arm64, real machine | Exit 0 |
+| Intel, Apple git too old | `WARN`, exit 0 |
+| arm64, Apple git too old | `FAIL`, exit 1 (still a hard requirement) |
+| Intel, terminal git too old | `FAIL`, exit 1 |
+
+**Rollout:**
+
+| Host | Arch | `chezmoi apply` | Notes |
+|---|---|---|---|
+| `Simars-MacBook-Work` | arm64 | exit 0 | The install script did not re-run (its arm64 render is byte-identical to before); requirement check OK |
+| `simar-mbp` | arm64 | exit 0 | Same |
+| `simars-macbook-32i` | x86_64 | exit 0 | Built git 2.56.0 (x86_64) into `~/.local`; keychain helper and `~/.local/etc/gitconfig` present; `git hook list pre-commit` shows `gitleaks`; a synthetic `ghp_` token commit was blocked and the token never appeared in the output; no build directory left in `/tmp`; `/usr/bin/git` is 2.50.1, reported as `WARN` |
+| `simars-macbook-16i` | x86_64 | exit 0 | Requirement check printed `OK: terminal git is git 2.56.0 (~/.local/bin/git)`, the `WARN` for `/usr/bin/git` 2.50.1, and "Requirement check passed with warnings". The live token test was not run here (see below) |
+
+**Build notes:**
+1. Without `NO_RUST=YesPlease` the build stops with `cargo: command not found`, and the osxkeychain helper must be built with the same make flags: with gettext enabled it failed to link. The HTTPS test that failed during the build was caused by the user's own `url.insteadOf` rule, not by a defect in the build.
+2. A bash function called from `|| true` ignores `set -e`, so the build steps are chained with `&&`, and the work directory is removed only on success (the log path is printed on failure).
+
+**Finding, 16i: the apply compiled 30 formulae from source and ran for about 7.4 hours.** The apply started around 00:50 and finished at 08:17; the log's own timings add up to 7.1 hours of compilation. The largest builds were `llvm` (1 h 57 min), `llvm@21` (1 h 42 min), `node` (54 min), `rust` (42 min), `mise` (31 min), `zig@0.16` (19 min), `z3` (14 min) and `gettext` (12 min). Many were dependencies of `bitwarden-cli` (`node`, `llvm`, `rust`), `colima` and `curl`.
+* The script exports `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` to forbid exactly this (`AGENTS.md` §4.1). On 32i the same `brew bundle` stopped with `no bottle available!` for formulae such as `git`, `mise`, `neovim`, `vim`, `herdr`, `go`, `httpie` and `openssl@4`, and built nothing. The difference between the hosts is unexplained: SSH from the session stopped authenticating (the server accepts the key, but it cannot be unlocked non-interactively) before the Homebrew versions and environments could be compared.
+* Side effects on 16i: `docker` and `docker-compose` built but were not linked (`/usr/local/bin/docker` and `docker-compose` already exist), `vim` was not linked (`share/emacs/site-lisp/cmake/cmake-mode.el` belongs to `cmake`), `neovim` refused to install because `utf8proc` is pinned, `herdr` failed, and `brew autoremove` removed `lua`. A Homebrew-built `git` 2.56.0_1 now also sits in `/usr/local`; the standalone git in `~/.local/bin` is first on the script's PATH. `brew bundle` still ended in the script's "Some Homebrew packages could not be installed ... Continuing" warning, which is why the apply exited 0.
+* Follow-up is recorded in `FUTURE_CONSIDERATIONS.md` §8.2. The §9.7 "exit 1" results for the Intel hosts above are superseded by this table.
+
 ---
 
 ## 10. Global Secret-Scanning Hook Verification (2026-10-17)
@@ -549,5 +580,5 @@ The hook (`hook.gitleaks` in `~/.gitconfig`, running `~/.config/git/hooks/gitlea
 | 10,201 staged files (52 MB) | Scanned in 2.6 s |
 | Git 2.49 / 2.50.1 (older) | Configuration ignored silently: the secret was committed, which is why the version is asserted |
 
-Rollout: on `Simars-MacBook-Work` the assertion passes and a live test with the real `~/.gitconfig` blocked a synthetic token. On `simar-mbp`, `simars-macbook-32i` and `simars-macbook-16i` the files deployed and `chezmoi apply` exits 1 with the per-check fixes listed in `FUTURE_CONSIDERATIONS.md` §8.5.
+Rollout: on `Simars-MacBook-Work` the assertion passes and a live test with the real `~/.gitconfig` blocked a synthetic token. On `simar-mbp`, `simars-macbook-32i` and `simars-macbook-16i` the files deployed and `chezmoi apply` exited 1 with the per-check fixes listed in `FUTURE_CONSIDERATIONS.md` §8.5. Superseded: after `d87ec39` all four hosts exit 0 (§9.8).
 

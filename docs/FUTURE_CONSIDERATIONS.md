@@ -219,6 +219,7 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * Still open: retiring the Intel brew in `/usr/local`. Intel-only leaves with no native twin: `go`, `nvm`, `nvtop`, `python@3.8`, `python@3.9`, `python@3.10`, `rbenv`, `rc`, `v8@3.15` (superseded or dead). 16 Intel casks remain, some also adopted by native brew (`iterm2`, `warp`, `wave`). Brew also left `/usr/local/etc/gitconfig`, which nothing reads.
 
 ### 8.2 Install Script Gaps
+* **The "do not compile" guard did not hold on `simars-macbook-16i` (2026-10-18).** The script exports `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` before `brew bundle`. On 32i the unbottled formulae stopped with `no bottle available!`, but on 16i the same `brew bundle` compiled 30 formulae from source in 7.1 hours of build time (see `TESTING_AND_VERIFICATION_GUIDE.md` §9.8). The cause is not established: SSH to the Intel hosts stopped authenticating from the session before the two brews could be compared (version, environment, which formulae were already installed). Before the next Intel apply, find a guard that really refuses source builds, or drop the unbottled formulae from the Intel list.
 * `gitleaks` and `duf` have no darwin standalone fallback in `run_onchange_before_00_install_packages.sh.tmpl`. Note that any edit to that script changes its hash and re-runs `brew bundle` on every host.
 * The script's `#!/usr/bin/env bash` resolves to `/usr/local/bin/bash` (x86_64) on a Rosetta-brew Mac, so runtime-detecting installers such as `mise.run` pick x86_64. `#!/bin/bash` runs natively on Apple Silicon and exists on Ubuntu.
 
@@ -234,17 +235,19 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * Resolved: `rcm` uninstalled from all four hosts (Homebrew, no dependents).
 
 ### 8.5 Git 2.54+ for the Global Secret Scan
-The gitleaks hook is a config-defined hook, which git before 2.54 ignores without any warning. `run_after_99_assert_requirements` checks the terminal git and Apple's `/usr/bin/git` (used by GUI apps) after every apply. As of 2026-10-17:
+The gitleaks hook is a config-defined hook, which git before 2.54 ignores without any warning. `run_after_99_assert_requirements` checks the terminal git and Apple's `/usr/bin/git` (used by GUI apps) after every apply. On Apple silicon both are hard requirements; on Intel only the terminal git is, and `/usr/bin/git` is a `WARN`. Option (a) below was chosen and implemented in `d87ec39` (2026-10-18). As of 2026-10-18:
 
 | Host | Terminal git | `/usr/bin/git` | Remaining step |
 |---|---|---|---|
 | `Simars-MacBook-Work` | 2.56.0 (Homebrew, native) | 2.54.0 (Xcode 27.1) | None: the requirement check passes. |
 | `simar-mbp` | 2.56.0 (Homebrew) | 2.54.0 (Xcode 27.1 selected) | None: the requirement check passes. |
-| `simars-macbook-32i` | 2.50.1 | 2.50.1 (Xcode 26.2; CLT 26.6 is also installed) | macOS is now 26.7.1. Not reachable with Apple tooling (see below); needs a decision. |
-| `simars-macbook-16i` | 2.50.1 | 2.50.1 (CLT 26.6 selected) | macOS is now 26.7.1. Xcode 14.3.1 stopped running on it (git crashed while it was selected), so CLT 26.6 was installed and selected. Same open decision as 32i. |
+| `simars-macbook-32i` | 2.56.0 (standalone, `~/.local/bin/git`, x86_64, built from source by `chezmoi apply`) | 2.50.1 (Xcode 26.2; CLT 26.6 is also installed) | None: `chezmoi apply` exits 0 with a `WARN` for `/usr/bin/git`. A synthetic `ghp_` token commit was blocked by the live hook. |
+| `simars-macbook-16i` | 2.56.0 (standalone, as on 32i) | 2.50.1 (CLT 26.6 selected; Xcode 14.3.1 stopped running on it, so CLT was installed) | None: `chezmoi apply` exits 0 with the same `WARN`. Checked from the apply's own requirement output; the live token test was run on 32i only. |
 
 * Xcode 27.1 ships Apple Git-157 (2.54.0). Command Line Tools 26.6, installed on all four hosts, bundle Apple Git-155 (2.50.1), so a CLT alone cannot meet the requirement. Verify `/usr/bin/git --version` after any toolchain change.
-* **Xcode 27 runs only on Apple silicon.** Apple's release notes, as quoted in the developer forums, say so, and a beta failed on an Intel MacBook under Tahoe 26.5. The Intel hosts therefore cannot reach Apple git 2.54 through Xcode, and Intel Homebrew has no git bottle for macOS 26. The "Fix" text printed by `run_after_99_assert_requirements` for these hosts (install Xcode 27.1) is wrong for Intel.
-* Options for the Intel hosts: (a) a standalone git 2.54+ ahead of `/usr/bin/git` on PATH, built from source because no bottle exists, which fixes terminal commits but leaves GUI apps (minimal PATH, `/usr/bin/git`) unscanned, together with relaxing the Apple-git assertion on Intel; (b) leave the check failing as a visible reminder; (c) drop the global hook on Intel hosts and rely on per-repo hooks.
-* Intel Homebrew has no git bottle for macOS 26, so on the Intel hosts the Apple toolchain is the upgrade path.
+* **Xcode 27 runs only on Apple silicon.** Apple's release notes, as quoted in the developer forums, say so, and a beta failed on an Intel MacBook under Tahoe 26.5. The Intel hosts therefore cannot reach Apple git 2.54 through Xcode, and Intel Homebrew has no git bottle for macOS 26.
+* **Chosen (a):** on Intel Macs the install script builds a pinned git (2.56.0, sha256 verified, `NO_RUST=YesPlease NO_GETTEXT=YesPlease NO_TCLTK=YesPlease`) into `~/.local`, plus the `git-credential-osxkeychain` helper and a `~/.local/etc/gitconfig` that sets `credential.helper = osxkeychain`, so HTTPS credentials behave as with Apple's git. `~/.local/bin` leads PATH, so terminals use it. The Apple-git check on Intel is a `WARN`, not a `FAIL`; on Apple silicon it still fails. The arm64 render of the script is byte-identical to before, so Apple silicon hosts do not re-run it.
+* **Residual gap:** GUI apps launched from the Dock (minimal PATH, `/usr/bin/git`) still use Apple's 2.50.1 on both Intel hosts and skip the hook. That is why the check warns instead of passing silently. The only fix would be an Apple toolchain with git 2.54+, which Intel Macs cannot run. Commit from a terminal on those hosts.
+* The other options were (b) leave the Intel check failing as a permanent reminder and (c) drop the global hook on Intel and rely on per-repo hooks. Neither was needed.
+* Bump `ver` and `sha` together in `install_standalone_git` to move the pinned git. The function skips the build when `~/.local/bin/git` already meets `requirements.git.min`, so a bump only matters for hosts below the minimum, and any edit to the script re-runs it on every Intel host.
 
