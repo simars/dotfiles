@@ -485,7 +485,8 @@ Verification: `git check-ignore -v` in work trees reports `.git/info/exclude:88:
 | **Command Line Tools** | PASS, but not as the kickoff assumed | The "CLT 11.7" was never a real install. It was a 2019-2020 leftover in `/Library/Developer/CommandLineTools` (Apple Git-126, clang 11.0.3, x86_64, SDKs up to 10.15, no `pkgutil` receipt). Brew's `CLT.installed?` only tests that `usr/bin/clang` exists, so the stale directory overrode Xcode 27.1 and produced "does not support macOS 26". Removed with `sudo rm -rf`, replaced with CLT 26.6 (`xcode-select --install`); receipt `26.6.0.0.1781586589`, `xcode-select -p` still Xcode.app, Intel `brew doctor` reports ready |
 | **Homebrew install** | PASS | `arch -arm64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`. The installer installs a CLT (and ends with `xcode-select --switch` to it) only when `/Library/Developer/CommandLineTools/usr/bin/git` is missing, so the new CLT had to be in place first |
 | **Package script** | PASS | Rendered with `chezmoi execute-template` into a scratch file and run with `/bin/bash`; chezmoi state untouched; 28/28 `packages.toml` formulae native arm64. `cask "wave"` was removed from the scratch copy |
-| **Casks** | PARTIAL | `iterm2` and `warp` adopted: brew adopts an existing app without `--force`, and the app bundles were not modified. The `alacritty` cask was disabled on 2026-09-01 (Gatekeeper), so it left `packages.toml` (`cc170f6`). `wave` is pending: the next `chezmoi apply` adopts it, so run that from a terminal other than Wave |
+| **Casks** | PASS | `iterm2`, `warp` and (via the later `chezmoi apply`, run over SSH with Wave not running) `wave` adopted: brew adopts an existing app without `--force`, and the app bundles were not modified (`Wave.app` is still dated Apr 16 2026). The `alacritty` cask was disabled on 2026-09-01 (Gatekeeper), so it left `packages.toml` (`cc170f6`) |
+| **Go tools** | PASS | All 20 `~/go/bin` tools were x86_64. Rebuilt natively with `go install <module>@<same version>`: 18 at their original versions; `gopls` v0.15.3 and `staticcheck` v0.4.7 pin an `x/tools` whose `tokeninternal` package no longer compiles on Go 1.27 (`invalid array length`), so those two went to the latest releases (`gopls` v0.24.0, `staticcheck` v0.8.2). 20/20 arm64 and smoke-tested; the old binaries were backed up before the swap |
 | **Extra formulae** | PASS | 31 Intel leaves installed natively (`gh`, `mysql-client@8.4`, `openjdk` and 28 others). Not installed: `go`, `asdf`, `nvm`, `rbenv` (superseded by mise) and `python@3.8`, `python@3.9`, `python@3.10`, `v8@3.15`, `rc`, `nvtop` (gone, disabled or deprecated) |
 | **mise** | PASS | Native 2026.10.13. The x86 `~/.local/bin/mise` and `installs/` were removed; Go 1.27.2, Node 22.23.3 and Python 3.12.15 reinstalled, all arm64, with the default Python packages; shims re-pointed at `/opt/homebrew/bin/mise` |
 | **Fallbacks** | PASS | `bat`, `dust`, `fx`, `duf`, `gitleaks`, `age`, `age-keygen`, `herdr` removed from `~/.local/bin` only after the native binary existed (versions identical). The gitleaks hook's PATH includes `/opt/homebrew/bin`, so scanning continues |
@@ -510,8 +511,23 @@ Verification suite, run in a clean login shell:
 
 Lessons and loose ends:
 1. `brew bundle check` reports outdated packages as missing, so it is not a test for "installed"; use `brew list`. Pruning `~/Brewfile` (tracked in `~/.cfg`) took two commits, `a091096` and `77f3d6a`, from 245 to 217 lines.
-2. Editing `packages.toml` changes the install script's hash, so the next `chezmoi apply` re-runs `brew bundle` natively. That is idempotent, and it is also what adopts `wave`.
-3. The `~/go/bin` tools (`gopls`, `dlv` and others) are still x86_64 builds and run under Rosetta; reinstall them with `go install` to make them native.
+2. Editing `packages.toml` changes the install script's hash, so the next `chezmoi apply` re-runs `brew bundle`. That is idempotent, and it is what adopted `wave`. Run it with a PATH where `#!/usr/bin/env bash` resolves to the native `/bin/bash` (for example `PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"`); with the Intel brew first on PATH it would pick the x86_64 `/usr/local/bin/bash` (§8.2 of `FUTURE_CONSIDERATIONS.md`).
+3. In zsh `path` is tied to `$PATH`, so a script variable named `path` silently empties PATH. Use another name in agent or shell snippets.
+
+### 9.7 Rollout of `cc170f6` and `ae05e62` to All Hosts (2026-10-17 to 2026-10-18)
+
+Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `simars/.cfg` `46b3f35..77f3d6a`; no bypassed rules were reported), then applied on every host.
+
+| Host | Arch | Repos updated by | `chezmoi apply` | Notes |
+|---|---|---|---|---|
+| `Simars-MacBook-Work` | arm64 | pushed from here | exit 0 | 33 Brewfile entries installed and `wave` adopted; requirement check OK (git 2.56.0, `/usr/bin/git` 2.54.0, gitleaks 8.30.1). Run with a native-first PATH |
+| `simar-mbp` | arm64 | `config pull --rebase` and `git pull --ff-only` from GitHub | exit 0 | `wave` already installed; requirement check OK |
+| `simars-macbook-32i` | x86_64 | git bundles over `scp` | exit 1 | `brew bundle` printed "no bottle available" for 16 formulae (Tier 3 Intel, source fallback disabled, so nothing was compiled); the requirement check fails (git 2.50.1) |
+| `simars-macbook-16i` | x86_64 | git bundles over `scp` | exit 1 | `brew bundle` died with `Error: SIGTERM` in a child process during the cask installs (cause unknown, no debris left); `1password-cli`, `font-jetbrains-mono-nerd-font`, `warp` and `wave` then installed cleanly one at a time; the requirement check fails (git 2.50.1) |
+
+* 32i and 16i hold the same SSH key as the Mac (identical fingerprint) but cannot unlock it from a non-interactive session (`Permission denied (publickey)`), and no agent socket was available for `ssh -A`. The repos were fast-forwarded from verified git bundles instead, each script aborting unless the host sat on the expected prerequisite commit, and each host's `origin/main` ref was advanced to the pushed commit by hand. A later interactive `git fetch` reconciles them.
+* The exit 1 on the Intel hosts comes from `run_after_99_assert_requirements`, which is working as intended (see `FUTURE_CONSIDERATIONS.md` §8.5).
+* Verified on every host: `chezmoi status` empty apart from the always-run scripts, `~/.cfg` at `77f3d6a` with no changes and a clean `fsck`, `~/.cheatsheet.md` carrying the new section 6, no merge commits.
 
 ---
 

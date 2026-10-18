@@ -214,9 +214,8 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * Resolved: `mise` and its Go, Node and Python runtimes are native arm64, and the `~/.local/bin` fallbacks (`bat`, `dust`, `fx`, `duf`, `gitleaks`, `age`, `age-keygen`, `herdr`, `mise`) are gone.
 * Resolved: `rcm` was uninstalled from all four hosts on 2026-10-17, so a stray `rcup` cannot recreate the thoughtbot symlinks.
 * Resolved: `gh auth login -h github.com` renewed the invalid token; the native `gh` is logged in.
-* Still open: adopting the `wave` cask, which the next `chezmoi apply` does (run it from a terminal other than Wave).
-* Still open: the `~/go/bin` tools are x86_64 and run under Rosetta until reinstalled with `go install`.
-* Still open: the Intel brew in `/usr/local` is still installed, and brew left `/usr/local/etc/gitconfig` behind. Retiring the Intel brew is a separate decision.
+* Resolved: the `wave` cask was adopted by the later `chezmoi apply` (Caskroom symlink only; `Wave.app` untouched), and all 20 `~/go/bin` tools are native arm64 (`gopls` and `staticcheck` moved to their latest releases because the pinned versions no longer compile on Go 1.27).
+* Still open: the Intel brew in `/usr/local` is installed and cannot be retired as a plain uninstall. It still hosts a running Redis 8.8.0 launchd service (44 keys), MySQL data for `work_development` and `work_test` in `/usr/local/var/mysql` (91 MB, written by Intel `mysql` 9.3.0), and CLI casks whose `/usr/local/bin` links (`copilot`, `op`) point into the Intel Caskroom. Intel-only leaves with no native twin: `go`, `nvm`, `nvtop`, `python@3.8`, `python@3.9`, `python@3.10`, `rbenv`, `rc`, `v8@3.15` (superseded or dead). Brew also left `/usr/local/etc/gitconfig`, which nothing reads.
 
 ### 8.2 Install Script Gaps
 * `gitleaks` and `duf` have no darwin standalone fallback in `run_onchange_before_00_install_packages.sh.tmpl`. Note that any edit to that script changes its hash and re-runs `brew bundle` on every host.
@@ -240,9 +239,11 @@ The gitleaks hook is a config-defined hook, which git before 2.54 ignores withou
 |---|---|---|---|
 | `Simars-MacBook-Work` | 2.56.0 (Homebrew, native) | 2.54.0 (Xcode 27.1) | None: the requirement check passes. |
 | `simar-mbp` | 2.56.0 (Homebrew) | 2.54.0 (Xcode 27.1 selected) | None: the requirement check passes. |
-| `simars-macbook-32i` | 2.50.1 | 2.50.1 (Xcode 26.2; CLT 26.6 is also installed) | macOS is now 26.7.1. Install Xcode 27.1 and select it; the CLT's git is also 2.50.1. Confirm Xcode 27 runs on Intel first. |
-| `simars-macbook-16i` | 2.50.1 | 2.50.1 (CLT 26.6 selected) | macOS is now 26.7.1. Xcode 14.3.1 stopped running on it (git crashed while it was selected), so CLT 26.6 was installed and selected. Same remaining step as 32i. |
+| `simars-macbook-32i` | 2.50.1 | 2.50.1 (Xcode 26.2; CLT 26.6 is also installed) | macOS is now 26.7.1. Not reachable with Apple tooling (see below); needs a decision. |
+| `simars-macbook-16i` | 2.50.1 | 2.50.1 (CLT 26.6 selected) | macOS is now 26.7.1. Xcode 14.3.1 stopped running on it (git crashed while it was selected), so CLT 26.6 was installed and selected. Same open decision as 32i. |
 
 * Xcode 27.1 ships Apple Git-157 (2.54.0). Command Line Tools 26.6, installed on all four hosts, bundle Apple Git-155 (2.50.1), so a CLT alone cannot meet the requirement. Verify `/usr/bin/git --version` after any toolchain change.
+* **Xcode 27 runs only on Apple silicon.** Apple's release notes, as quoted in the developer forums, say so, and a beta failed on an Intel MacBook under Tahoe 26.5. The Intel hosts therefore cannot reach Apple git 2.54 through Xcode, and Intel Homebrew has no git bottle for macOS 26. The "Fix" text printed by `run_after_99_assert_requirements` for these hosts (install Xcode 27.1) is wrong for Intel.
+* Options for the Intel hosts: (a) a standalone git 2.54+ ahead of `/usr/bin/git` on PATH, built from source because no bottle exists, which fixes terminal commits but leaves GUI apps (minimal PATH, `/usr/bin/git`) unscanned, together with relaxing the Apple-git assertion on Intel; (b) leave the check failing as a visible reminder; (c) drop the global hook on Intel hosts and rely on per-repo hooks.
 * Intel Homebrew has no git bottle for macOS 26, so on the Intel hosts the Apple toolchain is the upgrade path.
 
