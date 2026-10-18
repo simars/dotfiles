@@ -35,6 +35,7 @@ This guide documents the architecture, migration safety, testing procedures, and
 │   ├── starship.toml.tmpl             # Cross-platform shell prompt
 │   └── tmux/tmux.conf                 # 256-color, vi-keys, mouse mode tmux config
 ├── dot_gitconfig.tmpl                 # Cross-platform git configuration + work overrides
+├── dot_local/bin/executable_tat       # tat: attach to or create a tmux session named after the directory
 ├── dot_tmux.conf.tmpl                 # Sourcing ~/.config/tmux/tmux.conf
 ├── dot_zprofile.tmpl                  # Architecture-aware Homebrew & mise shims
 ├── dot_zshrc.tmpl                     # Aliases, Docker helpers, mise & starship activation

@@ -159,6 +159,17 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `v <file>` | Open in `$VISUAL` | `v notes.md` |
 | `echo $EDITOR $VISUAL` | See which editor was picked | Prints `nvim nvim` where Neovim is installed, `vim vim` otherwise |
 
+### tmux Sessions
+`tat` (`~/.local/bin/tat`, deployed by chezmoi) opens the tmux session named after the current directory, so each project keeps its own session that survives a detach. Dots and colons in the directory name become dashes (`my.app` gives `my-app`), because tmux cannot target a session name that contains them. It is a POSIX `sh` script adapted from [thoughtbot/dotfiles](https://github.com/thoughtbot/dotfiles/blob/main/bin/tat).
+
+| Command | Purpose | Example |
+| :--- | :--- | :--- |
+| `tat` | Attach to, or create, the session named after the current directory | `cd ~/code/my.app && tat` attaches `my-app`, creating it on first use |
+| `tat <name>` | Same, with an explicit session name | `tat scratch` |
+| `tat` (inside tmux) | Switch the client to that session instead of nesting one, creating it first if needed | `tat other-project` from any session |
+| `tm` | Attach to, or create, one fixed session called `main` | Alias for `tmux new-session -A -s main` |
+| `Ctrl-b d` | Detach and leave the session running | `tmux ls` lists sessions, `tat` re-attaches |
+
 ---
 
 ## 5. Machine-Specific Customization Points
