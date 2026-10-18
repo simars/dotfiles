@@ -208,12 +208,15 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 
 ## 8. Deferred Items from the `Simars-MacBook-Work` Migration (2026-10-17)
 
-### 8.1 Native Homebrew Changeover (`Simars-MacBook-Work`)
-* **Kickoff prompt:** [`NATIVE_HOMEBREW_KICKOFF.md`](NATIVE_HOMEBREW_KICKOFF.md) holds a ready-to-paste session prompt with the ordered steps and verification.
-* The machine runs an Intel Homebrew under Rosetta with Command Line Tools 11.7, which refuses to install on macOS 26. Update the CLT, install `/opt/homebrew`, then re-run the package script. Installing Homebrew does not change the script's hash, so `chezmoi apply` alone will not re-run it.
-* `mise` and its runtimes are x86_64 (the `mise.run` fallback ran under Rosetta `bash`). Reinstall natively once `/opt/homebrew/bin/mise` exists.
-* Remove the `~/.local/bin` fallbacks (`bat`, `dust`, `fx`, `duf`, `gitleaks`, `age`, `herdr`, `mise`) once native bottles replace them; they lead PATH and would shadow Homebrew.
+### 8.1 Native Homebrew Changeover (`Simars-MacBook-Work`) (resolved 2026-10-17)
+* **Kickoff prompt:** [`NATIVE_HOMEBREW_KICKOFF.md`](NATIVE_HOMEBREW_KICKOFF.md) holds the session prompt with the ordered steps; results are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.6.
+* Resolved: native Homebrew 7.0.9 runs from `/opt/homebrew`. The blocker was never a real "CLT 11.7" install but a stale 2019-2020 `/Library/Developer/CommandLineTools` directory that overrode Xcode 27.1; it was removed and replaced with CLT 26.6.
+* Resolved: `mise` and its Go, Node and Python runtimes are native arm64, and the `~/.local/bin` fallbacks (`bat`, `dust`, `fx`, `duf`, `gitleaks`, `age`, `age-keygen`, `herdr`, `mise`) are gone.
 * Resolved: `rcm` was uninstalled from all four hosts on 2026-10-17, so a stray `rcup` cannot recreate the thoughtbot symlinks.
+* Resolved: `gh auth login -h github.com` renewed the invalid token; the native `gh` is logged in.
+* Still open: adopting the `wave` cask, which the next `chezmoi apply` does (run it from a terminal other than Wave).
+* Still open: the `~/go/bin` tools are x86_64 and run under Rosetta until reinstalled with `go install`.
+* Still open: the Intel brew in `/usr/local` is still installed, and brew left `/usr/local/etc/gitconfig` behind. Retiring the Intel brew is a separate decision.
 
 ### 8.2 Install Script Gaps
 * `gitleaks` and `duf` have no darwin standalone fallback in `run_onchange_before_00_install_packages.sh.tmpl`. Note that any edit to that script changes its hash and re-runs `brew bundle` on every host.
@@ -235,11 +238,11 @@ The gitleaks hook is a config-defined hook, which git before 2.54 ignores withou
 
 | Host | Terminal git | `/usr/bin/git` | Remaining step |
 |---|---|---|---|
-| `Simars-MacBook-Work` | 2.54.0 (Apple; Intel brew git 2.49 unlinked) | 2.54.0 (Xcode 27.1) | None. The native Homebrew changeover brings git 2.56. |
+| `Simars-MacBook-Work` | 2.56.0 (Homebrew, native) | 2.54.0 (Xcode 27.1) | None: the requirement check passes. |
 | `simar-mbp` | 2.56.0 (Homebrew) | 2.54.0 (Xcode 27.1 selected) | None: the requirement check passes. |
-| `simars-macbook-32i` | 2.50.1 | 2.50.1 (Xcode 26.2) | Update macOS to 26.7.1; then install the newest Command Line Tools or Xcode 27.1 and select it. |
-| `simars-macbook-16i` | 2.39.2 | 2.39.2 (Xcode 14.3.1) | Same as 32i; the Xcode 14.3.1 selection has to be replaced. |
+| `simars-macbook-32i` | 2.50.1 | 2.50.1 (Xcode 26.2; CLT 26.6 is also installed) | macOS is now 26.7.1. Install Xcode 27.1 and select it; the CLT's git is also 2.50.1. Confirm Xcode 27 runs on Intel first. |
+| `simars-macbook-16i` | 2.50.1 | 2.50.1 (CLT 26.6 selected) | macOS is now 26.7.1. Xcode 14.3.1 stopped running on it (git crashed while it was selected), so CLT 26.6 was installed and selected. Same remaining step as 32i. |
 
-* Xcode 27.1 ships Apple Git-157 (2.54.0). The git bundled with "Command Line Tools for Xcode 27.0", the only CLT offered so far (on `simar-mbp`), has not been checked; verify `/usr/bin/git --version` after installing it.
+* Xcode 27.1 ships Apple Git-157 (2.54.0). Command Line Tools 26.6, installed on all four hosts, bundle Apple Git-155 (2.50.1), so a CLT alone cannot meet the requirement. Verify `/usr/bin/git --version` after any toolchain change.
 * Intel Homebrew has no git bottle for macOS 26, so on the Intel hosts the Apple toolchain is the upgrade path.
 

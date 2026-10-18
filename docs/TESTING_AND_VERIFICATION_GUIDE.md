@@ -425,7 +425,7 @@ Summary of empirical verification results across all tested developer workstatio
 
 ## 9. Live Verification on `Simars-MacBook-Work` (Apple Silicon, Rosetta Homebrew)
 
-First migration attempt on an Apple Silicon machine carried over from an Intel Mac: the hardware is `arm64`, but Homebrew is the Intel `/usr/local` install running under Rosetta. The native `/opt/homebrew` changeover is deferred (see `FUTURE_CONSIDERATIONS.md` §8).
+First migration attempt on an Apple Silicon machine carried over from an Intel Mac: the hardware is `arm64`, but Homebrew is the Intel `/usr/local` install running under Rosetta. The native `/opt/homebrew` changeover was completed later the same day (see §9.6).
 
 ### 9.1 Environment Profile
 * **Host:** `Simars-MacBook-Work` (Apple M2 Max, 32 GB), macOS 26.6.2 (Darwin 25.6.0)
@@ -475,6 +475,43 @@ First migration attempt on an Apple Silicon machine carried over from an Intel M
 | `simars-macbook-16i` | 252 (+ `~/.cfg`) | 2,277 | 41 | `~/dotfiles` (`legacy-backup` clone) and `~/symlinks.dotfiles.thoughtbot` archived and removed | 28/28 |
 
 Verification: `git check-ignore -v` in work trees reports `.git/info/exclude:88:*.env*`, `:125:*.sql` and `:21:node_modules/`; no dangling `info/exclude` links; `~/.cfg` `fsck` clean on every host; `chezmoi status` clean. `chezmoi init` on 32i regenerated its config, which differed from the template only by a trailing newline.
+
+### 9.6 Native Homebrew Changeover (2026-10-17)
+
+`Simars-MacBook-Work` moved to native `/opt/homebrew` (Homebrew 7.0.9, arm64, `Rosetta 2: false`), following [`NATIVE_HOMEBREW_KICKOFF.md`](NATIVE_HOMEBREW_KICKOFF.md). The Intel brew in `/usr/local` is still installed; retiring it is a separate decision.
+
+| Step | Result | Evidence / Notes |
+|---|---|---|
+| **Command Line Tools** | PASS, but not as the kickoff assumed | The "CLT 11.7" was never a real install. It was a 2019-2020 leftover in `/Library/Developer/CommandLineTools` (Apple Git-126, clang 11.0.3, x86_64, SDKs up to 10.15, no `pkgutil` receipt). Brew's `CLT.installed?` only tests that `usr/bin/clang` exists, so the stale directory overrode Xcode 27.1 and produced "does not support macOS 26". Removed with `sudo rm -rf`, replaced with CLT 26.6 (`xcode-select --install`); receipt `26.6.0.0.1781586589`, `xcode-select -p` still Xcode.app, Intel `brew doctor` reports ready |
+| **Homebrew install** | PASS | `arch -arm64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`. The installer installs a CLT (and ends with `xcode-select --switch` to it) only when `/Library/Developer/CommandLineTools/usr/bin/git` is missing, so the new CLT had to be in place first |
+| **Package script** | PASS | Rendered with `chezmoi execute-template` into a scratch file and run with `/bin/bash`; chezmoi state untouched; 28/28 `packages.toml` formulae native arm64. `cask "wave"` was removed from the scratch copy |
+| **Casks** | PARTIAL | `iterm2` and `warp` adopted: brew adopts an existing app without `--force`, and the app bundles were not modified. The `alacritty` cask was disabled on 2026-09-01 (Gatekeeper), so it left `packages.toml` (`cc170f6`). `wave` is pending: the next `chezmoi apply` adopts it, so run that from a terminal other than Wave |
+| **Extra formulae** | PASS | 31 Intel leaves installed natively (`gh`, `mysql-client@8.4`, `openjdk` and 28 others). Not installed: `go`, `asdf`, `nvm`, `rbenv` (superseded by mise) and `python@3.8`, `python@3.9`, `python@3.10`, `v8@3.15`, `rc`, `nvtop` (gone, disabled or deprecated) |
+| **mise** | PASS | Native 2026.10.13. The x86 `~/.local/bin/mise` and `installs/` were removed; Go 1.27.2, Node 22.23.3 and Python 3.12.15 reinstalled, all arm64, with the default Python packages; shims re-pointed at `/opt/homebrew/bin/mise` |
+| **Fallbacks** | PASS | `bat`, `dust`, `fx`, `duf`, `gitleaks`, `age`, `age-keygen`, `herdr` removed from `~/.local/bin` only after the native binary existed (versions identical). The gitleaks hook's PATH includes `/opt/homebrew/bin`, so scanning continues |
+| **Intel leftovers** | PASS | `asdf`, then the git 2.49 keg, uninstalled from the Intel brew (asdf was its only dependent; `~/.asdf` kept). Brew left `/usr/local/etc/gitconfig`, which nothing reads |
+| **`gh` login** | PASS | The old token was invalid; after `gh auth login -h github.com` the native `/opt/homebrew/bin/gh` reports `Logged in to github.com account simars` (scopes `gist`, `read:org`, `repo`, `workflow`) and `gh api user` returns the login |
+
+Verification suite, run in a clean login shell:
+
+| Component | Status | Evidence / Notes |
+|---|---|---|
+| **Modern CLI (8/8)** | PASS | All in `/opt/homebrew/bin` (arm64) except `http`, which comes from mise Python 3.12 |
+| **Guarded Aliases** | PASS | `fp ll lt ltree preview dfh duh top` resolve; `ls`, `cat`, `df`, `du` are still the system binaries |
+| **Bare Repo Invariant** | PASS | `config` alias defined at `dot_zshrc.tmpl:29`; 382 tracked files; `fsck` clean; no `~/dotfiles` |
+| **Polyglot Runtimes** | PASS | `mise current`: Go 1.27.2, Node 22.23.3, Python 3.12.15; `node -p process.arch` and `go version` report arm64 |
+| **Cheatsheet** | PASS | `cheat` renders; section 6 (terminal apps) was added with the alacritty change |
+| **Agent Instructions** | PASS | `AGENTS.md` and `CLAUDE.md` only in the source dir; no `~/AGENTS.md`, `~/CLAUDE.md` or `~/.agents/rules/maintain-cheatsheet.md` |
+| **Age Hybrid Encryption** | PASS | The encrypted header carries `ssh-rsa` and `X25519` stanzas (age v1.3.2 arm64). The decrypt half needs the SSH key passphrase, which an agent session cannot supply, so it was run in an interactive terminal: `printf 'x\n' \| chezmoi encrypt \| chezmoi decrypt` round-tripped as expected (confirmed by the operator) |
+| **Gitleaks** | PASS | No leaks; `run_after_99_assert_requirements` exits 0: terminal git 2.56.0, `/usr/bin/git` 2.54.0, gitleaks 8.30.1 |
+| **PATH Hierarchy** | PASS | mise runtimes, mise shims, `~/.local/bin`, `/opt/homebrew/bin`, then `/usr/local/bin`; `brew --prefix` is `/opt/homebrew` |
+| **GitHub SSH** | PASS | Authenticated |
+| **Legacy Retirement** | PASS | 0 links into `~/dotfiles` |
+
+Lessons and loose ends:
+1. `brew bundle check` reports outdated packages as missing, so it is not a test for "installed"; use `brew list`. Pruning `~/Brewfile` (tracked in `~/.cfg`) took two commits, `a091096` and `77f3d6a`, from 245 to 217 lines.
+2. Editing `packages.toml` changes the install script's hash, so the next `chezmoi apply` re-runs `brew bundle` natively. That is idempotent, and it is also what adopts `wave`.
+3. The `~/go/bin` tools (`gopls`, `dlv` and others) are still x86_64 builds and run under Rosetta; reinstall them with `go install` to make them native.
 
 ---
 
