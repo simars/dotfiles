@@ -155,7 +155,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 
 | Command | Purpose | Example |
 | :--- | :--- | :--- |
-| `e <file>` | Open in `$EDITOR` | `e notes.md` (the same program `git commit` and `chezmoi edit` use) |
+| `e <file>` | Open in `$EDITOR` | `e notes.md` (`chezmoi edit` uses the same program; `git commit` follows `core.editor`: VS Code on macOS, `nvim` elsewhere) |
 | `v <file>` | Open in `$VISUAL` | `v notes.md` |
 | `echo $EDITOR $VISUAL` | See which editor was picked | Prints `nvim nvim` where Neovim is installed, `vim vim` otherwise |
 

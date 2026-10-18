@@ -254,7 +254,7 @@ The gitleaks hook is a config-defined hook, which git before 2.54 ignores withou
 * Bump `ver` and `sha` together in `install_standalone_git` to move the pinned git. The function skips the build when `~/.local/bin/git` already meets `requirements.git.min`, so a bump only matters for hosts below the minimum, and any edit to the script re-runs it on every Intel host.
 
 ### 8.6 Open Items After the 2026-10-18 Rollout
-Results of the rollout and review are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.9, and the cleanup that followed your calls is in §9.10. Nothing is broken. Resolved the same day: the dead and unmet `~/Brewfile` entries (`rc`, `mysqlworkbench` and `the_silver_searcher` were dropped in `.cfg` `8bd73f2`), the leftover build tools on `simars-macbook-16i`, the `brew doctor` hygiene warnings on `simars-macbook-32i` (`rc`, `gemini-cli`, `pcre`), and the explicit installs outside `packages.toml` on both Intel hosts. What remains:
+Results of the rollout and review are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.9, and the cleanup that followed your calls is in §9.10. Nothing is broken. Resolved the same day: the dead and unmet `~/Brewfile` entries (`rc`, `mysqlworkbench` and `the_silver_searcher` were dropped in `.cfg` `8bd73f2`), the leftover build tools on `simars-macbook-16i`, the `brew doctor` hygiene warnings on `simars-macbook-32i` (`rc`, `gemini-cli`, `pcre`), the explicit installs outside `packages.toml` on both Intel hosts, and the legacy `~/.nvm` on 16i (deleted, 259 MB). What remains:
 
 | Item | Where | Detail | Needs |
 |---|---|---|---|
@@ -262,5 +262,4 @@ Results of the rollout and review are in `TESTING_AND_VERIFICATION_GUIDE.md` §9
 | Apple git for GUI apps on Intel | 32i, 16i | See §8.5: GUI apps that use `/usr/bin/git` skip the hook. | Commit from a terminal on those hosts. |
 | Non-Homebrew files in `/usr/local` | Work | See §8.1: 49 entries in `bin` and six folders in `etc`. Several are live links (Docker Desktop, `code`, `kubectl`, `tsh`, `multipass`), and some are root-owned. | Ask before cleaning up. |
 | `libunistring` outdated | Work, native brew | The install script runs `brew bundle --no-upgrade`, so nothing upgrades dependencies. | `brew upgrade` when you want it. |
-| Legacy data outside Homebrew | 16i | `~/.nvm` (259 MB, node 10.14.2 and 14.17.3 from before mise) and the pathogen-era `~/.vim/bundle` plugins. `brew uninstall nvm` does not touch them, and nothing sources `nvm` any more. | Say if `~/.nvm` should be deleted. |
 | `pcre2` stays | all hosts | `ripgrep` and `zsh` (both in `packages.toml`) depend on it, and on Apple silicon so do `git` and others. It is the maintained library; only the old `pcre` was removed. | None. |

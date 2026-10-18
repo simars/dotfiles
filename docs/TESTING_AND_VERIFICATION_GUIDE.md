@@ -623,6 +623,23 @@ Done on the owner's calls after §9.9.
 * A first attempt removed nothing because the candidate list reached `brew` as a single word: zsh does not split an unquoted variable. Use `setopt shwordsplit` or `${=var}` in zsh snippets.
 * Left alone on purpose: the non-Homebrew files in `/usr/local` on Work, `~/.nvm` on 16i, and the Xcode update on 32i.
 
+
+### 9.11 Closing the Remaining Items for the Intel Hosts (2026-10-18)
+
+The two Intel hosts (`simars-macbook-32i`, `simars-macbook-16i`) were taken through every open item of the private next-steps list.
+
+| Item | Result |
+|---|---|
+| Publish the unpushed dotfiles commits | Pushed as fast-forwards in four pushes (`03ed4b4` to `60651a2`; no merge commits, no bypassed rules). The Intel hosts cannot unlock the GitHub key, so they took verified bundles; both are at `60651a2`, equal to GitHub, and `chezmoi apply` exits 0 on both. |
+| Source builds on Intel | Closed in §9.9. |
+| `EDITOR` and `VISUAL` unset | `60651a2` sets them in `~/.zshrc` to the first of `nvim`, `vim`, `vi` on `PATH` (a value already in the environment wins), before `~/.aliases` is read. Tested in five scenarios, then verified in real login shells on both hosts (`nvim`, and `alias e` and `alias v` expand to it). `chezmoi edit` uses it; `git commit` keeps `core.editor` (`code --wait` on macOS). The message of `60651a2` says git fell back to `vi`; that is wrong, git used `core.editor` all along. |
+| Old backups | Deleted on both hosts: the `~/.dotfiles.backup.20261017_1758*` folder (logs and a symlink-restore script for rcm) and the `~/.dotfiles.legacy.*.tar.gz` tarball (1.0 MB on 32i, 16 MB on 16i), plus three smaller leftovers of the same retired setup: two folders holding only dangling links, and 16i's copies of the pre-chezmoi `.zshrc`, `.zprofile`, `.gitconfig` and `.tmux.conf`. gitleaks found nothing in them, and they differed from the live files only by thoughtbot's retired `templatedir` line. The old history stays on GitHub as `legacy-backup` (`672f6ff`). |
+| Legacy `~/.nvm` on 16i | Deleted (259 MB; node 10.14.2 and 14.17.3). Nothing sourced it or ran from it; mise manages node. |
+| `gh` login | `gh` is not installed on 16i. On 32i it is installed but not logged in, on purpose: a login needs browser approval, and over SSH the token would be stored in plain text because the login keychain is locked. |
+| Old thoughtbot helpers | Not re-added (nothing was missed); they remain on `legacy-backup`. |
+
+Still open for the two hosts, all outside what an agent can do: Xcode 26.2 on 32i is outdated (App Store; Apple's git stays 2.50.1 either way), GUI apps that call `/usr/bin/git` skip the hook (accepted, see `FUTURE_CONSIDERATIONS.md` §8.5), and the rotated credential values are tracked in the private notes.
+
 ---
 
 ## 10. Global Secret-Scanning Hook Verification (2026-10-17)
