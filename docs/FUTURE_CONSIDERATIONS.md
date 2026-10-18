@@ -254,7 +254,7 @@ The gitleaks hook is a config-defined hook, which git before 2.54 ignores withou
 * Bump `ver` and `sha` together in `install_standalone_git` to move the pinned git. The function skips the build when `~/.local/bin/git` already meets `requirements.git.min`, so a bump only matters for hosts below the minimum, and any edit to the script re-runs it on every Intel host.
 
 ### 8.6 Open Items After the 2026-10-18 Rollout
-Results of the rollout and review are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.9, and the cleanup that followed your calls is in §9.10. Nothing is broken. Resolved the same day: the dead and unmet `~/Brewfile` entries (`rc`, `mysqlworkbench` and `the_silver_searcher` were dropped in `.cfg` `8bd73f2`), the leftover build tools on `simars-macbook-16i`, the `brew doctor` hygiene warnings on `simars-macbook-32i` (`rc`, `gemini-cli`, `pcre`), the explicit installs outside `packages.toml` on both Intel hosts, and the legacy `~/.nvm` on 16i (deleted, 259 MB). What remains:
+Results of the rollout and review are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.9, and the cleanup that followed your calls is in §9.10. Nothing is broken. Resolved the same day: the dead and unmet `~/Brewfile` entries (`rc`, `mysqlworkbench` and `the_silver_searcher` were dropped in `.cfg` `8bd73f2`), the leftover build tools on `simars-macbook-16i`, the `brew doctor` hygiene warnings on `simars-macbook-32i` (`rc`, `gemini-cli`, `pcre`), the explicit installs outside `packages.toml` on both Intel hosts, and the legacy `~/.nvm` (deleted on all four Macs, see §9.12 of the testing guide). What remains:
 
 | Item | Where | Detail | Needs |
 |---|---|---|---|
