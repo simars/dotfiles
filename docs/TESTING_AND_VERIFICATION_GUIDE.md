@@ -9,7 +9,7 @@ This guide documents the architecture, migration safety, testing procedures, and
 ### 1.1 Source vs. Destination
 * **Source Repository:** `~/.local/share/chezmoi` (Git repository on branch `main`, tracking `git@github.com:simars/dotfiles.git`).
 * **Target / Destination:** Active `$HOME` (`/Users/simars` on macOS, `/home/<user>` on Ubuntu).
-* **Remote Legacy Backup:** Prior GitHub history is preserved on the remote branch [`legacy-backup`](https://github.com/simars/dotfiles/tree/legacy-backup).
+* **No legacy branch:** the pre-chezmoi history that lived on a `legacy-backup` branch was deleted from GitHub on 2026-10-18 and is not kept in this repository.
 
 ### 1.2 Repository Tree
 ```text
@@ -472,7 +472,7 @@ First migration attempt on an Apple Silicon machine carried over from an Intel M
 |---|---|---|---|---|---|
 | `simar-mbp` | 38 (+ `~/.cfg`) | 342 | 0 | `~/dotfiles` already gone | `~/.gitconfig.local` + `.work`; 5/5 work repos resolve to the work email |
 | `simars-macbook-32i` | 92 (+ `~/.cfg`) | 837 | 48 | thoughtbot `~/dotfiles` archived and removed | 7/7 |
-| `simars-macbook-16i` | 252 (+ `~/.cfg`) | 2,277 | 41 | `~/dotfiles` (`legacy-backup` clone) and `~/symlinks.dotfiles.thoughtbot` archived and removed | 28/28 |
+| `simars-macbook-16i` | 252 (+ `~/.cfg`) | 2,277 | 41 | `~/dotfiles` (old clone of this repo) and `~/symlinks.dotfiles.thoughtbot` archived and removed | 28/28 |
 
 Verification: `git check-ignore -v` in work trees reports `.git/info/exclude:88:*.env*`, `:125:*.sql` and `:21:node_modules/`; no dangling `info/exclude` links; `~/.cfg` `fsck` clean on every host; `chezmoi status` clean. `chezmoi init` on 32i regenerated its config, which differed from the template only by a trailing newline.
 
@@ -633,10 +633,10 @@ The two Intel hosts (`simars-macbook-32i`, `simars-macbook-16i`) were taken thro
 | Publish the unpushed dotfiles commits | Pushed as fast-forwards in four pushes (`efd3fb2` to `22cffa2`; no merge commits, no bypassed rules). The Intel hosts cannot unlock the GitHub key, so they took verified bundles; both are at `22cffa2`, equal to GitHub, and `chezmoi apply` exits 0 on both. |
 | Source builds on Intel | Closed in §9.9. |
 | `EDITOR` and `VISUAL` unset | `22cffa2` sets them in `~/.zshrc` to the first of `nvim`, `vim`, `vi` on `PATH` (a value already in the environment wins), before `~/.aliases` is read. Tested in five scenarios, then verified in real login shells on both hosts (`nvim`, and `alias e` and `alias v` expand to it). `chezmoi edit` uses it; `git commit` keeps `core.editor` (`code --wait` on macOS). The message of `22cffa2` says git fell back to `vi`; that is wrong, git used `core.editor` all along. |
-| Old backups | Deleted on both hosts: the `~/.dotfiles.backup.20261017_1758*` folder (logs and a symlink-restore script for rcm) and the `~/.dotfiles.legacy.*.tar.gz` tarball (1.0 MB on 32i, 16 MB on 16i), plus three smaller leftovers of the same retired setup: two folders holding only dangling links, and 16i's copies of the pre-chezmoi `.zshrc`, `.zprofile`, `.gitconfig` and `.tmux.conf`. gitleaks found nothing in them, and they differed from the live files only by thoughtbot's retired `templatedir` line. The old history stays on GitHub as `legacy-backup` (`9f33a87`). |
+| Old backups | Deleted on both hosts: the `~/.dotfiles.backup.20261017_1758*` folder (logs and a symlink-restore script for rcm) and the `~/.dotfiles.legacy.*.tar.gz` tarball (1.0 MB on 32i, 16 MB on 16i), plus three smaller leftovers of the same retired setup: two folders holding only dangling links, and 16i's copies of the pre-chezmoi `.zshrc`, `.zprofile`, `.gitconfig` and `.tmux.conf`. gitleaks found nothing in them, and they differed from the live files only by thoughtbot's retired `templatedir` line. The branch that held the old history (`legacy-backup`) was deleted from GitHub on 2026-10-18. |
 | Legacy `~/.nvm` on 16i | Deleted (259 MB; node 10.14.2 and 14.17.3). No process ran from it and no shell config sourced it; three MCP wrapper scripts put it on `PATH` only if it existed (§9.12). mise manages node. |
 | `gh` login | `gh` is not installed on 16i. On 32i it is installed but not logged in, on purpose: a login needs browser approval, and over SSH the token would be stored in plain text because the login keychain is locked. |
-| Old thoughtbot helpers | Not re-added (nothing was missed); they remain on `legacy-backup`. |
+| Old thoughtbot helpers | Not re-added (nothing was missed); they are no longer kept in this repository. |
 
 Still open for the two hosts, all outside what an agent can do: Xcode 26.2 on 32i is outdated (App Store; Apple's git stays 2.50.1 either way), GUI apps that call `/usr/bin/git` skip the hook (accepted, see `FUTURE_CONSIDERATIONS.md` §8.5), and the rotated credential values are tracked in the private notes.
 
