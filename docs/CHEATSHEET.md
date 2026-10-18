@@ -165,3 +165,14 @@ The configuration strictly separates shared, tracked dotfiles from machine-speci
 
 > [!TIP]
 > Never commit secrets or machine-specific tokens into `~/.local/share/chezmoi`. Place sensitive variables in `~/secrets.env` or `~/work.secret.env`, which are ignored by Git and protected from repository leaks.
+
+---
+
+## 6. Terminal Applications (macOS)
+
+| App | Installed By | Notes |
+| :--- | :--- | :--- |
+| iTerm2 | `cask "iterm2"` in `packages.toml` | Brew adopts an existing `/Applications/iTerm.app` without replacing it. |
+| Warp | `cask "warp"` in `packages.toml` | Same adoption behaviour as iTerm2. |
+| Wave | `cask "wave"` in `packages.toml` | Adopt or reinstall it from a different terminal, never from inside Wave. |
+| Alacritty | Not managed by Homebrew | Its cask was disabled on 2026-09-01 for failing the macOS Gatekeeper check, so install or update the app by hand. `~/.config/alacritty/alacritty.toml` is still deployed by chezmoi. |

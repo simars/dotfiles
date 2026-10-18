@@ -31,7 +31,6 @@ formulae = [
 ]
 casks = [
     "1password-cli",
-    "alacritty",
     "font-jetbrains-mono-nerd-font",
     "iterm2",
     "warp",
