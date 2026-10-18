@@ -244,7 +244,7 @@ The gitleaks hook is a config-defined hook, which git before 2.54 ignores withou
 | `Simars-MacBook-Work` | 2.56.0 (Homebrew, native) | 2.54.0 (Xcode 27.1) | None: the requirement check passes. |
 | `simar-mbp` | 2.56.0 (Homebrew) | 2.54.0 (Xcode 27.1 selected) | None: the requirement check passes. |
 | `simars-macbook-32i` | 2.56.0 (standalone, `~/.local/bin/git`, x86_64, built from source by `chezmoi apply`) | 2.50.1 (Xcode 26.2; CLT 26.6 is also installed) | None: `chezmoi apply` exits 0 with a `WARN` for `/usr/bin/git`. A synthetic `ghp_` token commit was blocked by the live hook. |
-| `simars-macbook-16i` | 2.56.0 (standalone, as on 32i) | 2.50.1 (CLT 26.6 selected; Xcode 14.3.1 stopped running on it, so CLT was installed) | None: `chezmoi apply` exits 0 with the same `WARN`. Checked from the apply's own requirement output; the live token test was run on 32i only. |
+| `simars-macbook-16i` | 2.56.0 (standalone, as on 32i) | 2.50.1 (CLT 26.6 selected; Xcode 14.3.1 stopped running on it, so CLT was installed) | None: `chezmoi apply` exits 0 with the same `WARN`. A live test with a random fake `ghp_` token was blocked on both Intel hosts (16i on 2026-10-18, after the guard rollout). |
 
 * Xcode 27.1 ships Apple Git-157 (2.54.0). Command Line Tools 26.6, installed on all four hosts, bundle Apple Git-155 (2.50.1), so a CLT alone cannot meet the requirement. Verify `/usr/bin/git --version` after any toolchain change.
 * **Xcode 27 runs only on Apple silicon.** Apple's release notes, as quoted in the developer forums, say so, and a beta failed on an Intel MacBook under Tahoe 26.5. The Intel hosts therefore cannot reach Apple git 2.54 through Xcode, and Intel Homebrew has no git bottle for macOS 26.
@@ -253,3 +253,14 @@ The gitleaks hook is a config-defined hook, which git before 2.54 ignores withou
 * The other options were (b) leave the Intel check failing as a permanent reminder and (c) drop the global hook on Intel and rely on per-repo hooks. Neither was needed.
 * Bump `ver` and `sha` together in `install_standalone_git` to move the pinned git. The function skips the build when `~/.local/bin/git` already meets `requirements.git.min`, so a bump only matters for hosts below the minimum, and any edit to the script re-runs it on every Intel host.
 
+### 8.6 Open Items After the 2026-10-18 Rollout
+Results of the rollout and review are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.9. Nothing is broken; these are decisions or user actions.
+
+| Item | Where | Detail | Needs |
+|---|---|---|---|
+| Dead and unmet `~/Brewfile` entries | all hosts, `.cfg` | `brew "rc"` has no formula in Homebrew any more (`brew info rc` fails; 32i still holds a keg with no formula). `cask "mysqlworkbench"` exists natively and `MySQLWorkbench.app` is installed on Work, but native brew does not own it, so `brew bundle check --file=~/Brewfile` fails on Work (and on `simar-mbp`, where `dbeaver-community`, `font-hack-nerd-font`, `visual-studio-code` and the VS Code extensions are unmet as well). Nothing runs `brew bundle` on `~/Brewfile`: the install script uses `.chezmoidata/packages.toml`. | Your call: drop `rc`; adopt `mysqlworkbench` natively or drop it. The other session curates this file, so it was not touched here. |
+| Leftover build tools on `simars-macbook-16i` | Intel brew | The earlier 7-hour apply left kegs that were never requested and that nothing installed uses: `rust` (441 MB), `go` (275 MB), `zig@0.16` (247 MB), `ruby` (114 MB, unlinked), `cmake`, `sphinx-doc` and a few small ones. Removing `rust` also frees the `llvm` (1.6 GB) and `llvm@21` (1.4 GB) kegs it pulls in. `brew autoremove` does not list them. Disk is not a problem (191 GB free). | Your call. `brew uninstall rust go zig@0.16 ruby cmake sphinx-doc && brew autoremove` would reclaim it; re-installing any of them means compiling again. |
+| Hygiene warnings from `brew doctor` on `simars-macbook-32i` | Intel brew | `rc` (keg without a formula), `gemini-cli` and `pcre` (deprecated), and Xcode 26.2 outdated (the App Store offers 26.6; Xcode 27 does not run on Intel). | Optional: `brew uninstall rc`, replace the deprecated formulae, update Xcode from the App Store. Updating Xcode does not change Apple's git (2.50.1). |
+| Apple git for GUI apps on Intel | 32i, 16i | See §8.5: GUI apps that use `/usr/bin/git` skip the hook. | Commit from a terminal on those hosts. |
+| Non-Homebrew files in `/usr/local` | Work | See §8.1: 49 entries in `bin` and six folders in `etc`. | Ask before cleaning up. |
+| `libunistring` outdated | Work, native brew | The install script runs `brew bundle --no-upgrade`, so nothing upgrades dependencies. | `brew upgrade` when you want it. |

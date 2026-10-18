@@ -549,7 +549,7 @@ Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `
 | `Simars-MacBook-Work` | arm64 | exit 0 | The install script did not re-run (its arm64 render is byte-identical to before); requirement check OK |
 | `simar-mbp` | arm64 | exit 0 | Same |
 | `simars-macbook-32i` | x86_64 | exit 0 | Built git 2.56.0 (x86_64) into `~/.local`; keychain helper and `~/.local/etc/gitconfig` present; `git hook list pre-commit` shows `gitleaks`; a synthetic `ghp_` token commit was blocked and the token never appeared in the output; no build directory left in `/tmp`; `/usr/bin/git` is 2.50.1, reported as `WARN` |
-| `simars-macbook-16i` | x86_64 | exit 0 | Requirement check printed `OK: terminal git is git 2.56.0 (~/.local/bin/git)`, the `WARN` for `/usr/bin/git` 2.50.1, and "Requirement check passed with warnings". The live token test was not run here (see below) |
+| `simars-macbook-16i` | x86_64 | exit 0 | Requirement check printed `OK: terminal git is git 2.56.0 (~/.local/bin/git)`, the `WARN` for `/usr/bin/git` 2.50.1, and "Requirement check passed with warnings". The live token test was run later (see §9.9) |
 
 **Build notes:**
 1. Without `NO_RUST=YesPlease` the build stops with `cargo: command not found`, and the osxkeychain helper must be built with the same make flags: with gettext enabled it failed to link. The HTTPS test that failed during the build was caused by the user's own `url.insteadOf` rule, not by a defect in the build.
@@ -559,6 +559,49 @@ Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `
 * The script exports `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` to forbid exactly this (`AGENTS.md` §4.1). On 32i the same `brew bundle` stopped with `no bottle available!` for formulae such as `git`, `mise`, `neovim`, `vim`, `herdr`, `go`, `httpie` and `openssl@4`, and built nothing. The difference between the hosts was a Homebrew version difference, established later (see §9.9): 32i ran Homebrew 6.0.12, which refuses fresh installs without a bottle, and 16i ran 7.0.9, which only refuses them on arm64 CPUs. `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK` is not in either version's source.
 * Side effects on 16i: `docker` and `docker-compose` built but were not linked (`/usr/local/bin/docker` and `docker-compose` already exist), `vim` was not linked (`share/emacs/site-lisp/cmake/cmake-mode.el` belongs to `cmake`), `neovim` refused to install because `utf8proc` is pinned, `herdr` failed, and `brew autoremove` removed `lua`. A Homebrew-built `git` 2.56.0_1 now also sits in `/usr/local`; the standalone git in `~/.local/bin` is first on the script's PATH. `brew bundle` still ended in the script's "Some Homebrew packages could not be installed ... Continuing" warning, which is why the apply exited 0.
 * Follow-up is recorded in `FUTURE_CONSIDERATIONS.md` §8.2. The §9.7 "exit 1" results for the Intel hosts above are superseded by this table.
+
+
+### 9.9 Guard Rollout and Review of All Four Hosts (2026-10-18)
+
+`105ecac` (bottle-only `brew bundle` on Intel) and `52f1401` (`brew update` with an empty `HOME`) were pushed to `simars/dotfiles` as fast-forwards (`03ed4b4..105ecac`, then `..52f1401`; no merge commits, no bypassed rules). `~/.cfg` was already in sync at `a29d9ff` on all four hosts. `simar-mbp` pulled from GitHub; the Intel hosts, which cannot unlock the SSH key for GitHub, took verified git bundles guarded on the expected prerequisite commit.
+
+**Root cause of the 7-hour build (§9.8), established.** Homebrew 7.0.9 only refuses a fresh install without a bottle on arm64 CPUs (`fresh_install?` in `extend/os/mac/formula_installer.rb`), so on Intel it compiles; Homebrew 6.0.12 refused on any CPU. `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK` is in neither source. Hence 32i (6.0.12) refused and 16i (7.0.9) compiled, and 32i would have compiled after its brew updated. `brew update` could not update Homebrew on 32i at all, because `~/.gitconfig` rewrites https clones to ssh and `bin/brew` drops every environment variable except `HOME` and `HOMEBREW_*`, so `GIT_CONFIG_GLOBAL` has no effect.
+
+**The guard, tested before it ran for real.** `brew_bundle_bottled_only` was extracted from the rendered script and run on both Intel hosts under the system `/bin/bash` 3.2 with only `brew bundle` stubbed.
+
+| Test | 32i | 16i |
+|---|---|---|
+| Real Brewfile (28 formulae) | Kept 11 installed or bottled formulae, skipped 17 with the formulae that would need compiling | Kept 25, skipped `herdr`, `neovim`, `vim` |
+| Same list plus `nosuchformula` | `WARNING ... installing only what is already installed`; kept only the installed ones | Same |
+| On Homebrew 7.0.9 (32i after updating) | Identical skip list to 6.0.12 | n/a (already 7.0.9) |
+| Real `brew update` with an empty `HOME` | 6.0.12 to 7.0.9, no temporary directory left | No-op |
+| arm64 render of the script | Byte-identical to before (`cmp`), so arm64 hosts do not re-run it | |
+
+**Apply results.**
+
+| Host | `chezmoi apply` | Duration | Notes |
+|---|---|---|---|
+| `Simars-MacBook-Work` | exit 0 | seconds | Install script did not re-run; requirement check OK (git 2.56.0, `/usr/bin/git` 2.54.0, gitleaks 8.30.1) |
+| `simar-mbp` | exit 0 | seconds | Same |
+| `simars-macbook-16i` | exit 0 (twice) | 26 s, then 18 s (was 7.4 hours) | Nothing compiled; skipped `herdr`, `neovim`, `vim`; `docker` and `docker-compose` kegs from the earlier compile still failed to link on each apply until they were uninstalled (below) |
+| `simars-macbook-32i` | exit 0 | 13 s | Nothing compiled; 17 formulae skipped with reasons; Homebrew was on 7.0.9 |
+
+**Fixes made during the review.**
+1. 16i: `brew uninstall docker docker-compose`. They were built unlinked by the earlier compile (Docker Desktop's links occupy `/usr/local/bin`), nothing used them, and `brew bundle` retried the link on every apply. Docker Desktop's CLI is untouched. The guard will not reinstall them (no bottle).
+2. 32i: `brew untap homebrew/bundle`, a deprecated tap that `brew bundle` no longer needs (it is built in).
+3. 32i and 16i: `mise reshim`. `mise doctor` reported missing shims for Python CLIs (`http`, `httpie`, `https`, `idna`, `markdown-it`, `normalizer`, `pygmentize`); it now reports no problems.
+4. 32i and 16i: `brew ruby` turned Homebrew developer mode on during probing; `brew developer off` restored it (the state before was off, since the probe announced the switch).
+
+**Verification on all four hosts.** `chezmoi` at `52f1401`, clean tree, no merge commits, `chezmoi status` shows only the always-run scripts; `~/.cfg` at `a29d9ff`, clean; `~/.cheatsheet.md` carries the new Intel row; a clean-environment login shell resolves git 2.56.0 and the `gitleaks` hook is listed; `mise doctor` has no problems on all four hosts. A random fake `ghp_` token committed in a throwaway repo on 16i was blocked (exit 1, the token never printed, no commit created), and a clean commit passed. On Work, `brew doctor` has only the Command Line Tools notice.
+
+**False alarms, so nobody chases them again.**
+* `zsh -lic exit` from a tool shell without a terminal prints `can't change option: zle`; in a pseudo-terminal there is no output.
+* `brew doctor` run from a tool shell warns that `/usr/bin` precedes `/opt/homebrew/bin`; a clean login shell has Homebrew first.
+* The login PATH lists a few Apple system directories that do not exist (`/var/run/com.apple.security.cryptexd/...`, `/pkg/env/global/bin`, `/Library/Apple/usr/bin`); they come from `/etc/paths.d`.
+* On Work the stale-looking `/usr/local/opt/...` branches in `~/.zshrc.local` are `elif` guards that never match now.
+* The requirement check uses its own PATH, so on 16i it reports the standalone `~/.local/bin/git` while an interactive shell uses the Homebrew-built `/usr/local/bin/git`; both are 2.56.0.
+
+Open decisions and user actions are in `FUTURE_CONSIDERATIONS.md` §8.6.
 
 ---
 
