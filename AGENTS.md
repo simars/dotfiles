@@ -76,6 +76,7 @@ Agents must strictly uphold these architectural guarantees at all times:
 - Intel macOS (macOS 26+) is classified as Tier 3 / deprecated in Homebrew.
 - **Do Not Compile from Source:** Always set `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` and pass `--no-upgrade` on Intel machines to prevent multi-hour source compilation of unbottled formulas.
 - **Standalone Binary Fallback:** For unbottled or failing Rust/C++/Go packages (`bat`, `dust`, `fx`, `mise`, `age`, `starship`), provision or instruct fallback to precompiled standalone binaries installed into `~/.local/bin`.
+- **Exception, `git`:** No precompiled git exists for Intel macOS, Intel Homebrew has no git bottle, and Xcode 27 (Apple git 2.54) is Apple silicon only. The install script therefore builds a pinned git from source into `~/.local` on Intel Macs (checksum verified, `NO_RUST=YesPlease NO_GETTEXT=YesPlease NO_TCLTK=YesPlease`, about a minute). This is outside Homebrew, so the "do not compile" rule above is unaffected. The post-apply check treats `/usr/bin/git` as a warning on Intel and as a failure on Apple silicon.
 
 ### 4.2 macOS Apple Silicon (`arm64`)
 - Homebrew prefix is `/opt/homebrew`.

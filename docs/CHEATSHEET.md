@@ -116,7 +116,8 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | **Skip once** | `git commit --no-verify` | Bypasses all pre-commit hooks for this commit only. |
 | **Opt a repo out** | `git config hook.gitleaks.enabled false` | Disables the scan in the current repo only. |
 | **Scan by hand** | `gitleaks git --pre-commit --staged --redact` | Same check the hook runs, without committing. |
-| **Check requirements** | `git --version` and `/usr/bin/git --version` | Both must be >= 2.54 (`.chezmoidata/requirements.toml`). Every `chezmoi apply` asserts this and that `gitleaks` is installed, printing the fix and failing until met. |
+| **Check requirements** | `git --version` and `/usr/bin/git --version` | Both must be >= 2.54 (`.chezmoidata/requirements.toml`). Every `chezmoi apply` asserts this and that `gitleaks` is installed, printing the fix and failing until met. On Intel Macs only the terminal git is a hard requirement; `/usr/bin/git` is reported as a `WARN` and the apply still passes. |
+| **Intel Macs: standalone git** | `~/.local/bin/git --version` | Xcode 27 is Apple silicon only and Intel Homebrew has no git bottle, so `chezmoi apply` builds git from source into `~/.local` (pinned version, checksum verified, about a minute, needs the Command Line Tools). GUI apps that use `/usr/bin/git` (Apple's 2.50.1) skip the hook, so commit from a terminal. |
 
 ### Chezmoi Workflow Commands
 `chezmoi` manages dotfiles declaratively from `~/.local/share/chezmoi`.

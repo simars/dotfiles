@@ -118,6 +118,55 @@ if ! command -v fx &> /dev/null; then
     chmod +x "$HOME/.local/bin/fx" 2>/dev/null || true
 fi
 
+{{ if ne .chezmoi.arch "arm64" -}}
+# Standalone git for Intel Macs. Xcode 27 is Apple silicon only, so Apple's git here stops at 2.50.1, and
+# Intel Homebrew has no git bottle; the global gitleaks hook needs git >= {{ .requirements.git.min }}. Build from source into
+# ~/.local (needs the Command Line Tools; about a minute). Steps are chained with && because bash ignores
+# `set -e` inside a function called from `|| true`.
+install_standalone_git() {
+    local min="{{ .requirements.git.min }}" ver="2.56.0"
+    local sha="26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
+    local have work log flags sysconf tmp
+    have="$("$HOME/.local/bin/git" --version 2> /dev/null | awk '{print $3}' | sed 's/[^0-9.].*//')"
+    if [[ -n "$have" && "$(printf '%s\n%s\n' "$have" "$min" | sort -V | head -n 1)" == "$min" ]]; then
+        return 0
+    fi
+    if ! xcrun --find cc &> /dev/null || ! xcrun --find make &> /dev/null; then
+        echo "WARNING: no compiler found (install the Command Line Tools with xcode-select --install); cannot build the standalone git."
+        return 1
+    fi
+    echo "==> Building standalone git ${ver} into ~/.local (Intel Mac: no Homebrew bottle, Xcode 27 is Apple silicon only)..."
+    work="$(mktemp -d "${TMPDIR:-/tmp}/gitbuild.XXXXXX")" || return 1
+    log="${work}/build.log"
+    flags="NO_RUST=YesPlease NO_GETTEXT=YesPlease NO_TCLTK=YesPlease"
+    if ! (
+        cd "$work" &&
+        curl -fsSL -o git.tar.xz "https://mirrors.edge.kernel.org/pub/software/scm/git/git-${ver}.tar.xz" &&
+        echo "${sha}  git.tar.xz" | shasum -a 256 -c - &&
+        tar -xJf git.tar.xz &&
+        cd "git-${ver}" &&
+        make -j"$(sysctl -n hw.ncpu)" prefix="$HOME/.local" $flags all &&
+        make prefix="$HOME/.local" $flags install &&
+        make -C contrib/credential/osxkeychain prefix="$HOME/.local" $flags &&
+        install -m 755 contrib/credential/osxkeychain/git-credential-osxkeychain "$HOME/.local/libexec/git-core/git-credential-osxkeychain"
+    ) > "$log" 2>&1; then
+        echo "WARNING: building the standalone git failed; see ${log}"
+        return 1
+    fi
+    # Apple's git takes its keychain credential helper from its own system config; give this git the same.
+    sysconf="$HOME/.local/etc/gitconfig"
+    if [[ ! -e "$sysconf" ]]; then
+        mkdir -p "$HOME/.local/etc" &&
+            tmp="$(mktemp "${sysconf}.XXXXXX")" &&
+            printf '[credential]\n\thelper = osxkeychain\n' > "$tmp" &&
+            mv "$tmp" "$sysconf"
+    fi
+    echo "==> Standalone git $("$HOME/.local/bin/git" --version | awk '{print $3}') installed in ~/.local/bin"
+    rm -rf "${work:?}"
+}
+install_standalone_git || true
+
+{{ end -}}
 if ! command -v lvim &> /dev/null; then
     echo "==> Installing LunarVim..."
     bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies || true

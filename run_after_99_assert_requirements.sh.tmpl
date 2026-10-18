@@ -11,6 +11,7 @@ fi
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 GIT_MIN="{{ .requirements.git.min }}"
 failed=0
+warned=0
 
 # version_ge A B: succeed when version A >= version B
 version_ge() {
@@ -21,15 +22,25 @@ git_version() {
     "$1" --version 2> /dev/null | awk '{print $3}' | sed 's/[^0-9.].*//'
 }
 
+# report LEVEL MESSAGE: LEVEL "fail" fails the run, "warn" only prints a warning
+report() {
+    if [[ "$1" == "warn" ]]; then
+        echo "WARN: $2"
+        warned=1
+    else
+        echo "FAIL: $2"
+        failed=1
+    fi
+}
+
+# check_git BIN ROLE FIX [LEVEL]: LEVEL defaults to "fail"
 check_git() {
-    local bin="$1" role="$2" fix="$3" v
+    local bin="$1" role="$2" fix="$3" level="${4:-fail}" v
     v="$(git_version "$bin")"
     if [[ -z "$v" ]]; then
-        echo "FAIL: $role ($bin) does not run. Fix: $fix"
-        failed=1
+        report "$level" "$role ($bin) does not run. Fix: $fix"
     elif ! version_ge "$v" "$GIT_MIN"; then
-        echo "FAIL: $role is git $v ($bin); the gitleaks hook needs >= $GIT_MIN. Fix: $fix"
-        failed=1
+        report "$level" "$role is git $v ($bin); the gitleaks hook needs >= $GIT_MIN. Fix: $fix"
     else
         echo "OK:   $role is git $v ($bin)"
     fi
@@ -40,16 +51,22 @@ check_git() {
 {{ if eq .chezmoi.arch "arm64" -}}
 check_git "$(command -v git)" "terminal git" "brew install git"
 {{- else -}}
-check_git "$(command -v git)" "terminal git" "install Xcode 27.1+ (or its Command Line Tools) and select it with xcode-select; Intel Homebrew has no git bottle"
+check_git "$(command -v git)" "terminal git" "re-run chezmoi apply to build the standalone git into ~/.local/bin (it needs the Command Line Tools: xcode-select --install); Intel Homebrew has no git bottle and Xcode 27 is Apple silicon only"
 {{- end }}
 
 # Apple git: GUI apps launched from the Dock use /usr/bin/git, which follows xcode-select
+{{ if eq .chezmoi.arch "arm64" -}}
+APPLE_LEVEL="fail"
+APPLE_FIX="sudo xcode-select -s /Applications/Xcode.app/Contents/Developer (Xcode 27.1+), or install Command Line Tools for Xcode 27.1+ (softwareupdate --list)"
+{{- else -}}
+# Intel Macs cannot get git >= {{ .requirements.git.min }} from Apple tooling (Xcode 27 is Apple silicon only), so this is a warning there.
+APPLE_LEVEL="warn"
+APPLE_FIX="none on Intel Macs: GUI apps that use /usr/bin/git skip the gitleaks hook; commit from a terminal, which uses the standalone git in ~/.local/bin"
+{{- end }}
 if ! xcode-select -p &> /dev/null; then
-    echo "FAIL: no Xcode or Command Line Tools selected, so /usr/bin/git cannot run. Fix: xcode-select --install"
-    failed=1
+    report "$APPLE_LEVEL" "no Xcode or Command Line Tools selected, so /usr/bin/git cannot run. Fix: xcode-select --install"
 else
-    check_git /usr/bin/git "Apple /usr/bin/git ($(xcode-select -p))" \
-        "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer (Xcode 27.1+), or install Command Line Tools for Xcode 27.1+ (softwareupdate --list)"
+    check_git /usr/bin/git "Apple /usr/bin/git ($(xcode-select -p))" "$APPLE_FIX" "$APPLE_LEVEL"
 fi
 {{- else }}
 check_git "$(command -v git)" "git" "sudo add-apt-repository -y ppa:git-core/ppa && sudo apt-get install -y git"
@@ -69,4 +86,8 @@ fi
 if [[ "$failed" -ne 0 ]]; then
     echo "==> Requirement check failed: commits on this machine are not fully secret-scanned."
     exit 1
+fi
+
+if [[ "$warned" -ne 0 ]]; then
+    echo "==> Requirement check passed with warnings (WARN lines above)."
 fi
