@@ -43,13 +43,21 @@ fi
 # keep only the formulae that are already installed.
 # shellcheck disable=SC2086 # word splitting of $names and $all is intended: one formula per argument
 brew_bundle_bottled_only() {
-    local brewfile names deps all info decision skip ruby
+    local brewfile names deps all info decision skip ruby brew_home cache logs
     brewfile="$(cat)"
     names="$(printf '%s\n' "$brewfile" | sed -n 's/^brew "\(.*\)"$/\1/p')"
     ruby="$(brew --repository)/Library/Homebrew/vendor/portable-ruby/current/bin/ruby"
     [[ -x "$ruby" ]] || ruby=/usr/bin/ruby
     export HOMEBREW_NO_ENV_HINTS=1
-    brew update --quiet > /dev/null 2>&1 || true
+    # Homebrew's repos are public, but the global url.insteadOf rule (https to ssh) makes `brew update` fail on hosts whose
+    # SSH key cannot be unlocked non-interactively, which leaves brew itself on an old version. bin/brew drops every
+    # variable except HOME and HOMEBREW_*, so the only way past the rule is an empty HOME (cache and logs stay put).
+    brew_home="$(mktemp -d)"
+    cache="$HOME/Library/Caches/Homebrew"
+    logs="$HOME/Library/Logs/Homebrew"
+    HOME="$brew_home" HOMEBREW_CACHE="${HOMEBREW_CACHE:-$cache}" HOMEBREW_LOGS="${HOMEBREW_LOGS:-$logs}" \
+        brew update --quiet > /dev/null 2>&1 || true
+    rm -rf "${brew_home:?}"
     export HOMEBREW_NO_AUTO_UPDATE=1
     decision=""
     if [[ -n "$names" ]]; then
