@@ -243,13 +243,13 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 
 ### 8.4 Identity and Legacy Leftovers (resolved)
 * Resolved: the work identity lives in `~/.gitconfig.local` (machine-local, not managed by chezmoi) on all four hosts. It includes `~/.gitconfig.work` (the work email) for remotes in the work GitHub orgs and for clones under the matching `~/<org>/` directories. A repo's own `user.email` still wins.
-* Resolved: thoughtbot leftovers retired on 32i and 16i with tarballs in `~/.dotfiles.legacy.*.tar.gz`. 16i's `~/dotfiles` was not thoughtbot but a clean clone of this repo at `672f6ff` (the `legacy-backup` branch), and `~/symlinks.dotfiles.thoughtbot` held 20 saved links; both are archived and removed.
-* Resolved (2026-10-18): retiring the thoughtbot `zsh/configs` had left `EDITOR`/`VISUAL` unset, so `alias e="$EDITOR"` expanded to nothing; `.zshrc` now sets both to the first of `nvim`, `vim` and `vi` (`60651a2`). The thoughtbot shell functions (`mcd`, `envup`, `change-extension`) and `~/.bin` scripts (`git-up`, `tat`, `replace`) were dropped on purpose; they remain on the `legacy-backup` branch.
+* Resolved: thoughtbot leftovers retired on 32i and 16i with tarballs in `~/.dotfiles.legacy.*.tar.gz`. 16i's `~/dotfiles` was not thoughtbot but a clean clone of this repo at `9f33a87` (the `legacy-backup` branch), and `~/symlinks.dotfiles.thoughtbot` held 20 saved links; both are archived and removed.
+* Resolved (2026-10-18): retiring the thoughtbot `zsh/configs` had left `EDITOR`/`VISUAL` unset, so `alias e="$EDITOR"` expanded to nothing; `.zshrc` now sets both to the first of `nvim`, `vim` and `vi` (`22cffa2`). The thoughtbot shell functions (`mcd`, `envup`, `change-extension`) and `~/.bin` scripts (`git-up`, `tat`, `replace`) were dropped on purpose; they remain on the `legacy-backup` branch.
 * Resolved: a global gitleaks pre-commit hook (config-defined, Git 2.54+) now replaces the per-repo thoughtbot template; see §8.5 for the git versions it depends on.
 * Resolved: `rcm` uninstalled from all four hosts (Homebrew, no dependents).
 
 ### 8.5 Git 2.54+ for the Global Secret Scan (resolved, with an accepted residual gap)
-The gitleaks hook is a config-defined hook, which git before 2.54 ignores without any warning. `run_after_99_assert_requirements` checks the terminal git and Apple's `/usr/bin/git` (used by GUI apps) after every apply. On Apple silicon both are hard requirements; on Intel only the terminal git is, and `/usr/bin/git` is a `WARN`. Option (a) below was chosen and implemented in `d87ec39` (2026-10-18). As of 2026-10-18:
+The gitleaks hook is a config-defined hook, which git before 2.54 ignores without any warning. `run_after_99_assert_requirements` checks the terminal git and Apple's `/usr/bin/git` (used by GUI apps) after every apply. On Apple silicon both are hard requirements; on Intel only the terminal git is, and `/usr/bin/git` is a `WARN`. Option (a) below was chosen and implemented in `62b3a21` (2026-10-18). As of 2026-10-18:
 
 | Host | Terminal git | `/usr/bin/git` | Remaining step |
 |---|---|---|---|

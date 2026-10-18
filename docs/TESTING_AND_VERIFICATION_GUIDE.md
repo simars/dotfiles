@@ -458,7 +458,7 @@ First migration attempt on an Apple Silicon machine carried over from an Intel M
 4. **Host lines in the thoughtbot `zshrc`:** Windsurf, pnpm, Docker Desktop completions and LM Studio moved to `dotfiles-local/zshrc.local`; the `mysql-client@8.4` lookup now checks both Homebrew prefixes explicitly.
 5. **`~/.gitignore` was a hard link to `~/dotfiles/gitignore`:** chezmoi's atomic write replaced it; the local `**/.claude/settings.local.json` pattern was carried into `dot_gitignore`.
 
-### 9.4 Rollout of `c2a5402` to the Other Hosts
+### 9.4 Rollout of `2a10749` to the Other Hosts
 
 | Host | Arch | `~/.cfg` | chezmoi apply | Home-level agent files |
 |---|---|---|---|---|
@@ -485,7 +485,7 @@ Verification: `git check-ignore -v` in work trees reports `.git/info/exclude:88:
 | **Command Line Tools** | PASS, but not as the kickoff assumed | The "CLT 11.7" was never a real install. It was a 2019-2020 leftover in `/Library/Developer/CommandLineTools` (Apple Git-126, clang 11.0.3, x86_64, SDKs up to 10.15, no `pkgutil` receipt). Brew's `CLT.installed?` only tests that `usr/bin/clang` exists, so the stale directory overrode Xcode 27.1 and produced "does not support macOS 26". Removed with `sudo rm -rf`, replaced with CLT 26.6 (`xcode-select --install`); receipt `26.6.0.0.1781586589`, `xcode-select -p` still Xcode.app, Intel `brew doctor` reports ready |
 | **Homebrew install** | PASS | `arch -arm64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`. The installer installs a CLT (and ends with `xcode-select --switch` to it) only when `/Library/Developer/CommandLineTools/usr/bin/git` is missing, so the new CLT had to be in place first |
 | **Package script** | PASS | Rendered with `chezmoi execute-template` into a scratch file and run with `/bin/bash`; chezmoi state untouched; 28/28 `packages.toml` formulae native arm64. `cask "wave"` was removed from the scratch copy |
-| **Casks** | PASS | `iterm2`, `warp` and (via the later `chezmoi apply`, run over SSH with Wave not running) `wave` adopted: brew adopts an existing app without `--force`, and the app bundles were not modified (`Wave.app` is still dated Apr 16 2026). The `alacritty` cask was disabled on 2026-09-01 (Gatekeeper), so it left `packages.toml` (`cc170f6`) |
+| **Casks** | PASS | `iterm2`, `warp` and (via the later `chezmoi apply`, run over SSH with Wave not running) `wave` adopted: brew adopts an existing app without `--force`, and the app bundles were not modified (`Wave.app` is still dated Apr 16 2026). The `alacritty` cask was disabled on 2026-09-01 (Gatekeeper), so it left `packages.toml` (`dd41a7e`) |
 | **Go tools** | PASS | All 20 `~/go/bin` tools were x86_64. Rebuilt natively with `go install <module>@<same version>`: 18 at their original versions; `gopls` v0.15.3 and `staticcheck` v0.4.7 pin an `x/tools` whose `tokeninternal` package no longer compiles on Go 1.27 (`invalid array length`), so those two went to the latest releases (`gopls` v0.24.0, `staticcheck` v0.8.2). 20/20 arm64 and smoke-tested; the old binaries were backed up before the swap |
 | **Extra formulae** | PASS | 31 Intel leaves installed natively (`gh`, `mysql-client@8.4`, `openjdk` and 28 others). Not installed: `go`, `asdf`, `nvm`, `rbenv` (superseded by mise) and `python@3.8`, `python@3.9`, `python@3.10`, `v8@3.15`, `rc`, `nvtop` (gone, disabled or deprecated) |
 | **mise** | PASS | Native 2026.10.13. The x86 `~/.local/bin/mise` and `installs/` were removed; Go 1.27.2, Node 22.23.3 and Python 3.12.15 reinstalled, all arm64, with the default Python packages; shims re-pointed at `/opt/homebrew/bin/mise` |
@@ -514,9 +514,9 @@ Lessons and loose ends:
 2. Editing `packages.toml` changes the install script's hash, so the next `chezmoi apply` re-runs `brew bundle`. That is idempotent, and it is what adopted `wave`. Run it with a PATH where `#!/usr/bin/env bash` resolves to the native `/bin/bash` (for example `PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"`); with the Intel brew first on PATH it would pick the x86_64 `/usr/local/bin/bash` (§8.2 of `FUTURE_CONSIDERATIONS.md`).
 3. In zsh `path` is tied to `$PATH`, so a script variable named `path` silently empties PATH. Use another name in agent or shell snippets.
 
-### 9.7 Rollout of `cc170f6` and `ae05e62` to All Hosts (2026-10-17 to 2026-10-18)
+### 9.7 Rollout of `dd41a7e` and `d46ce24` to All Hosts (2026-10-17 to 2026-10-18)
 
-Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `simars/.cfg` `46b3f35..77f3d6a`; no bypassed rules were reported), then applied on every host.
+Both repos were pushed as fast-forwards (`simars/dotfiles` `00596af..d46ce24`, `simars/.cfg` `46b3f35..77f3d6a`; no bypassed rules were reported), then applied on every host.
 
 | Host | Arch | Repos updated by | `chezmoi apply` | Notes |
 |---|---|---|---|---|
@@ -529,9 +529,9 @@ Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `
 * The exit 1 on the Intel hosts comes from `run_after_99_assert_requirements`, which is working as intended (see `FUTURE_CONSIDERATIONS.md` §8.5).
 * Verified on every host: `chezmoi status` empty apart from the always-run scripts, `~/.cfg` at `77f3d6a` with no changes and a clean `fsck`, `~/.cheatsheet.md` carrying the new section 6, no merge commits.
 
-### 9.8 Standalone git on the Intel Hosts: Rollout of `d87ec39` (2026-10-18)
+### 9.8 Standalone git on the Intel Hosts: Rollout of `62b3a21` (2026-10-18)
 
-`d87ec39` builds a pinned git 2.56.0 into `~/.local` on Intel Macs and turns the Apple-git check into a `WARN` there (design and rationale: `FUTURE_CONSIDERATIONS.md` §8.5). It reached the other hosts as a git bundle (`03ed4b4..d87ec39`), the same way as §9.7. It was not yet pushed to GitHub when this section was written.
+`62b3a21` builds a pinned git 2.56.0 into `~/.local` on Intel Macs and turns the Apple-git check into a `WARN` there (design and rationale: `FUTURE_CONSIDERATIONS.md` §8.5). It reached the other hosts as a git bundle (`efd3fb2..62b3a21`), the same way as §9.7. It was not yet pushed to GitHub when this section was written.
 
 **The check, tested before rollout** (rendered per architecture, `bash -n` and shellcheck clean):
 
@@ -563,7 +563,7 @@ Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `
 
 ### 9.9 Guard Rollout and Review of All Four Hosts (2026-10-18)
 
-`105ecac` (bottle-only `brew bundle` on Intel) and `52f1401` (`brew update` with an empty `HOME`) were pushed to `simars/dotfiles` as fast-forwards (`03ed4b4..105ecac`, then `..52f1401`; no merge commits, no bypassed rules). `~/.cfg` was already in sync at `a29d9ff` on all four hosts. `simar-mbp` pulled from GitHub; the Intel hosts, which cannot unlock the SSH key for GitHub, took verified git bundles guarded on the expected prerequisite commit.
+`5498151` (bottle-only `brew bundle` on Intel) and `0fa78c4` (`brew update` with an empty `HOME`) were pushed to `simars/dotfiles` as fast-forwards (`efd3fb2..5498151`, then `..0fa78c4`; no merge commits, no bypassed rules). `~/.cfg` was already in sync at `a29d9ff` on all four hosts. `simar-mbp` pulled from GitHub; the Intel hosts, which cannot unlock the SSH key for GitHub, took verified git bundles guarded on the expected prerequisite commit.
 
 **Root cause of the 7-hour build (§9.8), established.** Homebrew 7.0.9 only refuses a fresh install without a bottle on arm64 CPUs (`fresh_install?` in `extend/os/mac/formula_installer.rb`), so on Intel it compiles; Homebrew 6.0.12 refused on any CPU. `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK` is in neither source. Hence 32i (6.0.12) refused and 16i (7.0.9) compiled, and 32i would have compiled after its brew updated. `brew update` could not update Homebrew on 32i at all, because `~/.gitconfig` rewrites https clones to ssh and `bin/brew` drops every environment variable except `HOME` and `HOMEBREW_*`, so `GIT_CONFIG_GLOBAL` has no effect.
 
@@ -592,7 +592,7 @@ Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `
 3. 32i and 16i: `mise reshim`. `mise doctor` reported missing shims for Python CLIs (`http`, `httpie`, `https`, `idna`, `markdown-it`, `normalizer`, `pygmentize`); it now reports no problems.
 4. 32i and 16i: `brew ruby` turned Homebrew developer mode on during probing; `brew developer off` restored it (the state before was off, since the probe announced the switch).
 
-**Verification on all four hosts.** `chezmoi` at `52f1401`, clean tree, no merge commits, `chezmoi status` shows only the always-run scripts; `~/.cfg` at `a29d9ff`, clean; `~/.cheatsheet.md` carries the new Intel row; a clean-environment login shell resolves git 2.56.0 and the `gitleaks` hook is listed; `mise doctor` has no problems on all four hosts. A random fake `ghp_` token committed in a throwaway repo on 16i was blocked (exit 1, the token never printed, no commit created), and a clean commit passed. On Work, `brew doctor` has only the Command Line Tools notice.
+**Verification on all four hosts.** `chezmoi` at `0fa78c4`, clean tree, no merge commits, `chezmoi status` shows only the always-run scripts; `~/.cfg` at `a29d9ff`, clean; `~/.cheatsheet.md` carries the new Intel row; a clean-environment login shell resolves git 2.56.0 and the `gitleaks` hook is listed; `mise doctor` has no problems on all four hosts. A random fake `ghp_` token committed in a throwaway repo on 16i was blocked (exit 1, the token never printed, no commit created), and a clean commit passed. On Work, `brew doctor` has only the Command Line Tools notice.
 
 **False alarms, so nobody chases them again.**
 * `zsh -lic exit` from a tool shell without a terminal prints `can't change option: zle`; in a pseudo-terminal there is no output.
@@ -630,10 +630,10 @@ The two Intel hosts (`simars-macbook-32i`, `simars-macbook-16i`) were taken thro
 
 | Item | Result |
 |---|---|
-| Publish the unpushed dotfiles commits | Pushed as fast-forwards in four pushes (`03ed4b4` to `60651a2`; no merge commits, no bypassed rules). The Intel hosts cannot unlock the GitHub key, so they took verified bundles; both are at `60651a2`, equal to GitHub, and `chezmoi apply` exits 0 on both. |
+| Publish the unpushed dotfiles commits | Pushed as fast-forwards in four pushes (`efd3fb2` to `22cffa2`; no merge commits, no bypassed rules). The Intel hosts cannot unlock the GitHub key, so they took verified bundles; both are at `22cffa2`, equal to GitHub, and `chezmoi apply` exits 0 on both. |
 | Source builds on Intel | Closed in §9.9. |
-| `EDITOR` and `VISUAL` unset | `60651a2` sets them in `~/.zshrc` to the first of `nvim`, `vim`, `vi` on `PATH` (a value already in the environment wins), before `~/.aliases` is read. Tested in five scenarios, then verified in real login shells on both hosts (`nvim`, and `alias e` and `alias v` expand to it). `chezmoi edit` uses it; `git commit` keeps `core.editor` (`code --wait` on macOS). The message of `60651a2` says git fell back to `vi`; that is wrong, git used `core.editor` all along. |
-| Old backups | Deleted on both hosts: the `~/.dotfiles.backup.20261017_1758*` folder (logs and a symlink-restore script for rcm) and the `~/.dotfiles.legacy.*.tar.gz` tarball (1.0 MB on 32i, 16 MB on 16i), plus three smaller leftovers of the same retired setup: two folders holding only dangling links, and 16i's copies of the pre-chezmoi `.zshrc`, `.zprofile`, `.gitconfig` and `.tmux.conf`. gitleaks found nothing in them, and they differed from the live files only by thoughtbot's retired `templatedir` line. The old history stays on GitHub as `legacy-backup` (`672f6ff`). |
+| `EDITOR` and `VISUAL` unset | `22cffa2` sets them in `~/.zshrc` to the first of `nvim`, `vim`, `vi` on `PATH` (a value already in the environment wins), before `~/.aliases` is read. Tested in five scenarios, then verified in real login shells on both hosts (`nvim`, and `alias e` and `alias v` expand to it). `chezmoi edit` uses it; `git commit` keeps `core.editor` (`code --wait` on macOS). The message of `22cffa2` says git fell back to `vi`; that is wrong, git used `core.editor` all along. |
+| Old backups | Deleted on both hosts: the `~/.dotfiles.backup.20261017_1758*` folder (logs and a symlink-restore script for rcm) and the `~/.dotfiles.legacy.*.tar.gz` tarball (1.0 MB on 32i, 16 MB on 16i), plus three smaller leftovers of the same retired setup: two folders holding only dangling links, and 16i's copies of the pre-chezmoi `.zshrc`, `.zprofile`, `.gitconfig` and `.tmux.conf`. gitleaks found nothing in them, and they differed from the live files only by thoughtbot's retired `templatedir` line. The old history stays on GitHub as `legacy-backup` (`9f33a87`). |
 | Legacy `~/.nvm` on 16i | Deleted (259 MB; node 10.14.2 and 14.17.3). No process ran from it and no shell config sourced it; three MCP wrapper scripts put it on `PATH` only if it existed (§9.12). mise manages node. |
 | `gh` login | `gh` is not installed on 16i. On 32i it is installed but not logged in, on purpose: a login needs browser approval, and over SSH the token would be stored in plain text because the login keychain is locked. |
 | Old thoughtbot helpers | Not re-added (nothing was missed); they remain on `legacy-backup`. |
@@ -676,5 +676,5 @@ The hook (`hook.gitleaks` in `~/.gitconfig`, running `~/.config/git/hooks/gitlea
 | 10,201 staged files (52 MB) | Scanned in 2.6 s |
 | Git 2.49 / 2.50.1 (older) | Configuration ignored silently: the secret was committed, which is why the version is asserted |
 
-Rollout: on `Simars-MacBook-Work` the assertion passes and a live test with the real `~/.gitconfig` blocked a synthetic token. On `simar-mbp`, `simars-macbook-32i` and `simars-macbook-16i` the files deployed and `chezmoi apply` exited 1 with the per-check fixes listed in `FUTURE_CONSIDERATIONS.md` §8.5. Superseded: after `d87ec39` all four hosts exit 0 (§9.8).
+Rollout: on `Simars-MacBook-Work` the assertion passes and a live test with the real `~/.gitconfig` blocked a synthetic token. On `simar-mbp`, `simars-macbook-32i` and `simars-macbook-16i` the files deployed and `chezmoi apply` exited 1 with the per-check fixes listed in `FUTURE_CONSIDERATIONS.md` §8.5. Superseded: after `62b3a21` all four hosts exit 0 (§9.8).
 
