@@ -603,6 +603,23 @@ Both repos were pushed as fast-forwards (`simars/dotfiles` `3bf53a7..ae05e62`, `
 
 Open decisions and user actions are in `FUTURE_CONSIDERATIONS.md` §8.6.
 
+
+### 9.10 Cleanup After the Review (2026-10-18)
+
+Done on the owner's calls after §9.9.
+
+| Host | Removed | Result |
+|---|---|---|
+| `simars-macbook-16i` | The unrequested leftovers of the 7-hour build, in rounds, protecting every `packages.toml` formula: round 1 `aklomp-base64`, `automake`, `cmake`, `cxxopts`, `go`, `libtool`, `ninja`, `python-setuptools`, `ruby`, `rust`, `sphinx-doc`, `zig@0.16`; round 2 `autoconf`, `llvm`, `llvm@21`, `pkgconf`; round 3 `z3` | Cellar 5.5 GB to 1.3 GB; every `packages.toml` formula still installed; `brew missing` empty |
+| `simars-macbook-32i` | `rc`, `gemini-cli` (and `/usr/local/bin/gemini`), `the_silver_searcher`, `pcre`, plus the dependency libraries brew removed with `gemini-cli` (including `icu4c@78`, `fmt`, `readline` and `simdutf`) | `rg` and `zsh` unaffected; `brew doctor` hygiene warnings gone except Xcode 26.2 |
+| `Simars-MacBook-Work`, `simar-mbp` | `the_silver_searcher` (and `pcre` on `simar-mbp`, removed by autoremove) | `brew autoremove --dry-run` empty |
+| All four | `brew cleanup --prune=all` | Caches freed 2.5 GB (16i), 1.3 GB (32i), 1.8 GB (`simar-mbp`), 3.8 GB (Work) |
+
+* `ag` on 32i was built against `pcre`, but the current bottle uses `pcre2`, which was already installed. `brew reinstall the_silver_searcher` poured that bottle without compiling and made `pcre` unused. `ag` was then removed anyway because `ripgrep` is the managed search tool and nothing in the dotfiles, editor configs or scripts calls `ag`. `pcre2` stays: `ripgrep` and `zsh` depend on it.
+* `~/Brewfile` dropped `brew "rc"`, `brew "the_silver_searcher"` and `cask "mysqlworkbench"` (`.cfg` `8bd73f2`); `brew bundle check` on Work now reports the dependencies as satisfied. `MySQLWorkbench.app` on Work was not touched. The Brewfile still lists `rust`, which is installed natively on Work and is not used on the Intel hosts.
+* A smoke test after the cleanup passed on `simar-mbp` and 16i (`rg`, `git`, `zsh`, `jq`, `mise`, `bw`, `http`, `colima`, `curl`). One `bw --version` on 16i printed a line starting "Could not fi" right after the cache cleanup; three reruns and a split of stdout and stderr all gave `2026.10.0`, so it was not reproducible.
+* Left alone on purpose: explicit installs not in `packages.toml` (listed in `FUTURE_CONSIDERATIONS.md` §8.6), the non-Homebrew files in `/usr/local` on Work, and the Xcode update on 32i.
+
 ---
 
 ## 10. Global Secret-Scanning Hook Verification (2026-10-17)
