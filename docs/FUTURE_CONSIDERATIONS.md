@@ -2,9 +2,23 @@
 
 This document outlines key future considerations, platform lifecycle changes, and automated remediation strategies using **`chezmoi`**.
 
+**How to read it.** Sections 1 to 8 describe what was considered and how it was handled, and each carries a status. Section 9 is the backlog of systemic improvements that remain: changes to this repository, its scripts or its conventions. Steps that concern one particular machine are tracked in private notes, not here.
+
+| Section | Topic | Status (2026-10-18) |
+|---|---|---|
+| 1 | Intel macOS lifecycle and Homebrew Tier 3 | Implemented; the bottle-only guard was rewritten |
+| 2 | Command Line Tools automation | Implemented inside the package script |
+| 3 | Homebrew pruning | Automatic prune implemented; declarative prune open (§9, B9) |
+| 4 | Keychain SSH passphrase | Implemented; headless Intel hosts still cannot unlock the key (§9, B2 and B3) |
+| 5 | `zoxide` and `fzf` | Implemented |
+| 6 | Apple Silicon invariants | Implemented |
+| 7 | Matrix of automated handling | Updated |
+| 8 | Deferred items from the 2026-10-17 migration | All resolved; leftovers moved to §9 |
+| 9 | Backlog of systemic improvements | Open |
+
 ---
 
-## 1. Intel macOS (x86_64) Lifecycle & Homebrew Tier 3 Transition
+## 1. Intel macOS (x86_64) Lifecycle & Homebrew Tier 3 Transition (implemented, guard rewritten 2026-10-18)
 
 ### 1.1 Platform Context
 * **Apple Transition:** Intel x86_64 support is discontinued in macOS Golden Gate (macOS 27).
@@ -13,13 +27,7 @@ This document outlines key future considerations, platform lifecycle changes, an
 * **Source Fallback Hazard:** When a formula lacks an x86_64 bottle, Homebrew by default attempts to compile the entire dependency tree (LLVM, Rust, CMake, OpenSSL) from source. If Xcode or Command Line Tools (CLT) are outdated, the build crashes after downloading gigabytes of source code.
 
 ### 1.2 Chezmoi Handling & Mitigation
-* **Bottle Fallback Suppression:**
-  In `run_onchange_before_00_install_packages.sh.tmpl`, we set:
-  ```bash
-  export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1
-  brew bundle --no-upgrade --file=/dev/stdin
-  ```
-  This skips unbottled formulae instead of locking the system into endless source compilation.
+* **Bottle-only installs (rewritten 2026-10-18):** `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK` does not exist in Homebrew 7 (it only ever covered failed bottle downloads), and Homebrew 7 on Intel builds anything that has no bottle, so one apply compiled 30 formulae in 7 hours. On Intel the package script now runs `brew bundle --no-upgrade` through `brew_bundle_bottled_only`: it passes only formulae that are installed or whose whole runtime dependency closure is bottled, prints each skip with its reason, and installs only what is already present if Homebrew cannot be queried (details in §8.2).
 * **Resilient Standalone Binaries:**
   For critical CLI tools and editors that must always exist regardless of Homebrew's state, chezmoi auto-provisions precompiled binaries into `~/.local/bin`:
   * `age` (via official GitHub tarball)
@@ -33,7 +41,7 @@ This document outlines key future considerations, platform lifecycle changes, an
 
 ---
 
-## 2. Xcode Command Line Tools Automation
+## 2. Xcode Command Line Tools Automation (implemented inside the package script)
 
 ### 2.1 The Issue
 On older Intel machines running newer macOS releases (such as macOS 26 Tahoe/Sequoia), existing Command Line Tools (e.g. from Xcode 14.3.1) fail with:
@@ -43,6 +51,8 @@ Error: Your Command Line Tools (CLT) does not support macOS 26.
 This blocks any local compilation (native gems, pip wheels, or local C tools).
 
 ### 2.2 Chezmoi Handling
+> **Status:** implemented as a check near the top of `run_onchange_before_00_install_packages.sh.tmpl`, not as the separate `run_once` script sketched below. On Intel the standalone git build also needs the Command Line Tools.
+
 Chezmoi can automate detection and installation in a lifecycle script (`run_once_before_05_darwin_clt.sh.tmpl`):
 ```bash
 {{ if eq .chezmoi.os "darwin" -}}
@@ -76,7 +86,7 @@ sudo xcode-select --install
 
 ---
 
-## 3. Homebrew Formula Pruning & Cellar Hygiene
+## 3. Homebrew Formula Pruning & Cellar Hygiene (automatic prune implemented; declarative prune open)
 
 ### 3.1 The Issue
 Over time, workstations accumulate obsolete packages, legacy databases (e.g., `mysql@5.7`, `adoptopenjdk8`), and abandoned utilities that consume gigabytes of disk space and slow down `brew update`.
@@ -101,7 +111,7 @@ Chezmoi can handle cleanup at two distinct levels:
 
 ---
 
-## 4. macOS Keychain SSH Passphrase Automation
+## 4. macOS Keychain SSH Passphrase Automation (implemented; headless Intel hosts still cannot unlock the key)
 
 ### 4.1 The Issue
 If an SSH private key (`~/.ssh/id_rsa`) is protected with a passphrase:
@@ -147,7 +157,7 @@ Chezmoi solves this end-to-end:
 
 ---
 
-## 5. Shell Navigation & Package Registry Completeness (`zoxide` & `fzf`)
+## 5. Shell Navigation & Package Registry Completeness (`zoxide` & `fzf`) (implemented)
 
 ### 5.1 The Issue
 `dot_zshrc.tmpl` activates `zoxide` (`eval "$(zoxide init zsh)"`) and `fzf` (`eval "$(fzf --zsh)"`).
@@ -166,7 +176,7 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 
 ---
 
-## 6. Apple Silicon (`arm64`) Workstation Invariants & Lifecycle
+## 6. Apple Silicon (`arm64`) Workstation Invariants & Lifecycle (implemented)
 
 ### 6.1 Native Architecture & Homebrew (`/opt/homebrew`)
 * **Prefix Isolation:** Unlike Intel (`/usr/local`), Apple Silicon Homebrew lives strictly in `/opt/homebrew`. `dot_zprofile.tmpl` and `dot_zshrc.tmpl` dynamically test `[[ -x "/opt/homebrew/bin/brew" ]]` before falling back to `/usr/local`.
@@ -200,13 +210,15 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 | **Homebrew Cleanup** | ✅ Automated Hook & Alias | `brew autoremove && brew cleanup -s` in package installer hook |
 | **Keychain Passphrase** | ✅ SSH Config + Shell Startup | `UseKeychain yes` in `~/.ssh/config` + `ssh-add --apple-load-keychain` in `.zprofile` |
 | **`zi` & `zoxide` Availability** | ✅ Package Registry + Fallback | Added to `packages.toml` + fallback binary curl installer |
-| **Intel Source Fallback Hangs**| ✅ Build Protection | `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` + `--no-upgrade` |
+| **Intel Source Builds** | ✅ Bottle-only guard | `brew_bundle_bottled_only` in the package script (installed or fully bottled closure only) + `--no-upgrade`; `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK` no longer exists |
+| **Git 2.54+ for the secret-scan hook** | ✅ Assert + Intel build | `run_after_99_assert_requirements` (fails on Apple silicon, warns for `/usr/bin/git` on Intel) + a pinned git built into `~/.local` on Intel |
+| **`EDITOR` / `VISUAL`** | ✅ Default editor | First of `nvim`, `vim`, `vi` in `.zshrc`, set before `.aliases` is read |
 | **Apple Silicon Prefix & Bottles**| ✅ Native Resolution | Dynamic `/opt/homebrew` shellenv + Tier 1 native bottle pouring |
 | **SSH-RSA Mixed Case Error** | ✅ External Binary Engine | `useBuiltin = false` delegates to native `age` binary |
 
 ---
 
-## 8. Deferred Items from the `Simars-MacBook-Work` Migration (2026-10-17)
+## 8. Deferred Items from the `Simars-MacBook-Work` Migration (2026-10-17; all resolved, leftovers moved to §9)
 
 ### 8.1 Native Homebrew Changeover (`Simars-MacBook-Work`) (resolved 2026-10-17)
 * **Kickoff prompt:** [`NATIVE_HOMEBREW_KICKOFF.md`](NATIVE_HOMEBREW_KICKOFF.md) holds the session prompt with the ordered steps; results are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.6.
@@ -219,24 +231,24 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 * Resolved (2026-10-18): the Intel Homebrew on `Simars-MacBook-Work` is gone. `/usr/local/Homebrew`, `Cellar` and `Caskroom` are empty, `/usr/local/bin/brew` and `/usr/local/etc/gitconfig` no longer exist, and `simar-mbp` has no Homebrew under `/usr/local` either. The apps of the native casks (`Wave`, `iTerm`, `Warp`, `Visual Studio Code`, `DBeaver`, `Antigravity IDE`) are intact. The `~/Brewfile` entries that only the Intel brew carried (`asdf`, `go`, `nvm`, `rbenv`, `python@3.8`, `python@3.9`, `python@3.10`, `v8@3.15`) were dropped in `.cfg` `4a5efdc`. `~/.zprofile` and `~/.zshrc` keep an `elif` for `/usr/local/bin/brew`; it never matches on Work and is what serves the Intel hosts.
 * Not Homebrew, left alone on Work (nothing was deleted; ask before cleaning up): 49 entries in `/usr/local/bin` (gem executables from 2022 such as `rails`, `rake` and `bundle`; links for `code`, `cursor`, `docker`, `kubectl`, `tsh`, `multipass` and `keybase` into their apps; `lerna` and `verdaccio` into `../lib/node_modules`), and the config folders `clang`, `openssl@1.1`, `openssl@3`, `ca-certificates`, `mercurial` and `fonts` in `/usr/local/etc`.
 
-### 8.2 Install Script Gaps
+### 8.2 Install Script Gaps (resolved; remaining gaps are backlog items in §9)
 * **Homebrew on Intel compiles anything without a bottle (resolved 2026-10-18).** `simars-macbook-16i` compiled 30 formulae from source in 7.1 hours of build time during one apply (`TESTING_AND_VERIFICATION_GUIDE.md` §9.8). Cause: `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1`, which the script exports, never guarded this and no longer exists in either brew (it became the default and only concerned failed bottle downloads). What refused unbottled formulae on 32i was Homebrew 6.0.12's `fresh_install?` check (`no bottle available!`); Homebrew 7.0.9, on 16i, restricts that check to arm64 CPUs (`extend/os/mac/formula_installer.rb`), so on Intel it builds from source. 32i would have done the same as soon as its brew updated to 7.x. The script now runs `brew_bundle_bottled_only` on Intel: it asks `brew deps` and `brew info --json=v2` (read with Homebrew's own portable Ruby, no `jq` and no developer mode) and gives `brew bundle` only the formulae that are installed or whose whole runtime closure is bottled, and prints each skip with its reason; any query failure keeps only what is already installed. The Intel list therefore skips what cannot be bottled instead of compiling it (`age`, `dust`, `fx`, `git`, `mise`, `herdr`, `neovim`, `vim` and `docker` among others). Do not use `brew ruby` for such probes: it switches on developer mode (`brew developer off` undoes it).
 * **`brew update` could not update Homebrew itself on 32i (resolved 2026-10-18).** The global `url.insteadOf` rule in `~/.gitconfig` (https to ssh) made the fetch of `/usr/local/Homebrew` fail with `Permission denied (publickey)` because 32i cannot unlock the SSH key non-interactively, so its brew stayed on 6.0.12 while the taps updated. `GIT_CONFIG_GLOBAL=/dev/null` does not help, because `bin/brew` re-launches itself with an environment filtered to `HOME`, `SSH_AUTH_SOCK`, `TERM` and `HOMEBREW_*`. The script now runs `brew update` with `HOME` pointing at an empty temporary directory and `HOMEBREW_CACHE`/`HOMEBREW_LOGS` kept at their real locations. 32i is now on Homebrew 7.0.9, like 16i. The same rule also breaks any other plain-HTTPS clone of a public repo on hosts without an unlocked key; it is a deliberate setting, so it was left as is.
-* `gitleaks` and `duf` have no darwin standalone fallback in `run_onchange_before_00_install_packages.sh.tmpl`. Note that any edit to that script changes its hash and re-runs `brew bundle` on every host.
-* The script's `#!/usr/bin/env bash` resolves to `/usr/local/bin/bash` (x86_64) on a Rosetta-brew Mac, so runtime-detecting installers such as `mise.run` pick x86_64. `#!/bin/bash` runs natively on Apple Silicon and exists on Ubuntu.
+* `gitleaks` and `duf` have no darwin standalone fallback in `run_onchange_before_00_install_packages.sh.tmpl` (backlog B11). Note that any edit to that script changes its hash and re-runs it on every host that renders a different script.
+* Resolved: the script's `#!/usr/bin/env bash` used to resolve to `/usr/local/bin/bash` (x86_64) on a Rosetta-Homebrew Mac, so runtime-detecting installers such as `mise.run` picked x86_64. That Homebrew was removed on 2026-10-18, so it no longer applies.
 
 ### 8.3 Per-Repo Exclude Lists on Other Hosts (resolved 2026-10-17)
 * Every git dir on `simar-mbp` (38), `simars-macbook-32i` (92) and `simars-macbook-16i` (252) now links `.git/info/exclude` to `~/.config/git/info-exclude`, as does `~/.cfg` on all four hosts. Before, the mbp and 16i links dangled into the deleted `~/dotfiles`, and 32i's pointed to git's stock template with no patterns, so those hosts gained about 166 ignore patterns. §6.3's "zero broken symlinks" had covered home-level links only.
 * The thoughtbot hook shims (3,456 across the three hosts) were removed. On 32i the template `pre-commit` had been rewritten to run `gitleaks --config "$REPO_ROOT/.gitleaks.toml"`; no repo had that file, so it aborted every commit in 93 git dirs.
 
-### 8.4 Identity and Legacy Leftovers
+### 8.4 Identity and Legacy Leftovers (resolved)
 * Resolved: the work identity lives in `~/.gitconfig.local` (machine-local, not managed by chezmoi) on all four hosts. It includes `~/.gitconfig.work` (`simar.singh@work.example`) for remotes in the `work`, `WORK-ORG-2` and `WORK-ORG-3` orgs and for clones under `~/work/`, `~/WORK-ORG-2/` and `~/WORK-ORG-3/`. A repo's own `user.email` still wins.
 * Resolved: thoughtbot leftovers retired on 32i and 16i with tarballs in `~/.dotfiles.legacy.*.tar.gz`. 16i's `~/dotfiles` was not thoughtbot but a clean clone of this repo at `672f6ff` (the `legacy-backup` branch), and `~/symlinks.dotfiles.thoughtbot` held 20 saved links; both are archived and removed.
-* Retiring the thoughtbot `zsh/configs` left `EDITOR`/`VISUAL` unset, so `alias e="$EDITOR"` expands to nothing; thoughtbot shell functions (`mcd`, `envup`, `change-extension`) and `~/.bin` scripts (`git-up`, `tat`, `replace`) are gone.
+* Resolved (2026-10-18): retiring the thoughtbot `zsh/configs` had left `EDITOR`/`VISUAL` unset, so `alias e="$EDITOR"` expanded to nothing; `.zshrc` now sets both to the first of `nvim`, `vim` and `vi` (`60651a2`). The thoughtbot shell functions (`mcd`, `envup`, `change-extension`) and `~/.bin` scripts (`git-up`, `tat`, `replace`) were dropped on purpose; they remain on the `legacy-backup` branch.
 * Resolved: a global gitleaks pre-commit hook (config-defined, Git 2.54+) now replaces the per-repo thoughtbot template; see §8.5 for the git versions it depends on.
 * Resolved: `rcm` uninstalled from all four hosts (Homebrew, no dependents).
 
-### 8.5 Git 2.54+ for the Global Secret Scan
+### 8.5 Git 2.54+ for the Global Secret Scan (resolved, with an accepted residual gap)
 The gitleaks hook is a config-defined hook, which git before 2.54 ignores without any warning. `run_after_99_assert_requirements` checks the terminal git and Apple's `/usr/bin/git` (used by GUI apps) after every apply. On Apple silicon both are hard requirements; on Intel only the terminal git is, and `/usr/bin/git` is a `WARN`. Option (a) below was chosen and implemented in `d87ec39` (2026-10-18). As of 2026-10-18:
 
 | Host | Terminal git | `/usr/bin/git` | Remaining step |
@@ -253,13 +265,34 @@ The gitleaks hook is a config-defined hook, which git before 2.54 ignores withou
 * The other options were (b) leave the Intel check failing as a permanent reminder and (c) drop the global hook on Intel and rely on per-repo hooks. Neither was needed.
 * Bump `ver` and `sha` together in `install_standalone_git` to move the pinned git. The function skips the build when `~/.local/bin/git` already meets `requirements.git.min`, so a bump only matters for hosts below the minimum, and any edit to the script re-runs it on every Intel host.
 
-### 8.6 Open Items After the 2026-10-18 Rollout
-Results of the rollout and review are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.9, and the cleanup that followed your calls is in §9.10. Nothing is broken. Resolved the same day: the dead and unmet `~/Brewfile` entries (`rc`, `mysqlworkbench` and `the_silver_searcher` were dropped in `.cfg` `8bd73f2`), the leftover build tools on `simars-macbook-16i`, the `brew doctor` hygiene warnings on `simars-macbook-32i` (`rc`, `gemini-cli`, `pcre`), the explicit installs outside `packages.toml` on both Intel hosts, and the legacy `~/.nvm` (deleted on all four Macs, see §9.12 of the testing guide). What remains:
+### 8.6 After the 2026-10-18 Rollout (resolved)
+Results are in `TESTING_AND_VERIFICATION_GUIDE.md` §9.9 to §9.12. Everything found was fixed or recorded: the dead and unmet `~/Brewfile` entries, the leftover build tools and `brew doctor` warnings on the Intel hosts, the explicit installs outside `packages.toml`, `nvm`, `gemini-cli` and OpenClaw (removed from all four Macs), and the broken casks on one host. What remains is either an accepted gap (below), a backlog item in §9, or a step for one machine that is tracked in private notes.
 
-| Item | Where | Detail | Needs |
+| Item | Where | Detail |
+|---|---|---|
+| Apple git for GUI apps on Intel | the two Intel hosts | See §8.5: GUI apps that use `/usr/bin/git` skip the hook; commit from a terminal. Accepted. |
+| Xcode 26.2 outdated | one Intel host | App Store, optional. Xcode 27 does not run on Intel, and updating does not change Apple's git (2.50.1). |
+| `pcre2` stays | all hosts | `ripgrep` and `zsh` (both in `packages.toml`) depend on it, and on Apple silicon so do `git` and others. Only the old `pcre` was removed. |
+
+---
+
+## 9. Backlog of Systemic Improvements
+
+Changes to this repository that came out of the 2026-10-17/18 migration. Nothing here is broken today; each item removes a manual step or a failure that was actually hit. **Decision** marks items that need the owner's choice before any work.
+
+| # | Improvement | Evidence | Priority |
 |---|---|---|---|
-| Xcode 26.2 outdated | 32i | `brew doctor` asks for Xcode 26.6 (App Store). Xcode 27 does not run on Intel, and updating does not change Apple's git (2.50.1). | You, from the App Store; optional. |
-| Apple git for GUI apps on Intel | 32i, 16i | See §8.5: GUI apps that use `/usr/bin/git` skip the hook. | Commit from a terminal on those hosts. |
-| Non-Homebrew files in `/usr/local` | Work | See §8.1: 49 entries in `bin` and six folders in `etc`. Several are live links (Docker Desktop, `code`, `kubectl`, `tsh`, `multipass`), and some are root-owned. | Ask before cleaning up. |
-| `libunistring` outdated | Work, native brew | The install script runs `brew bundle --no-upgrade`, so nothing upgrades dependencies. | `brew upgrade` when you want it. |
-| `pcre2` stays | all hosts | `ripgrep` and `zsh` (both in `packages.toml`) depend on it, and on Apple silicon so do `git` and others. It is the maintained library; only the old `pcre` was removed. | None. |
+| B1 | **Verify the templates automatically.** A `make verify` (or CI job) that renders the install and assert scripts for arm64 and amd64 (`chezmoi execute-template --override-data '{"chezmoi":{"arch":"amd64"}}'`), runs `bash -n` and `shellcheck`, and compares the arm64 render with the previous commit's, so Apple silicon hosts never re-run the install script by accident. | Done by hand for each of five script commits. | High, small |
+| B2 | **Narrow the `url.insteadOf` https-to-ssh rewrite** to private orgs, or use `pushInsteadOf`, so public clones and fetches (Homebrew's own repositories, this repository) work without an unlocked key. | `brew update` could not update Homebrew on an Intel host until the script worked around it, and the Intel hosts cannot `git pull` this repository, so every rollout used git bundles. Fetching private repositories over https would need credentials. | Decision |
+| B3 | **Non-interactive GitHub access for the Intel hosts**, as the alternative to B2: a read-only deploy key per host without a passphrase, or a working keychain enrolment (§4). | Same evidence as B2. | Decision |
+| B4 | **Apply-time check for broken casks.** In `run_after_99_assert_requirements`, warn on interrupted upgrades (`Caskroom/*/*.upgrading` markers) and on apps whose bundle has no `Contents`. | A MacBook Pro lost VS Code, Slack and Docker Desktop to an interrupted `brew upgrade` on 2026-10-16 and it went unnoticed for two days; `brew doctor` flagged it. | Medium, small |
+| B5 | **Make the upgrade alias safer.** `brews` runs `brew upgrade` on formulae and casks together; split it (formulae first, casks separately, skipping `auto_updates` casks and running apps). | The cause of the interrupted upgrade is not proven; this removes the likely path. | Medium |
+| B6 | **Declare global CLI tools after nvm**: mise's npm backend or `default-npm-packages` in the chezmoi mise config, for the few tools that lived under nvm (`@figma/code-connect`, the `neovim` provider, `vsce`, `yarn`). | nvm was removed on all four Macs and nothing declares where such tools now live. | Low |
+| B7 | **Pre-removal impact checklist** in `AGENTS.md`: before uninstalling, check Homebrew dependents and non-Homebrew consumers (launchd plists, MCP configs, wrapper scripts, editor settings). | Removing one formula autoremoved `node` and left three MCP wrapper scripts without it; a launchd service pointed into `~/.nvm`. | Medium, small |
+| B8 | **One package source of truth.** The personal `~/Brewfile` (private repository) and `.chezmoidata/packages.toml` overlap and drift; dead and unmet entries were found on three hosts. Generate the Brewfile from `packages.toml` plus per-host extras, or retire it. | `brew bundle check --file=~/Brewfile` failed on two Apple silicon hosts. | Medium |
+| B9 | **Opt-in declarative prune**: `brew bundle cleanup` against `packages.toml`, as a `cz-brew-prune --declared` helper (§3). Depends on B8. | Removing leftovers on four hosts was done by hand. | Low |
+| B10 | **Requirement-check fidelity.** The check builds its own `PATH` (`~/.local/bin` first); an interactive shell on an Intel host that also has a Homebrew-built git resolves `/usr/local/bin/git` first. Resolve git through a pseudo-terminal login shell. | Both gits were 2.56.0, so no harm yet. | Low |
+| B11 | **Tidy the install script at its next arm64-affecting change:** drop the no-op `export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` from the arm64 render (removing it now would re-run the script on arm64 hosts), and add standalone fallbacks for `gitleaks` and `duf` on Intel (bottled today; the hook's requirement check would fail if Homebrew dropped `gitleaks`). | §8.2. | Low |
+| B12 | **Test a clean bootstrap.** The whole flow was exercised only on existing machines. Add a periodic run on a clean Apple silicon VM and an Ubuntu container (`CHEZMOI_CI` already skips the system steps). | The first run on a fresh machine would be the first real test of the package order and the fallbacks. | Medium |
+| B13 | **Plan the end of the Intel Macs.** macOS 27 drops Intel, Homebrew treats it as Tier 3 and GitHub Actions removes Intel runners in 2027; decide by when the two Intel hosts move to Linux or retire. The bottle-only guard and the standalone git hold until then. | §1.1. | Decision |
+| B14 | **Decide how to treat work-specific identifiers in this public repository.** Work organisation names, a work email address and the paths of machine-local secret files appear in `AGENTS.md`, `docs/CHEATSHEET.md`, the migration runbook, the migration skill, the testing guide and `dot_zshrc.tmpl`, although the private notes say this repository must not name them. Options: neutralise the wording and move the `.zshrc` sourcing of those files into a machine-local file; or accept it. Git history already contains them, and removing them from history would need a force push and an explicit yes. | Found while reorganising these documents on 2026-10-18. | Decision |
