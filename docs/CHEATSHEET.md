@@ -118,6 +118,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | **Scan by hand** | `gitleaks git --pre-commit --staged --redact` | Same check the hook runs, without committing. |
 | **Check requirements** | `git --version` and `/usr/bin/git --version` | Both must be >= 2.54 (`.chezmoidata/requirements.toml`). Every `chezmoi apply` asserts this and that `gitleaks` is installed, printing the fix and failing until met. On Intel Macs only the terminal git is a hard requirement; `/usr/bin/git` is reported as a `WARN` and the apply still passes. |
 | **Intel Macs: standalone git** | `~/.local/bin/git --version` | Xcode 27 is Apple silicon only and Intel Homebrew has no git bottle, so `chezmoi apply` builds git from source into `~/.local` (pinned version, checksum verified, about a minute, needs the Command Line Tools). GUI apps that use `/usr/bin/git` (Apple's 2.50.1) skip the hook, so commit from a terminal. |
+| **Intel Macs: bottled formulae only** | `chezmoi apply` (look for `skipping X: Homebrew would have to compile ...`) | Homebrew on Intel compiles anything that has no bottle (llvm, rust and node took 7 hours). The install script gives `brew bundle` only the formulae whose runtime dependencies are all bottled or installed, and prints each skip with its reason. Build a skipped one on purpose with `brew install --build-from-source <formula>`. |
 
 ### Chezmoi Workflow Commands
 `chezmoi` manages dotfiles declaratively from `~/.local/share/chezmoi`.

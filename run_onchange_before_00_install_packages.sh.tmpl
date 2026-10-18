@@ -35,10 +35,68 @@ if ! command -v brew &> /dev/null; then
 {{- end }}
 fi
 
+{{ if ne .chezmoi.arch "arm64" -}}
+# Intel Macs: Homebrew 7 on Intel no longer refuses to compile (its "no bottle available" refusal needs an arm64 CPU),
+# and HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK is gone, so brew builds anything without a bottle: llvm, rust and node took
+# 7 hours on one host. Read a Brewfile on stdin and run `brew bundle` on it after dropping every formula that is not
+# installed and whose runtime dependencies are not all bottled or installed and current. If Homebrew cannot be asked,
+# keep only the formulae that are already installed.
+# shellcheck disable=SC2086 # word splitting of $names and $all is intended: one formula per argument
+brew_bundle_bottled_only() {
+    local brewfile names deps all info decision skip ruby
+    brewfile="$(cat)"
+    names="$(printf '%s\n' "$brewfile" | sed -n 's/^brew "\(.*\)"$/\1/p')"
+    ruby="$(brew --repository)/Library/Homebrew/vendor/portable-ruby/current/bin/ruby"
+    [[ -x "$ruby" ]] || ruby=/usr/bin/ruby
+    export HOMEBREW_NO_ENV_HINTS=1
+    brew update --quiet > /dev/null 2>&1 || true
+    export HOMEBREW_NO_AUTO_UPDATE=1
+    decision=""
+    if [[ -n "$names" ]]; then
+        if deps="$(brew deps --formula --for-each $names 2> /dev/null)" &&
+            all="$({ printf '%s\n' "$names"; printf '%s\n' "$deps" | sed 's/^[^:]*://' | tr ' ' '\n'; } | sed '/^$/d' | sort -u)" &&
+            info="$(brew info --json=v2 --formula $all 2> /dev/null)"; then
+            decision="$(printf '%s' "$info" | NAMES="$names" DEPS="$deps" "$ruby" -rjson -e '
+                info = JSON.parse(STDIN.read)["formulae"].to_h { |f| [f["name"], f] }
+                deps = ENV["DEPS"].lines.to_h { |l| n, d = l.split(":", 2); [n.strip, d.to_s.split] }
+                # A bottle for any Intel macOS tag (or "all") pours; older tags work on newer macOS.
+                ok = lambda do |n|
+                  f = info[n]
+                  next false unless f
+                  tags = (f.dig("bottle", "stable", "files") || {}).keys
+                  tags.any? { |t| t == "all" || !(t.start_with?("arm64_") || t.end_with?("_linux")) } ||
+                    (!f["installed"].empty? && !f["outdated"])
+                end
+                ENV["NAMES"].split.each do |n|
+                  if info[n] && !info[n]["installed"].empty?
+                    puts "keep #{n}"
+                    next
+                  end
+                  missing = ([n] + deps.fetch(n, [])).uniq.reject(&ok)
+                  puts(missing.empty? ? "keep #{n}" : "skip #{n} #{missing.join(",")}")
+                end
+            ')" || decision=""
+        fi
+    fi
+    if [[ -n "$decision" ]]; then
+        skip="$(printf '%s\n' "$decision" | awk '$1 == "skip" { printf "%s ", $2 }')"
+        printf '%s\n' "$decision" | awk '$1 == "skip" { printf "    skipping %s: Homebrew would have to compile %s\n", $2, $3 }'
+    elif [[ -n "$names" ]]; then
+        echo "WARNING: could not ask Homebrew which formulae have bottles; installing only what is already installed."
+        skip="$(printf '%s\n' "$names" | while IFS= read -r n; do brew list --formula "$n" > /dev/null 2>&1 || printf '%s ' "$n"; done)"
+    else
+        skip=""
+    fi
+    printf '%s\n' "$brewfile" | awk -v skip=" $skip " '
+        /^brew "/ { n = $2; gsub(/[",]/, "", n); if (index(skip, " " n " ")) next }
+        { print }' | brew bundle --no-upgrade --file=/dev/stdin
+}
+
+{{ end -}}
 if command -v brew &> /dev/null; then
     echo "==> Synchronizing Homebrew Formulae & Casks via Brew Bundle..."
     export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1
-    if ! brew bundle --no-upgrade --file=/dev/stdin <<EOF
+    if ! {{ if eq .chezmoi.arch "arm64" }}brew bundle --no-upgrade --file=/dev/stdin{{ else }}brew_bundle_bottled_only{{ end }} <<EOF
 {{ range $packages.darwin.brew.formulae -}}
 brew {{ . | quote }}
 {{ end -}}
@@ -123,6 +181,7 @@ fi
 # Intel Homebrew has no git bottle; the global gitleaks hook needs git >= {{ .requirements.git.min }}. Build from source into
 # ~/.local (needs the Command Line Tools; about a minute). Steps are chained with && because bash ignores
 # `set -e` inside a function called from `|| true`.
+# shellcheck disable=SC2086 # $flags is a list of make variables, split on purpose
 install_standalone_git() {
     local min="{{ .requirements.git.min }}" ver="2.56.0"
     local sha="26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
