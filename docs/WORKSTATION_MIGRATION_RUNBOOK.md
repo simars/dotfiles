@@ -55,7 +55,7 @@ find ~ -maxdepth 3 -lname '*dotfiles/*' 2>/dev/null
    chezmoi diff
    ```
    * Ensure PATH order maintains `mise` shims and Homebrew prefix ahead of system paths.
-   * Verify all machine-local sourcing lines (`~/.aliases`, `~/.zshrc.local`, `~/secrets.env`, `work.secret.env`) are preserved in `.zshrc`.
+   * Verify all machine-local sourcing lines (`~/.aliases`, `~/.zshrc.local`, `~/secrets.env`, and the work env files that `~/.zshrc.local` sources) are preserved.
    * Check Git user configuration (`Simar Singh <simarpaulsingh@gmail.com>`).
 
 ### Phase 3: Upfront Bottleneck Remediation

@@ -134,7 +134,7 @@ chezmoi apply -v
 ```
 During this initial run:
 1. `chezmoi` prompts for:
-   * **Git email address** (e.g. `you@work.example`)
+   * **Git email address** (e.g. `you@example.com`)
    * **Git full name** (e.g. `Simar Singh`)
    * **Is this a work machine** (`true` or `false`)
 2. `chezmoi` renders configurations into `$HOME`.
@@ -239,7 +239,7 @@ The entire configuration was deployed and verified across two live Intel macOS m
 | **Polyglot Runtimes** | `mise current` | PASS | Go `1.27.2`, Python `3.12.15`, Node `22.23.3` operational |
 | **Starship Prompt** | `starship prompt` | PASS | Rendered directory, git branch, and prompt symbol cleanly |
 | **Zsh Environment** | `HISTFILE`, `HISTSIZE=50000` | PASS | History persistence, `unsetopt NOMATCH`, and local config sourcing |
-| **Legacy Sourcing** | Sourcing `dotfiles-local/` | PASS | Sourced `work.secret.env`, `~/.aliases`, `~/.zshrc.local` without errors |
+| **Legacy Sourcing** | Sourcing `dotfiles-local/` | PASS | Sourced the work env files, `~/.aliases`, `~/.zshrc.local` without errors |
 | **Git Configuration** | `git config user.email` | PASS | Resolved `Simar Singh <simarpaulsingh@gmail.com>`, editor `code --wait` |
 | **GitHub SSH Auth** | `ssh -T -p 443 git@ssh.github.com` | PASS | `Hi simars! You've successfully authenticated, but GitHub does not provide shell access.` |
 | **Tmux Config** | `tmux -f ~/.tmux.conf start-server` | PASS | Exit code 0, all vi-keys and mouse settings validated |
@@ -470,7 +470,7 @@ First migration attempt on an Apple Silicon machine carried over from an Intel M
 
 | Host | Exclude links → central | Hook shims removed | Thoughtbot links removed | Legacy dirs | Work identity |
 |---|---|---|---|---|---|
-| `simar-mbp` | 38 (+ `~/.cfg`) | 342 | 0 | `~/dotfiles` already gone | `~/.gitconfig.local` + `.work`; 5/5 work repos resolve to `@work.example` |
+| `simar-mbp` | 38 (+ `~/.cfg`) | 342 | 0 | `~/dotfiles` already gone | `~/.gitconfig.local` + `.work`; 5/5 work repos resolve to the work email |
 | `simars-macbook-32i` | 92 (+ `~/.cfg`) | 837 | 48 | thoughtbot `~/dotfiles` archived and removed | 7/7 |
 | `simars-macbook-16i` | 252 (+ `~/.cfg`) | 2,277 | 41 | `~/dotfiles` (`legacy-backup` clone) and `~/symlinks.dotfiles.thoughtbot` archived and removed | 28/28 |
 

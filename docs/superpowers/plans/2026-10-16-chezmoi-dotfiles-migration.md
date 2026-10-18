@@ -1034,7 +1034,7 @@ CHEZMOI_CI=true chezmoi init \
   --source="$HOME/.local/share/chezmoi" \
   --destination="$SANDBOX_DIR" \
   --config="$SANDBOX_DIR/chezmoi.toml" \
-  --promptString "What is your Git email address=you@work.example" \
+  --promptString "What is your Git email address=you@example.com" \
   --promptString "What is your Git full name=Simar Singh" \
   --promptBool "Is this a work machine=false"
 

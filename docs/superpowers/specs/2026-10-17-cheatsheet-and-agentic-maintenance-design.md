@@ -33,7 +33,7 @@ Equally important, to prevent documentation rot as new tools and aliases are int
   4. **Runtime & Language Management:**
      - `mise` commands: `mise ls`, `mise use <tool>@<version>`, `mise run`, `mise doctor`.
   5. **Customization & Local Overrides:**
-     - Local machine files: `~/.aliases.local`, `~/.zshrc.local`, `~/secrets.env`, `~/work.secret.env`.
+     - Local machine files: `~/.aliases.local`, `~/.zshrc.local`, `~/secrets.env`, and the work env files that `~/.zshrc.local` sources.
 
 ### 2.2 Shell Integration: `cheat` & `cheatsheet`
 Implemented in [`dot_aliases`](file:///Users/simars/.local/share/chezmoi/dot_aliases):

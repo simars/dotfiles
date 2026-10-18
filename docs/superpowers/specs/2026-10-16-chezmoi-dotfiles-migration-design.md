@@ -196,7 +196,7 @@ cp -PR "$BACKUP_DIR/." "$HOME/"
      --source="$HOME/.local/share/chezmoi" \
      --destination="$SANDBOX" \
      --config="$SANDBOX/chezmoi.toml" \
-     --promptString "What is your Git email address=you@work.example" \
+     --promptString "What is your Git email address=you@example.com" \
      --promptString "What is your Git full name=Simar Singh" \
      --promptBool "Is this a work machine=false"
    CHEZMOI_CI=true chezmoi status \

@@ -40,7 +40,7 @@ In `~/.aliases`, modern aliases (`ll`, `lt`, `ltree`, `preview`, `fp`, `dfh`, `d
 | `rg -g '<glob>' <query>` | Search only files matching a glob pattern | `rg -g '*.tmpl' "chezmoi"` |
 | `rg -l <query>` | List only filenames containing matches | `rg -l "TODO"` |
 | `rg -C <num> <query>` | Display context lines before and after matches | `rg -C 3 "func main"` |
-| `rg --hidden <query>` | Search hidden files and dotfiles | `rg --hidden "work"` |
+| `rg --hidden <query>` | Search hidden files and dotfiles | `rg --hidden "TODO"` |
 
 ### fzf Interactive Keybindings
 `fzf` provides fuzzy interactive completion directly in `zsh` sessions:
@@ -168,14 +168,14 @@ The configuration strictly separates shared, tracked dotfiles from machine-speci
 | Local Configuration File | Loading Mechanism | Intended Purpose |
 | :--- | :--- | :--- |
 | `~/.aliases.local` | Sourced at end of `~/.aliases` | Machine-specific shell aliases, hardware shortcuts, or team-specific alias overrides. |
-| `~/.zshrc.local` | Sourced at end of `~/.zshrc` | Host-specific Zsh functions, custom prompt overrides, local PATH additions, or private configurations. |
+| `~/.zshrc.local` | Sourced at end of `~/.zshrc` | Host-specific Zsh functions, custom prompt overrides, local PATH additions, the sourcing of work-specific env files, or private configurations. |
 | `~/.gitconfig.local` | Included via `~/.gitconfig` | Machine-specific Git configurations, alternative email addresses, or hardware GPG/SSH signing keys. |
-| `~/.gitconfig.work` | `includeIf` in `~/.gitconfig.local` | Work email for `work`, `WORK-ORG-2` and `WORK-ORG-3` remotes or clones under `~/work/`, `~/WORK-ORG-2/`, `~/WORK-ORG-3/`. Check with `git config --show-origin user.email`. |
+| `~/.gitconfig.work` | `includeIf` in `~/.gitconfig.local` | Work email for remotes in the work GitHub orgs and for clones under the matching `~/<org>/` directories. Check with `git config --show-origin user.email`. |
 | `~/secrets.env` | Sourced if readable by `~/.zshrc` | Local environment variables, personal API tokens, and development secrets (never committed to Git). |
-| `~/work.secret.env`<br>`~/work.env`<br>`~/dotfiles-local/.../work.secret.env` | Sourced if readable by `~/.zshrc` | Corporate/enterprise environment credentials, staging tokens, and internal endpoint variables. |
+| Work-specific env files | Sourced if readable by `~/.zshrc.local` | Corporate/enterprise environment credentials, staging tokens, and internal endpoint variables. They are listed in `~/.zshrc.local`, not in this repository. |
 
 > [!TIP]
-> Never commit secrets or machine-specific tokens into `~/.local/share/chezmoi`. Place sensitive variables in `~/secrets.env` or `~/work.secret.env`, which are ignored by Git and protected from repository leaks.
+> Never commit secrets or machine-specific tokens into `~/.local/share/chezmoi`. Place sensitive variables in `~/secrets.env` or in a work-specific env file sourced from `~/.zshrc.local`, which are ignored by Git and protected from repository leaks.
 
 ---
 

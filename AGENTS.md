@@ -57,8 +57,9 @@ Agents must strictly uphold these architectural guarantees at all times:
   - `~/.aliases.local`
   - `~/.zshrc.local`
   - `~/secrets.env`
-  - `~/work.secret.env`
+  - any work-specific env file that `~/.zshrc.local` sources
 - **Rationale:** These files are strictly reserved for uncommitted host-specific overrides, employer-specific configurations, and local credentials. Dotfiles templates source these files at the very end of their respective configurations to guarantee local precedence.
+- **No work identifiers in this repository:** it is public. Do not write work organisation names, work email addresses or the paths of work-specific files into any tracked file, message or commit. Refer to them generically ("the work orgs", "the work email") and keep the specifics in `~/.zshrc.local` and `~/.gitconfig.local`.
 
 ### 3.4 Zero Secret Leaks & Gitleaks Enforcement
 - **Invariant:** Every commit must pass `gitleaks` scanning with 0 findings.

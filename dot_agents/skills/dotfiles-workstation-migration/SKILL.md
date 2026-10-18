@@ -71,7 +71,7 @@ Inspect the precise diff against active files and identify potential collisions:
    chezmoi diff
    ```
    * **PATH Hierarchy:** Ensure `mise` shims, `~/.local/bin`, and Homebrew bin are preserved.
-   * **Local Sources:** Ensure `.zshrc` preserves sourcing for machine-specific configs (`~/.aliases`, `~/.zshrc.local`, `~/secrets.env`, `work.secret.env`).
+   * **Local Sources:** Ensure `.zshrc` preserves sourcing for machine-specific configs (`~/.aliases`, `~/.zshrc.local`, `~/secrets.env`, and the work env files that `~/.zshrc.local` sources).
    * **Git Config:** Verify `name`, `email`, editor (`code --wait` on macOS), and URL rewrites.
 3. **Audit Dangling Symlinks:**
    Scan for files in `$HOME` that point to legacy dotfiles repositories:

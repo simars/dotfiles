@@ -20,7 +20,7 @@
 
 - Never break or override standard POSIX utilities (`ls`, `cat`, `df`, `du`, `top`).
 - Never break the `config` bare-repo git alias (`/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME`).
-- Preserve local machine override precedence (`~/.aliases.local`, `~/.zshrc.local`, `~/secrets.env`, `~/work.secret.env`).
+- Preserve local machine override precedence (`~/.aliases.local`, `~/.zshrc.local`, `~/secrets.env`, and the work env files that `~/.zshrc.local` sources).
 - Maintain 100% Gitleaks compliance (0 leaks detected on every commit).
 - Multi-architecture compatibility across Apple Silicon (`arm64`), Intel macOS (`x86_64`), and Ubuntu Linux.
 
@@ -42,7 +42,7 @@ Create `docs/CHEATSHEET.md` with structured sections:
 2. Search & Navigation (`rg`, `fzf`, `z`).
 3. Core Git & Bare Repo (`config`, `gst`, `gco`, `gcm`, `gl`, `gp`, `gd`, `chezmoi`).
 4. Runtime Version Management (`mise`).
-5. Local Configuration & Override Points (`~/.aliases.local`, `~/.zshrc.local`, `~/secrets.env`, `~/work.secret.env`).
+5. Local Configuration & Override Points (`~/.aliases.local`, `~/.zshrc.local`, `~/secrets.env`, and the work env files that `~/.zshrc.local` sources).
 
 - [ ] **Step 2: Create chezmoi managed template `dot_cheatsheet.md`**
 

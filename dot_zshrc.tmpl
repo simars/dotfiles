@@ -114,10 +114,9 @@ if [[ -f "$HOME/.zshrc.local" ]]; then
     source "$HOME/.zshrc.local"
 fi
 
+# Work-specific env files are sourced from ~/.zshrc.local, not listed here.
 env_files=(
     "$HOME/secrets.env"
-    "$HOME/work.env"
-    "$HOME/dotfiles-local/zsh/configs/work/work.secret.env"
 )
 for env_file in "${env_files[@]}"; do
     if [[ -r "$env_file" ]]; then
