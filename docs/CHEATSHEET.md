@@ -25,6 +25,31 @@ The workstation environment provides modern Rust and Go command-line utilities c
 ### Guarded Alias Architecture
 In `~/.aliases`, modern aliases (`ll`, `lt`, `ltree`, `preview`, `fp`, `dfh`, `duh`, `top`) are strictly guarded with `if command -v <tool> &> /dev/null`. If a tool is not installed or unavailable on legacy architectures, the alias gracefully falls back (e.g. `ll` falling back to `ls -lah`) or remains cleanly inactive without throwing shell syntax errors.
 
+### GNU & Linux-Compatible Tools (macOS)
+On Apple silicon Macs the plain command names are the GNU versions, as on Linux: `~/.zshrc` puts the Homebrew `gnubin` directories ahead of the system paths. The BSD originals remain by full path, and every GNU tool also answers to its `g`-prefixed name.
+
+| Linux Command | Formula | Notes & Example |
+| :--- | :--- | :--- |
+| `ls`, `cat`, `cp`, `date`, `df`, `du`, `stat`, `readlink`, `sort`, `timeout`, ... | `coreutils` | All of GNU coreutils:<br>`date -d '2 days ago'`, `readlink -f .`, `timeout 5 curl -s example.com` |
+| `sed` | `gnu-sed` | In-place edit without BSD's `''` argument:<br>`sed -i 's/foo/bar/' file` |
+| `grep`, `egrep`, `fgrep` | `grep` | Perl-compatible regex:<br>`grep -P '\d{3}' file` |
+| `awk` | `gawk` | `awk '{ print toupper($1) }' file` |
+| `find`, `xargs`, `locate` | `findutils` | `find . -name '*.log' -printf '%s %p\n'`<br>`... \| xargs -r rm` (skips `rm` when the input is empty) |
+| `tar` | `gnu-tar` | `tar --exclude-vcs -czf ../src.tgz .` |
+| `make` | `make` | GNU Make 4.x (`/usr/bin/make` is 3.81). |
+| `bash` | `bash` | Bash 5 for `bash` and `#!/usr/bin/env bash`; `/bin/bash` stays 3.2. |
+| `rsync` | `rsync` | rsync 3 instead of Apple's `openrsync`; `/usr/bin/rsync` stays. |
+| `wget` | `wget` | `wget -qO- example.com` |
+| `ip`, `bridge`, `ss` | `iproute2mac` | `ip addr`, `ip route get 1.1.1.1`, `ip neigh` (wraps `ifconfig`, `route` and `netstat`). |
+| `watch` | `watch` | procps-ng's `watch`:<br>`watch -n 2 'docker ps'` |
+| `pstree` | `pstree` | `pstree -p $$` (this shell's ancestors and children) |
+| `ps`, `pgrep`, `pkill`, `uptime`, `w` | built in | BSD versions; `ps aux` and `ps -ef` both work. |
+| `free`, `vmstat` | none | procps-ng (the `procps` formula) is Linux-only because it reads `/proc`; use `btop` or `vm_stat`. |
+
+* **Need the BSD tool?** Call it by full path, e.g. `/usr/bin/sed -i '' 's/a/b/' file` or `/bin/ls -G`. `type -a sed` lists both.
+* **Prefixed names still work:** `gsed`, `ggrep`, `gls`, `gtar`, `gmake` and so on, for scripts that must ask for GNU explicitly.
+* **Intel Macs (secondary hosts):** only `findutils`, `gnu-sed`, `make`, `pstree` and `watch` have Intel bottles, so there `sed`, `find`, `xargs` and `make` are GNU while `ls`, `grep`, `awk` and `tar` stay BSD. `timeout` comes from a uutils fallback and `ip`, `bridge` and `ss` from an iproute2mac fallback, both in `~/.local/bin`; `bash` 5, `rsync` 3 and `wget` are absent.
+
 ---
 
 ## 2. Search & Navigation Shortcuts

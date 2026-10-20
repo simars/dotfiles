@@ -12,6 +12,18 @@ if [[ -x "/opt/homebrew/bin/brew" ]]; then
 elif [[ -x "/usr/local/bin/brew" ]]; then
     eval "$(/usr/local/bin/brew shellenv)"
 fi
+
+# GNU userland first, as on Linux: ls, sed, grep, find, tar, awk, make and the rest of coreutils are the GNU versions;
+# the BSD originals stay reachable by full path (/bin/ls, /usr/bin/sed). The list is explicit because libtool also
+# ships a gnubin, and GNU libtool in place of Apple's /usr/bin/libtool breaks Xcode builds.
+if [[ -n "${HOMEBREW_PREFIX:-}" ]]; then
+    for _gnu in coreutils findutils gawk gnu-sed gnu-tar grep make; do
+        if [[ -d "$HOMEBREW_PREFIX/opt/$_gnu/libexec/gnubin" ]]; then
+            export PATH="$HOMEBREW_PREFIX/opt/$_gnu/libexec/gnubin:$PATH"
+        fi
+    done
+    unset _gnu
+fi
 {{ end -}}
 
 # Default editor: the first of nvim, vim and vi on PATH; a value already in the environment wins.
