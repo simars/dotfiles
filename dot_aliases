@@ -76,7 +76,6 @@ cheat() {
 cheatsheet() {
   cheat "$@"
 }
-alias cheatsheet="cheat"
 
 # ==============================================================================
 # Local User Overrides (~/.aliases.local)
