@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# Global git identity and trailer guard for every repository, run by git 2.54+
+# through the `hook.identity-*` entries in ~/.gitconfig.
+#
+# Enforces on every commit (`pre-commit`, `commit-msg`) and push (`pre-push`):
+#   1. The author and committer name and email match the global identity
+#      resolved from ~/.gitconfig (+ ~/.gitconfig.local / ~/.gitconfig.work
+#      includeIf rules), ignoring accidental local `.git/config`, `-c`, or
+#      `GIT_AUTHOR_*` / `GIT_COMMITTER_*` overrides.
+#   2. Commit messages contain no `Co-Authored-By:` trailers.
+
+set -euo pipefail
+
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+mode="${1:-}"
+shift || true
+
+# Use `--show-scope --get-all` rather than `--global` so Git still loads local
+# `remote.*.url` config needed by `includeIf "hasconfig:remote.*.url:..."`,
+# while we filter strictly to the last `global`-scope entry (ignoring `local`
+# and `command` scopes).
+expected_name="$(git config --show-scope --get-all user.name 2>/dev/null | awk -F'\t' '$1 == "global" { val = $2 } END { print val }')"
+expected_email="$(git config --show-scope --get-all user.email 2>/dev/null | awk -F'\t' '$1 == "global" { val = $2 } END { print val }')"
+
+if [[ -z "$expected_name" || -z "$expected_email" ]]; then
+    cat >&2 << 'EOF'
+==========================================================================
+ GIT GUARD BLOCKED: global user.name or user.email is not configured in
+ ~/.gitconfig. Run `chezmoi apply` to restore ~/.gitconfig.
+==========================================================================
+EOF
+    exit 1
+fi
+
+expected_ident="${expected_name} <${expected_email}>"
+
+check_current_ident() {
+    local author_raw committer_raw author_ident committer_ident
+    author_raw="$(git var GIT_AUTHOR_IDENT 2>/dev/null || true)"
+    committer_raw="$(git var GIT_COMMITTER_IDENT 2>/dev/null || true)"
+    author_ident="${author_raw%>*}>"
+    committer_ident="${committer_raw%>*}>"
+
+    if [[ "$author_ident" != "$expected_ident" || "$committer_ident" != "$expected_ident" ]]; then
+        cat >&2 << EOF
+==========================================================================
+ COMMIT BLOCKED: author/committer identity does not match expected config.
+   Expected:  $expected_ident
+   Author:    $author_ident
+   Committer: $committer_ident
+
+   Fix:
+     - Check local repo overrides: git config --local --list
+     - Remove stray local email:   git config --local --unset-all user.email
+     - Remove stray local name:    git config --local --unset-all user.name
+     - Unset env overrides:        unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+==========================================================================
+EOF
+        exit 1
+    fi
+}
+
+case "$mode" in
+    --pre-commit)
+        check_current_ident
+        ;;
+
+    --commit-msg)
+        check_current_ident
+        msg_file="${1:-}"
+        if [[ -n "$msg_file" && -f "$msg_file" ]]; then
+            # Ignore comment lines starting with '#'
+            if grep -v '^[[:space:]]*#' "$msg_file" | grep -iq '^[[:space:]]*Co-Authored-By:'; then
+                cat >&2 << 'EOF'
+==========================================================================
+ COMMIT BLOCKED: commit message contains a 'Co-Authored-By:' trailer.
+   Remove all Co-Authored-By lines before committing.
+==========================================================================
+EOF
+                exit 1
+            fi
+        fi
+        ;;
+
+    --pre-push)
+        zero_oid="0000000000000000000000000000000000000000"
+        while read -r _local_ref local_oid _remote_ref remote_oid; do
+            [[ -z "${local_oid:-}" ]] && continue
+            [[ "$local_oid" == "$zero_oid" ]] && continue
+
+            if [[ "$remote_oid" == "$zero_oid" ]]; then
+                commits="$(git rev-list "$local_oid" --not --remotes 2>/dev/null || true)"
+            else
+                commits="$(git rev-list "${remote_oid}..${local_oid}" 2>/dev/null || true)"
+            fi
+
+            for sha in $commits; do
+                meta="$(git show -s --format='%an <%ae>%n%cn <%ce>' "$sha")"
+                a_id="$(printf '%s\n' "$meta" | sed -n '1p')"
+                c_id="$(printf '%s\n' "$meta" | sed -n '2p')"
+                subj="$(git show -s --format='%s' "$sha")"
+
+                if [[ "$a_id" != "$expected_ident" || "$c_id" != "$expected_ident" ]]; then
+                    cat >&2 << EOF
+==========================================================================
+ PUSH BLOCKED: commit ${sha:0:7} ($subj) has unexpected identity.
+   Expected:  $expected_ident
+   Author:    $a_id
+   Committer: $c_id
+
+   Rewrite the commit author before pushing:
+     git commit --amend --reset-author --no-edit
+==========================================================================
+EOF
+                    exit 1
+                fi
+
+                if git show -s --format='%B' "$sha" | grep -iq '^[[:space:]]*Co-Authored-By:'; then
+                    cat >&2 << EOF
+==========================================================================
+ PUSH BLOCKED: commit ${sha:0:7} ($subj) contains a 'Co-Authored-By:' trailer.
+   Rewrite the commit message to remove Co-Authored-By before pushing.
+==========================================================================
+EOF
+                    exit 1
+                fi
+            done
+        done
+        ;;
+
+    *)
+        echo "Usage: git-identity-guard <--pre-commit|--commit-msg|--pre-push> [args...]" >&2
+        exit 1
+        ;;
+esac

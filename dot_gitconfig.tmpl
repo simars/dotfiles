@@ -41,11 +41,23 @@
 [rebase]
     autosquash = true
 
-# Secret scan on every commit in every repo (config-defined hook, git 2.54+).
-# A repo's own .git/hooks/pre-commit still runs after it.
+# Secret scan and identity/trailer guard on every commit/push in every repo
+# (config-defined hooks, git 2.54+). A repo's own .git/hooks/* still runs after.
 [hook "gitleaks"]
     event = pre-commit
     command = ~/.config/git/hooks/gitleaks-pre-commit
+
+[hook "identity-pre-commit"]
+    event = pre-commit
+    command = ~/.config/git/hooks/git-identity-guard --pre-commit
+
+[hook "identity-commit-msg"]
+    event = commit-msg
+    command = ~/.config/git/hooks/git-identity-guard --commit-msg
+
+[hook "identity-pre-push"]
+    event = pre-push
+    command = ~/.config/git/hooks/git-identity-guard --pre-push
 
 [include]
     path = ~/.gitconfig.local

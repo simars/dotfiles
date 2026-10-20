@@ -106,15 +106,15 @@ Repositories created under the retired thoughtbot `init.templatedir` link `.git/
 | **Link a new repo** | `ln -sfn ~/.config/git/info-exclude .git/info/exclude` | Opt a fresh clone into the shared list (new clones no longer get it automatically). |
 | **Explain a match** | `git check-ignore -v <path>` | Show which list and line ignores a path (`.git/info/exclude:<line>:<pattern>`). |
 
-### Secret Scanning on Commit (Git 2.54+)
-Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` through the `hook.gitleaks` entry in `~/.gitconfig`. It scans only the staged changes, uses the repo's own `.gitleaks.toml` if present, and redacts what it reports. A repo's own `.git/hooks/pre-commit` still runs after it.
+### Secret Scanning & Identity Guard on Commit/Push (Git 2.54+)
+Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` through `hook.gitleaks` in `~/.gitconfig` to scan staged changes for secrets. In addition, `~/.config/git/hooks/git-identity-guard` runs on `pre-commit` (`hook.identity-pre-commit`), `commit-msg` (`hook.identity-commit-msg`), and `pre-push` (`hook.identity-pre-push`) to enforce that the author and committer match the expected global identity (`~/.gitconfig` + `~/.gitconfig.local` / `~/.gitconfig.work` `includeIf` rules) and that no `Co-Authored-By:` trailer is present. A repo's own `.git/hooks/*` still runs after them.
 
 | Task | Command | Description |
 | :--- | :--- | :--- |
-| **See active hooks** | `git hook list pre-commit` | Lists `gitleaks` plus any repo hook. Empty output means this git is older than 2.54 and nothing is scanned. |
+| **See active hooks** | `git hook list pre-commit` | Lists `gitleaks` and `identity-pre-commit` plus any repo hook (`git hook list commit-msg` and `git hook list pre-push` list the message and push guards). Empty output means this git is older than 2.54 and nothing runs. |
 | **False positive** | `gitleaks:allow` comment on the line | Lets that line through; for findings you cannot annotate, add their fingerprint to `.gitleaksignore`. |
-| **Skip once** | `git commit --no-verify` | Bypasses all pre-commit hooks for this commit only. |
-| **Opt a repo out** | `git config hook.gitleaks.enabled false` | Disables the scan in the current repo only. |
+| **Skip once** | `git commit --no-verify` | Bypasses all pre-commit and commit-msg hooks for this commit only (`git push --no-verify` for pre-push). |
+| **Opt a repo out** | `git config hook.gitleaks.enabled false` | Disables the secret scan in the current repo only (or `hook.identity-pre-commit.enabled false`, etc. for the identity guard). |
 | **Scan by hand** | `gitleaks git --pre-commit --staged --redact` | Same check the hook runs, without committing. |
 | **Check requirements** | `git --version` and `/usr/bin/git --version` | Both must be >= 2.54 (`.chezmoidata/requirements.toml`). Every `chezmoi apply` asserts this and that `gitleaks` is installed, printing the fix and failing until met. On Intel Macs only the terminal git is a hard requirement; `/usr/bin/git` is reported as a `WARN` and the apply still passes. |
 | **Intel Macs: standalone git** | `~/.local/bin/git --version` | Xcode 27 is Apple silicon only and Intel Homebrew has no git bottle, so `chezmoi apply` builds git from source into `~/.local` (pinned version, checksum verified, about a minute, needs the Command Line Tools). GUI apps that use `/usr/bin/git` (Apple's 2.50.1) skip the hook, so commit from a terminal. |
