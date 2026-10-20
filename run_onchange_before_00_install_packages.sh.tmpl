@@ -104,7 +104,10 @@ brew_bundle_bottled_only() {
 if command -v brew &> /dev/null; then
     echo "==> Synchronizing Homebrew Formulae & Casks via Brew Bundle..."
     export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1
-    if ! {{ if eq .chezmoi.arch "arm64" }}brew bundle --no-upgrade --file=/dev/stdin{{ else }}brew_bundle_bottled_only{{ end }} <<EOF
+    # Give brew bundle the Brewfile as a file, not on stdin: its auto-update runs first and can start builds that inherit
+    # stdin. On 2026-10-20 the pkgconf rebuild after a macOS upgrade swallowed the whole Brewfile, and nothing installed.
+    brewfile="$(mktemp)"
+    cat > "$brewfile" <<EOF
 {{ range $packages.darwin.brew.formulae -}}
 brew {{ . | quote }}
 {{ end -}}
@@ -112,9 +115,10 @@ brew {{ . | quote }}
 cask {{ . | quote }}
 {{ end -}}
 EOF
-    then
+    if ! {{ if eq .chezmoi.arch "arm64" }}brew bundle --no-upgrade --file="$brewfile" < /dev/null{{ else }}brew_bundle_bottled_only < "$brewfile"{{ end }}; then
         echo "WARNING: Some Homebrew packages could not be installed (e.g. unbottled on this architecture). Continuing..."
     fi
+    rm -f "$brewfile"
 
     echo "==> Pruning orphaned Homebrew dependencies and cleaning cache..."
     brew autoremove || true
