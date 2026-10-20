@@ -188,12 +188,15 @@ if ! command -v fx &> /dev/null; then
     chmod +x "$HOME/.local/bin/fx" 2>/dev/null || true
 fi
 
-# timeout fallback for Intel Macs, where coreutils has no bottle. uutils (the Rust coreutils) ships one multicall
-# binary that runs as whichever command it is invoked as, so ~/.local/bin/timeout is a symlink to it.
+{{ if ne .chezmoi.arch "arm64" -}}
+# Intel Macs only: on Apple silicon these would outlive a failed brew bundle and shadow the Homebrew versions, because
+# ~/.local/bin comes before them on PATH and the command -v guards never revisit them.
+# timeout fallback, as coreutils has no Intel bottle. uutils (the Rust coreutils) ships one multicall binary that
+# runs as whichever command it is invoked as, so ~/.local/bin/timeout is a symlink to it.
 if ! command -v timeout &> /dev/null; then
     echo "==> Installing timeout fallback (uutils coreutils)..."
-    UU_TRIPLE="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}-apple-darwin"
-    UU_SHA="{{ if eq .chezmoi.arch "arm64" }}7caea447564405b3eb50cce2a89d314df07d1b7a67090dc4cc7c82eba7014052{{ else }}a845b274f91c23b779f097e15045f4bf7cbcf99d6e62e6878d9db816e6887586{{ end }}"
+    UU_TRIPLE="x86_64-apple-darwin"
+    UU_SHA="a845b274f91c23b779f097e15045f4bf7cbcf99d6e62e6878d9db816e6887586"
     UU_TMP="$(mktemp -d)"
     if curl -fsSL -o "$UU_TMP/uutils.tar.gz" "https://github.com/uutils/coreutils/releases/download/0.12.0/coreutils-0.12.0-${UU_TRIPLE}.tar.gz" &&
         echo "${UU_SHA}  $UU_TMP/uutils.tar.gz" | shasum -a 256 -c - > /dev/null &&
@@ -206,7 +209,7 @@ if ! command -v timeout &> /dev/null; then
     rm -rf "${UU_TMP:?}"
 fi
 
-# ip, bridge and ss fallback for Intel Macs, where iproute2mac's python@3.15 has no bottle. iproute2mac is Python
+# ip, bridge and ss fallback, as iproute2mac's python@3.15 has no Intel bottle. iproute2mac is Python
 # scripts that need Python >= 3.10 (Apple's /usr/bin/python3 is 3.9), so, like Homebrew's own wrappers, these run
 # them on a managed Python: mise's, or else whatever python3 is on PATH.
 if ! command -v ip &> /dev/null; then
@@ -236,6 +239,7 @@ EOF
     rm -rf "${IR_TMP:?}"
 fi
 
+{{ end -}}
 {{ if ne .chezmoi.arch "arm64" -}}
 # Standalone git for Intel Macs. Xcode 27 is Apple silicon only, so Apple's git here stops at 2.50.1, and
 # Intel Homebrew has no git bottle; the global gitleaks hook needs git >= {{ .requirements.git.min }}. Build from source into
