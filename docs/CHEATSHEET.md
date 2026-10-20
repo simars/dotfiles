@@ -26,7 +26,18 @@ The workstation environment provides modern Rust and Go command-line utilities c
 In `~/.aliases`, modern aliases (`ll`, `lt`, `ltree`, `preview`, `fp`, `dfh`, `duh`, `top`) are strictly guarded with `if command -v <tool> &> /dev/null`. If a tool is not installed or unavailable on legacy architectures, the alias gracefully falls back (e.g. `ll` falling back to `ls -lah`) or remains cleanly inactive without throwing shell syntax errors.
 
 ### GNU & Linux-Compatible Tools (macOS)
-On Apple silicon Macs the plain command names are the GNU versions, as on Linux: `~/.zshrc` puts the Homebrew `gnubin` directories ahead of the system paths. The BSD originals remain by full path, and every GNU tool also answers to its `g`-prefixed name.
+On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, `find`, `tar`, `awk`, `make` and the rest of coreutils run. The default, `gnu`, aliases them to the GNU versions in your interactive shell only; scripts and other child processes keep Apple's tools, so macOS scripts that use BSD flags keep working. On Ubuntu the plain names are GNU already.
+
+| Mode | What You Type | Scripts & Child Processes | Use It For |
+| :--- | :--- | :--- | :--- |
+| `userland gnu` (default) | GNU (`ls` is an alias for `gls`) | Apple | Everyday Linux-style work |
+| `userland apple` | Apple | Apple | Following macOS docs; GNU stays available as `gsed`, `gls`, `gtar`, ... |
+| `userland gnu-path` | GNU | GNU (`gnubin` first on `PATH`) | Running a Linux-minded script or Makefile from this shell |
+
+* **Current mode:** `userland`. Switching changes the current shell only; a new shell starts in the host default.
+* **Host default:** `export MACOS_USERLAND=apple` (or `gnu-path`) in `~/.zshrc.local`.
+* **One Apple command in `gnu` mode:** `\sed ...` or `command sed ...` skips the alias; full paths (`/usr/bin/sed`, `/bin/ls`) always work.
+* **Where the aliases stop:** after `sudo`, `xargs`, `find -exec`, `watch`, `env` and `nohup`, and inside `bash -c`, commands come from `PATH`, which is Apple's in `gnu` mode. Use the `g` name there (`find . -name '*.txt' -exec gsed -i 's/a/b/' {} +`) or switch to `userland gnu-path`.
 
 | Linux Command | Formula | Notes & Example |
 | :--- | :--- | :--- |
@@ -46,9 +57,9 @@ On Apple silicon Macs the plain command names are the GNU versions, as on Linux:
 | `ps`, `pgrep`, `pkill`, `uptime`, `w` | built in | BSD versions; `ps aux` and `ps -ef` both work. |
 | `free`, `vmstat` | none | procps-ng (the `procps` formula) is Linux-only because it reads `/proc`; use `btop` or `vm_stat`. |
 
-* **Need the BSD tool?** Call it by full path, e.g. `/usr/bin/sed -i '' 's/a/b/' file` or `/bin/ls -G`. `type -a sed` lists both.
-* **Prefixed names still work:** `gsed`, `ggrep`, `gls`, `gtar`, `gmake` and so on, for scripts that must ask for GNU explicitly.
-* **Intel Macs (secondary hosts):** only `findutils`, `gnu-sed`, `make`, `pstree` and `watch` have Intel bottles, so there `sed`, `find`, `xargs` and `make` are GNU while `ls`, `grep`, `awk` and `tar` stay BSD. `timeout` comes from a uutils fallback and `ip`, `bridge` and `ss` from an iproute2mac fallback, both in `~/.local/bin`; `bash` 5, `rsync` 3 and `wget` are absent.
+* **The same in every mode:** `bash` 5, `rsync` 3, `wget`, `timeout`, `ip`, `watch` and `pstree` are on `PATH` regardless (`/bin/bash` stays 3.2 and `/usr/bin/rsync` stays `openrsync`).
+* **Scripts for both systems:** where BSD and GNU flags differ, try the GNU form first and fall back: `stat -c %Y f 2>/dev/null || stat -f %m f`. Never the other way round: GNU `stat -f` prints filesystem information and fails, so the fallback's output is appended to it. Or use a form both accept: `sed -i.bak`, `base64 -d`, `mktemp "${TMPDIR:-/tmp}/x.XXXXXX"`. Branch on `$OSTYPE` only for OS facts such as paths, launchd vs systemd, or the package manager.
+* **Intel Macs (secondary hosts):** only `findutils`, `gnu-sed`, `make`, `pstree` and `watch` have Intel bottles, so in `gnu` mode `sed`, `find`, `xargs` and `make` are GNU there while `ls`, `grep`, `awk` and `tar` stay Apple's. `timeout` comes from a uutils fallback and `ip`, `bridge` and `ss` from an iproute2mac fallback, both in `~/.local/bin`; `bash` 5, `rsync` 3 and `wget` are absent.
 
 ---
 
