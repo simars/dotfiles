@@ -192,7 +192,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 Projects choose their runtime; nothing global changes outside them.
 
 * **Files mise reads:** `.tool-versions`, `mise.toml`, and (enabled in `~/.config/mise/config.toml`) `.ruby-version`, a Gemfile `ruby "3.2.3"` line, `.python-version`, `.nvmrc` and `.node-version`.
-* **Ruby:** no global version, so outside a project `ruby` is macOS's `/usr/bin/ruby`. Apple silicon installs prebuilt Rubies and refuses versions that have none (EOL 2.x); force a compile with `MISE_RUBY_COMPILE=true mise install ruby@<version>`. Intel Macs compile.
+* **Ruby:** no global version, so outside a project `ruby` is macOS's `/usr/bin/ruby`. mise never compiles Ruby on its own on macOS: Apple silicon installs prebuilt Rubies and refuses versions that have none (EOL 2.x), and Intel Macs have no prebuilt Rubies. Compile on purpose with `MISE_RUBY_COMPILE=true mise install ruby@<version>` (or `MISE_RUBY_COMPILE=true mise-audit --install`).
 * **Go:** `go.mod` is not read as a pin (Go runs older modules on the newest toolchain); pin an exact Go in `.tool-versions` if a project needs one. `go install` writes to `~/go/bin`, which is on `PATH`.
 * **Pin fails with `No GitHub artifact attestations found`:** the pinned patch release has no signed build. Pin the latest patch of the same minor instead: `mise ls-remote python 3.11 | tail -1`.
 

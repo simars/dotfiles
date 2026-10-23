@@ -11,8 +11,9 @@
 #
 # It looks for the files mise reads: .tool-versions, mise.toml and .mise.toml, plus the idiomatic files that
 # ~/.config/mise/config.toml enables (.ruby-version, Gemfile, .python-version, .nvmrc, .node-version).
-# Hidden directories, Library, ~/go, node_modules and vendor are skipped. `mise ls` never installs anything,
-# so the audit is safe to run on every `chezmoi apply`; only --install changes the machine.
+# Hidden directories, Library, ~/go, vendor and node_modules (with copies such as node_modules-backup) are skipped.
+# `mise ls` never installs anything, so the audit is safe to run on every `chezmoi apply`; only --install changes
+# the machine.
 # Runs on macOS's /bin/bash 3.2 too: Intel Macs have no Homebrew bash.
 set -euo pipefail
 
@@ -71,7 +72,7 @@ project_dirs() {
         [[ -d "$root" ]] || continue
         find "$root" -maxdepth "$depth" \
             \( -type d ! -path "$root" \
-            \( -name '.?*' -o -name node_modules -o -name vendor -o -name Library -o -path "$HOME/go" \) -prune \) -o \
+            \( -name '.?*' -o -name 'node_modules*' -o -name vendor -o -name Library -o -path "$HOME/go" \) -prune \) -o \
             \( -type f \( -name .tool-versions -o -name mise.toml -o -name .mise.toml -o -name .ruby-version \
             -o -name Gemfile -o -name .python-version -o -name .nvmrc -o -name .node-version \) -print \) \
             2> /dev/null

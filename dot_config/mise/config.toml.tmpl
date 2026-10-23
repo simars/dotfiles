@@ -21,11 +21,12 @@ default_packages_file = "~/.config/mise/default-python-packages"
 # Leave GOBIN unset, so `go install` writes to ~/go/bin (on PATH via ~/.zprofile) instead of the Go version's
 # own bin directory, which `go = "latest"` replaces on every Go upgrade.
 set_gobin = false
-{{- if and (eq .chezmoi.os "darwin") (eq .chezmoi.arch "arm64") }}
+{{- if eq .chezmoi.os "darwin" }}
 
 [settings.ruby]
-# Apple silicon gets prebuilt, attestation-checked Rubies. Fail fast on a version with no prebuilt build
-# (the EOL 2.x line) instead of compiling it against an OpenSSL that Homebrew no longer ships.
-# One-off override: MISE_RUBY_COMPILE=true mise install ruby@<version>
+# Never compile Ruby implicitly on macOS. Apple silicon gets prebuilt, attestation-checked Rubies; a version with
+# none (the EOL 2.x line) fails at once instead of compiling against an OpenSSL that Homebrew no longer ships.
+# Intel Macs have no prebuilt Rubies at all, so without this a `ruby` call in any pinned project would start a
+# long compile through auto-install. Compile on purpose: MISE_RUBY_COMPILE=true mise install ruby@<version>
 compile = false
 {{- end }}
