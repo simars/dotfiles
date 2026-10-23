@@ -215,6 +215,7 @@ Projects choose their runtime; nothing global changes outside them.
 | `tat` (inside tmux) | Switch the client to that session instead of nesting one, creating it first if needed | `tat other-project` from any session |
 | `tm` | Attach to, or create, one fixed session called `main` | Alias for `tmux new-session -A -s main` |
 | `Ctrl-b d` | Detach and leave the session running | `tmux ls` lists sessions, `tat` re-attaches |
+| `Ctrl-b !` | Break the current pane out into its own window | Press `Ctrl-b`, release, then `Shift-1`. herdr binds the same keys to move the pane into a new tab |
 
 ---
 
