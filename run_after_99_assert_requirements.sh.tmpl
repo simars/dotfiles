@@ -99,6 +99,13 @@ if command -v mise &> /dev/null; then
     else
         report warn "mise ${mise_v:-of unknown version} ($mise_bin) is older than $MISE_MIN, the release ~/.config/mise/config.toml was verified on. Fix: $mise_fix"
     fi
+    # A runtime ahead of mise's shims in a login shell wins in every project, pin or not. `uv python install`
+    # puts such a python3 into ~/.local/bin, which ~/.zprofile places before the shims.
+    shims="$HOME/.local/share/mise/shims"
+    while IFS='=' read -r tool first; do
+        [[ -e "$shims/$tool" && -n "$first" && "$first" != "$shims/$tool" ]] || continue
+        report warn "$tool resolves to $first in a login shell, ahead of mise's shim, so projects get it instead of their pinned version. Fix: remove that link (for a uv Python, its versioned python3.X link can stay)"
+    done < <(zsh -lc 'for t in python3 python ruby node go; do print -r -- "$t=$(whence -p $t)"; done' 2> /dev/null)
     if command -v mise-audit &> /dev/null; then
         if audit_out="$(mise-audit --quiet 2>&1)"; then
             echo "OK:   mise-audit: every project runtime pin under \$HOME is installed"

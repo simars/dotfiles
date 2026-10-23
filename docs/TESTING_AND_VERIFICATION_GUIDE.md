@@ -670,6 +670,18 @@ The handling is described in `FUTURE_CONSIDERATIONS.md` §10. Results on `Simars
 | Go | In a fresh login shell `GOBIN` is unset and `go env GOBIN` is `~/go/bin`, which is on `PATH`, so `gopls` and `dlv` resolve again |
 | `chezmoi apply` | 2.3 s including the audit; the assert script ends with the audit's `WARN` |
 | Removed | `~/.asdf` (2.7 GB, unused), `~/.rbenv` (Ruby 2.6.5, 3.2.3, 3.3.0) and `~/.pyenv` (Python 3.8.10), the last two x86_64 builds that fail with `bad CPU type`; `~/.tool-versions`; a second `mise activate` and `zoxide init` in the machine-local zshrc |
+| Shadow check | No warning on the real PATH; with a temporary `~/.local/bin/python3` link it warned as intended, and the link was removed |
+
+Results on `simars-macbook-32i` (Intel, macOS 26.7.1), reached over the tailnet with agent forwarding (`ssh -A`), because it cannot unlock the GitHub key itself:
+
+| Check | Result |
+|---|---|
+| Before | mise 2026.10.7 (standalone, `~/.local/bin`); `simars/dotfiles` one commit behind; no asdf, rbenv, pyenv or home-level pins |
+| Rollout | `mise self-update` to 2026.10.17 first (an older mise might not know the new settings), then the private repo and `chezmoi apply`: 6.7 s, the same settings as on Apple silicon (`ruby.compile = false` applies to all of macOS since `b37b864`) |
+| `mise-audit` | 6 missing Ruby pins in 8 projects (2.5.1, 2.6.3, 2.6.5, 2.7.6, 3.1.0, 3.1.2). Intel has no prebuilt Rubies, so none was installed; this is `FUTURE_CONSIDERATIONS.md` B16. The first run also listed `.nvmrc` files inside a `node_modules-backup` copy, which the audit now skips |
+| `ruby` | `/usr/bin/ruby` 2.6.10 outside projects and, until B16 is decided, in the pinned projects too (no mise Ruby means no shim) |
+| Go | `GOBIN` unset in a fresh login shell, `go env GOBIN` is `~/go/bin`, `gopls` resolves |
+| Python | `python3` was a hand-made link to a `uv` Python 3.14.8 in `~/.local/bin`, ahead of the mise shims, so mise's 3.12 and every project pin were bypassed. The link was removed (the `uv` tool that needs 3.14 points at uv's own copy and still runs); `python3` is now mise's 3.12.15. The new shadow check in the requirement script warns about this case |
 
 ---
 
