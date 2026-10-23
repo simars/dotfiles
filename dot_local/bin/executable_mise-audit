@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# mise-audit: list project runtime pins under $HOME that mise has not installed, and optionally install them.
+#
+# Usage: mise-audit [--install] [--quiet] [ROOT ...]
+#   ROOT       directories to scan; default: $MISE_AUDIT_ROOTS (colon-separated), else $HOME
+#   --install  run `mise install` in each project with a missing pin, then report what still failed
+#   --quiet    print problems only
+# Env: MISE_AUDIT_DEPTH (default 5) limits how deep each root is searched.
+# Exit: 0 when every pin is installed, 1 when a pin is missing, failed to install or sits in an untrusted
+# config, 2 on a usage error or when mise is absent.
+#
+# It looks for the files mise reads: .tool-versions, mise.toml and .mise.toml, plus the idiomatic files that
+# ~/.config/mise/config.toml enables (.ruby-version, Gemfile, .python-version, .nvmrc, .node-version).
+# Hidden directories, Library, ~/go, node_modules and vendor are skipped. `mise ls` never installs anything,
+# so the audit is safe to run on every `chezmoi apply`; only --install changes the machine.
+# Runs on macOS's /bin/bash 3.2 too: Intel Macs have no Homebrew bash.
+set -euo pipefail
+
+usage() {
+    sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+install=0
+quiet=0
+roots=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --install) install=1 ;;
+        --quiet) quiet=1 ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "mise-audit: unknown option $1" >&2
+            usage >&2
+            exit 2
+            ;;
+        *) roots+=("$1") ;;
+    esac
+    shift
+done
+
+if ! command -v mise > /dev/null 2>&1; then
+    echo "mise-audit: mise is not installed" >&2
+    exit 2
+fi
+
+if [[ ${#roots[@]} -eq 0 ]]; then
+    IFS=':' read -r -a roots <<< "${MISE_AUDIT_ROOTS:-$HOME}"
+fi
+depth="${MISE_AUDIT_DEPTH:-5}"
+
+say() {
+    [[ "$quiet" -eq 1 ]] || echo "$@"
+}
+
+# tilde PATH: print PATH with $HOME shortened to ~, the way mise prints config sources
+tilde() {
+    case "$1" in
+        "$HOME") echo "~" ;;
+        "$HOME"/*) echo "~${1#"$HOME"}" ;;
+        *) echo "$1" ;;
+    esac
+}
+
+# project_dirs: every directory under the roots that holds a file mise reads, once each
+project_dirs() {
+    local root
+    for root in "${roots[@]}"; do
+        [[ -d "$root" ]] || continue
+        find "$root" -maxdepth "$depth" \
+            \( -type d ! -path "$root" \
+            \( -name '.?*' -o -name node_modules -o -name vendor -o -name Library -o -path "$HOME/go" \) -prune \) -o \
+            \( -type f \( -name .tool-versions -o -name mise.toml -o -name .mise.toml -o -name .ruby-version \
+            -o -name Gemfile -o -name .python-version -o -name .nvmrc -o -name .node-version \) -print \) \
+            2> /dev/null
+    done | sed 's|/[^/]*$||' | sort -u
+}
+
+# declared_in SHORT_DIR: filter `mise ls --missing` output on stdin down to "tool version source" for the pins
+# declared in that directory itself. Pins inherited from a parent directory or the global config are reported
+# where they are declared, not once per project. (`mise ls --missing` exits 0 either way, so parse its output.)
+declared_in() {
+    awk -v d="$1/" '$3 == "(missing)" && index($4, d) == 1 { print $1, $2, $4 }'
+}
+
+scanned=0
+missing=0
+failed=0
+untrusted=0
+
+while IFS= read -r dir; do
+    [[ -n "$dir" ]] || continue
+    scanned=$((scanned + 1))
+    short="$(tilde "$dir")"
+
+    if ! out="$(cd "$dir" && mise ls --missing < /dev/null 2>&1)" || [[ "$out" == *"not trusted"* ]]; then
+        if [[ "$out" == *"not trusted"* ]]; then
+            echo "UNTRUSTED  $short  (mise ignores its config; review it, then: mise trust $short)"
+        else
+            echo "ERROR      $short  $(echo "$out" | grep -m 1 -i error || echo "$out" | head -n 1)"
+        fi
+        untrusted=$((untrusted + 1))
+        continue
+    fi
+
+    pins="$(printf '%s\n' "$out" | declared_in "$short")"
+    [[ -n "$pins" ]] || continue
+
+    if [[ "$install" -eq 0 ]]; then
+        while IFS= read -r pin; do
+            echo "MISSING    $short  $pin"
+            missing=$((missing + 1))
+        done <<< "$pins"
+        continue
+    fi
+
+    say "INSTALL    $short"
+    if log="$(cd "$dir" && mise install --yes < /dev/null 2>&1)"; then
+        :
+    fi
+    # Re-check instead of trusting the exit code: what matters is whether the pins are now installed.
+    still="$( (cd "$dir" && mise ls --missing < /dev/null 2> /dev/null || true) | declared_in "$short")"
+    if [[ -n "$still" ]]; then
+        reason="$(echo "$log" | grep -m 1 -E 'failed|ERROR' || true)"
+        while IFS= read -r pin; do
+            echo "FAILED     $short  $pin${reason:+  -- $reason}"
+            failed=$((failed + 1))
+        done <<< "$still"
+    else
+        say "OK         $short  installed: $(echo "$pins" | awk '{print $1 "@" $2}' | tr '\n' ' ')"
+    fi
+done < <(project_dirs)
+
+say "mise-audit: $scanned projects scanned; $missing missing, $failed failed to install, $untrusted untrusted or unreadable"
+if [[ "$missing" -gt 0 && "$install" -eq 0 ]]; then
+    say "Install them with: mise-audit --install   (or: cd <project> && mise install)"
+fi
+[[ $((missing + failed + untrusted)) -eq 0 ]]

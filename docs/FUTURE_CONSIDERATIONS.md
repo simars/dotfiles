@@ -15,7 +15,7 @@ This document outlines key future considerations, platform lifecycle changes, an
 | 7 | Matrix of automated handling | Updated |
 | 8 | Deferred items from the 2026-10-17 migration | All resolved; leftovers moved to §9 |
 | 9 | Backlog of systemic improvements | Open |
-| 10 | Project runtimes under mise (Ruby, Python, Node, Go) | Implemented 2026-10-23; open items are B15 to B18 in §9 |
+| 10 | Project runtimes under mise (Ruby, Python, Node, Go) | Implemented 2026-10-23; open items are B15 to B19 in §9 |
 
 ---
 
@@ -302,6 +302,7 @@ Changes to this repository that came out of the 2026-10-17/18 migration. Nothing
 | B16 | **Ruby on the Intel hosts.** mise has no prebuilt Ruby for x86_64 macOS, so a project Ruby there means a ruby-build compile (minutes per version, Homebrew `openssl@3` and `libyaml`), and EOL 2.x pins cannot build on macOS 26 at all (they need OpenSSL 1.1). Decide per host: compile the 3.x versions in use, or run those projects in containers. | §10.3. | Decision |
 | B17 | **Keep mise current on Linux hosts.** `curl mise.run` runs only when mise is absent, so Linux hosts keep the release from their bootstrap; the requirement check now only warns. `run_onchange_after_90_sync_runtimes` could run `mise self-update` for standalone installs. | The attestation checks and the settings in §10 depend on the mise release. | Medium, small |
 | B18 | **Project-side guards for runtime pins** (a convention for project repos, not this one): a CI step with `jdx/mise-action@v4` so a pin that cannot install fails at review time, and Renovate's `asdf` (`.tool-versions`) or `mise` (`mise.toml`) manager to bump pins. Prefer exact, recent patch pins in `.tool-versions`; asdf rejects fuzzy versions. | §10.1: two projects pinned Python patch releases whose builds had no attestations. | Low |
+| B19 | **Narrow the shared `bin/` exclude.** `~/.config/git/info-exclude`, linked into every repo's `.git/info/exclude`, ignores `bin/`, so a new file under any `bin/` directory is silently left out of `git add -A` (tracked files are unaffected). This repository re-includes `dot_local/bin/` in its `.gitignore`; other repositories with a committed `bin/` have the same trap. Limit the pattern to build-output locations, or drop it. | `mise-audit` was missing from `141274d` and reached the hosts only in the follow-up commit. | Low, small |
 
 ---
 

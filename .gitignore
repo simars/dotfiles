@@ -3,3 +3,6 @@ key.txt
 *.key
 *.swp
 *~
+
+# The shared ~/.config/git/info-exclude ignores bin/ in every repo; this repo ships scripts there.
+!dot_local/bin/
