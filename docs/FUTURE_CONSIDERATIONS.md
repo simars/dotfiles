@@ -15,6 +15,7 @@ This document outlines key future considerations, platform lifecycle changes, an
 | 7 | Matrix of automated handling | Updated |
 | 8 | Deferred items from the 2026-10-17 migration | All resolved; leftovers moved to §9 |
 | 9 | Backlog of systemic improvements | Open |
+| 10 | Project runtimes under mise (Ruby, Python, Node, Go) | Implemented 2026-10-23; open items are B15 to B18 in §9 |
 
 ---
 
@@ -215,6 +216,7 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 | **`EDITOR` / `VISUAL`** | ✅ Default editor | First of `nvim`, `vim`, `vi` in `.zshrc`, set before `.aliases` is read |
 | **Apple Silicon Prefix & Bottles**| ✅ Native Resolution | Dynamic `/opt/homebrew` shellenv + Tier 1 native bottle pouring |
 | **SSH-RSA Mixed Case Error** | ✅ External Binary Engine | `useBuiltin = false` delegates to native `age` binary |
+| **Project runtime pins** | ✅ mise config + audit | Idiomatic version files enabled in `dot_config/mise/config.toml.tmpl`; `mise-audit` warns from `run_after_99_assert_requirements` (§10) |
 
 ---
 
@@ -296,3 +298,32 @@ Changes to this repository that came out of the 2026-10-17/18 migration. Nothing
 | B12 | **Test a clean bootstrap.** The whole flow was exercised only on existing machines. Add a periodic run on a clean Apple silicon VM and an Ubuntu container (`CHEZMOI_CI` already skips the system steps). | The first run on a fresh machine would be the first real test of the package order and the fallbacks. | Medium |
 | B13 | **Plan the end of the Intel Macs.** macOS 27 drops Intel, Homebrew treats it as Tier 3 and GitHub Actions removes Intel runners in 2027; decide by when the two Intel hosts move to Linux or retire. The bottle-only guard and the standalone git hold until then. | §1.1. | Decision |
 | B14 | **Work-specific identifiers in this public repository (done 2026-10-18).** Work organisation names, a work email address and the paths of machine-local secret files appeared in twelve tracked files, the commit history and one commit message, against the rule in the private notes. All three were removed: the wording is neutral and the work env files are now sourced from the machine-local `~/.zshrc.local` instead of `dot_zshrc.tmpl`; the history of every ref was rewritten (`git-filter-repo`) to remove those identifiers and the tailnet name; and the GitHub repository was deleted and recreated, because a force-push alone leaves the old commits fetchable by hash. The `legacy-backup` branch was not restored. `AGENTS.md` §3.3 now states the rule. **Every other clone must be reset to the new history** (`git fetch origin && git reset --hard origin/main`); pushing from an old clone would bring the removed history back. | Found while reorganising these documents on 2026-10-18; verified by a zero-hit scan of a fresh mirror clone. | Done |
+| B15 | **Declare the Go developer tools.** `gopls`, `dlv`, `staticcheck`, `goimports` and `golangci-lint` live in each host's `~/go/bin`, installed by hand. Declare them in the mise config through the `go:` backend (or `aqua:` for prebuilt ones such as `golangci-lint`), so every host gets the same set. Do not use `~/.default-go-packages`: mise deprecates it and warns from 2026.11.0. | §10: with `GOBIN` in the Go version's directory, `go install`ed tools vanished from `PATH` on a Go upgrade. | Medium, small |
+| B16 | **Ruby on the Intel hosts.** mise has no prebuilt Ruby for x86_64 macOS, so a project Ruby there means a ruby-build compile (minutes per version, Homebrew `openssl@3` and `libyaml`), and EOL 2.x pins cannot build on macOS 26 at all (they need OpenSSL 1.1). Decide per host: compile the 3.x versions in use, or run those projects in containers. | §10.3. | Decision |
+| B17 | **Keep mise current on Linux hosts.** `curl mise.run` runs only when mise is absent, so Linux hosts keep the release from their bootstrap; the requirement check now only warns. `run_onchange_after_90_sync_runtimes` could run `mise self-update` for standalone installs. | The attestation checks and the settings in §10 depend on the mise release. | Medium, small |
+| B18 | **Project-side guards for runtime pins** (a convention for project repos, not this one): a CI step with `jdx/mise-action@v4` so a pin that cannot install fails at review time, and Renovate's `asdf` (`.tool-versions`) or `mise` (`mise.toml`) manager to bump pins. Prefer exact, recent patch pins in `.tool-versions`; asdf rejects fuzzy versions. | §10.1: two projects pinned Python patch releases whose builds had no attestations. | Low |
+
+---
+
+## 10. Project Runtimes Under mise (implemented 2026-10-23)
+
+### 10.1 The Issue
+* **Loud failure.** mise installs prebuilt Python (python-build-standalone) and verifies its GitHub artifact attestations by default. A project pinned to an old patch release whose build has no attestations (the `20250115` build of 3.13.1, for example) made every `python` call in that project try to auto-install it and fail with `No GitHub artifact attestations found`. The fix belongs in the project: pin the latest patch of the same minor release (3.13.17's `20261021` build verifies).
+* **Silent failure.** mise ignores `.ruby-version`, a Gemfile `ruby` line, `.python-version` and `.nvmrc` unless they are enabled, and no Ruby was installed through mise, so every Ruby project ran macOS's `/usr/bin/ruby` 2.6.10 without any error. asdf never read those files either (no `legacy_version_file`), so the gap predates mise; nothing enforced the pins.
+* **Unnoticed.** The migration's verification ran `mise current` in `$HOME` only, which sees the global tools and none of the project pins.
+* **x86_64 leftovers.** `~/.asdf`, `~/.rbenv` and `~/.pyenv` from the Intel-Homebrew era held x86_64 builds, which fail with `bad CPU type` on Apple silicon without Rosetta. They were removed.
+
+### 10.2 Chezmoi Handling
+* `dot_config/mise/config.toml.tmpl` (now a template; `run_onchange_after_90_sync_runtimes` hashes the `.tmpl` source):
+  * `idiomatic_version_file_enable_tools = ["node", "python", "ruby"]`, so the version files projects already carry are honoured.
+  * No global `ruby`: outside a project, `ruby` stays `/usr/bin/ruby`, which macOS tooling expects. Verified: once mise has a Ruby, its shim outside any pinned project falls through to the system Ruby.
+  * Go is not in the idiomatic list: mise would read `go 1.17` in `go.mod` as a pin for that release, while Go builds older modules on the newest toolchain. `MISE_IDIOMATIC_VERSION_FILE_DISABLE_FILES=go.mod,go.work` did not stop that in 2026.10.17. Projects that need an exact Go pin it in `.tool-versions` or `mise.toml`.
+  * `go.set_gobin = false`: `go install` writes to `~/go/bin`, which `.zprofile` appends to `PATH` (appended, so it never shadows another tool), instead of the Go version's own directory that `go = "latest"` replaces on every upgrade.
+  * Apple silicon only: `ruby.compile = false`. Prebuilt, attestation-checked Rubies install in seconds; a version without a prebuilt build (the EOL 2.x line) fails at once instead of starting a compile that needs OpenSSL 1.1, which Homebrew no longer ships. Override for one install with `MISE_RUBY_COMPILE=true`. Intel hosts keep mise's default, which compiles (B16).
+* `~/.local/bin/mise-audit` (`dot_local/bin/executable_mise-audit`): finds the directories under `$HOME` that hold a file mise reads (hidden directories, `Library`, `~/go`, `node_modules` and `vendor` skipped; depth 5), runs `mise ls --missing` in each and lists the pins declared there that are not installed, plus configs mise refuses as untrusted. `--install` runs `mise install` in each such project and re-checks. Bash 3.2 compatible, because the Intel hosts have no Homebrew bash.
+* `run_after_99_assert_requirements`: a `WARN` when mise is older than `requirements.mise.min` (fix: `brew upgrade mise`, or `mise self-update` for a standalone install), and a `WARN` that lists `mise-audit`'s findings. Neither fails the apply, and the hook never installs anything.
+* The migration skill (`dot_agents/skills/dotfiles-workstation-migration`) now inventories legacy version managers and project pins in Stage 2, runs `mise-audit` in Stage 6 and retires asdf, rbenv and pyenv in Stage 7.
+
+### 10.3 Remaining Gaps
+* EOL Ruby 2.x pins cannot be installed on macOS 26 by any route that was tried (no prebuilt builds, and the OpenSSL 1.1 they need is gone). Run such projects in containers. The audit keeps listing them, which is the intended reminder.
+* Go tools are not declared yet (B15), Ruby on Intel is a decision (B16), Linux hosts keep an old mise until someone upgrades it (B17), and the project repos have no guard of their own (B18).

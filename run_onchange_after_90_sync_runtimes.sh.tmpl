@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mise config hash: {{ include "dot_config/mise/config.toml" | sha256sum }}
+# mise config hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 set -euo pipefail
 
 if [[ "${CHEZMOI_CI:-false}" == "true" ]]; then

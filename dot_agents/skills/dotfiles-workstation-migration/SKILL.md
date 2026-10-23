@@ -78,6 +78,18 @@ Inspect the precise diff against active files and identify potential collisions:
    ```bash
    find ~ -maxdepth 3 -lname '*dotfiles/*' 2>/dev/null
    ```
+4. **Inventory Legacy Version Managers & Project Pins:**
+   mise replaces asdf, rbenv, pyenv and nvm, but it does not adopt their installs, and it reads `.ruby-version`, Gemfile `ruby` lines, `.python-version` and `.nvmrc` only for the tools listed in `idiomatic_version_file_enable_tools`. A pin nothing honours fails silently: the project runs the system runtime.
+   ```bash
+   # Old managers, their installed versions, and the architecture of each binary (x86_64 = Intel-era leftover)
+   ls -d ~/.asdf/installs/*/* ~/.rbenv/versions/* ~/.pyenv/versions/* ~/.nvm/versions/node/* 2>/dev/null
+   file ~/.rbenv/versions/*/bin/ruby ~/.pyenv/versions/*/bin/python3 2>/dev/null
+   # Home-level pins: the sync script runs `mise install` in $HOME, so these install (or compile) during apply
+   ls -la ~/.tool-versions ~/.ruby-version ~/.python-version ~/.nvmrc ~/.node-version ~/Gemfile 2>/dev/null
+   # Project pins (after apply, `mise-audit` does this properly)
+   find ~ -maxdepth 5 \( -type d -name '.?*' -prune \) -o -type f \( -name .tool-versions -o -name .ruby-version -o -name .python-version -o -name .nvmrc \) -print 2>/dev/null
+   ```
+   Note old patch pins (for example Python `3.11.7`): mise verifies GitHub attestations on prebuilt Python and Ruby, and builds without them fail to install.
 
 ---
 
@@ -134,7 +146,7 @@ Monitor during execution:
 1. **Package Provisioning:** Homebrew `brew bundle --no-upgrade` or Apt package installations (including `vim`, `neovim`, `herdr`, and modern CLI utilities: `eza`, `bat`, `btop`, `duf`, `dust`, `httpie`, `jq`, `fx`).
 2. **Resilient Binary Fallbacks:** Standalone binaries (`herdr`, `neovim`, `age`, `starship`, `mise`, `fzf`, `zoxide`, `bat`, `dust`, `fx`) automatically downloaded into `~/.local/bin` if Homebrew skips unbottled formulae on Intel macOS.
 3. **Editor Automation:** LunarVim (`lvim`) installed automatically via unattended installer once `neovim` and runtimes are present.
-4. **Runtime Compilation:** `mise install --yes` (Node 22, Go latest, Python 3.12 + httpie/pip/ruff/black/pytest).
+4. **Runtime Compilation:** `mise install --yes` (Node 22, Go latest, Python 3.12 + httpie/pip/ruff/black/pytest). This installs the global tools only; project pins are listed by the `mise-audit` warning at the end of the apply and installed in Stage 6.
 5. **Post-Apply Hooks:** Gitleaks pre-commit hook in `~/.local/share/chezmoi/.git/hooks/pre-commit` and Keychain enrollment.
 
 ---
@@ -170,8 +182,12 @@ zsh -lic 'which lvim && lvim --version | head -n 1'
 # 7. Directory Navigation Functions
 zsh -lic 'type z && type zi'
 
-# 8. Polyglot Runtimes
+# 8. Polyglot Runtimes: global tools, then every project pin under $HOME
 zsh -lic 'mise current && go version && python --version && node --version'
+zsh -lic 'mise-audit'               # lists pins mise has not installed; exit 0 means none
+zsh -lic 'mise-audit --install'     # then re-run mise-audit; record anything still FAILED
+# Outside any project, ruby must still be the system one (no global ruby on purpose)
+(cd ~ && zsh -lc 'ruby -v')         # expect /usr/bin/ruby's version, not a mise Ruby
 
 # 9. Git & SSH Configuration
 zsh -lic 'git config user.email && git config core.editor'
@@ -206,6 +222,7 @@ test -f ~/.local/share/chezmoi/AGENTS.md && test ! -e ~/AGENTS.md && test ! -e ~
 | **Modern Aliases** | `type fp ll lt ltree preview dfh duh top` | Modern `eza`, `bat`, `duf`, `dust`, `btop` | Guarded `ls -lah`, `bat`, `duf`, `dust`, `btop` | Guarded aliases active | Idempotent aliases across all architectures |
 | **Bare-Repo Invariant** | `type config` | Active (`alias config=...`) | Active (`alias config=...`) | Active (`alias config=...`) | Preserved for legacy bare repo interaction (`~/.cfg`) |
 | **Polyglot Runtimes** | `mise current` (Node, Go, Python) | Managed by `mise` | Managed by `mise` | Managed by `mise` | Fully isolated polyglot environment |
+| **Project Runtime Pins** | `mise-audit` | Prebuilt Ruby/Python, attestation-checked | Python prebuilt; Ruby compiles | Prebuilt (glibc) | Exit 0 = every pin under `$HOME` installed; EOL Ruby 2.x stays `FAILED` on macOS (containers) |
 | **Hybrid Age Crypto** | `chezmoi encrypt` + `age -d` | RSA & native Age keys | RSA & native Age keys | Standalone Age keys | Round-trip encryption and decryption verified |
 
 ---
@@ -223,6 +240,8 @@ Once all verifications pass:
    Remove obsolete thoughtbot symlinks (`~/.rcrc`, `~/.bin`, `~/.git_template`, `~/.zsh`).
 3. **Retire Legacy Directory:**
    Safely remove `~/dotfiles` (backed up in tarball).
+4. **Retire Legacy Version Managers:**
+   Once `mise-audit` passes (or lists only accepted failures), remove `~/.asdf`, `~/.rbenv`, `~/.pyenv` and `~/.tool-versions` after checking nothing references them (shell files, editor settings, launchd plists, repo `.vscode/settings.json`). Go's module cache is read-only, so run `chmod -R u+w` on the tree before `rm -rf`. Keep any tool that lives only there: compare `~/.asdf/installs/golang/*/packages/bin` with `~/go/bin`.
 4. **Document & Push:**
    Update `docs/TESTING_AND_VERIFICATION_GUIDE.md` and `docs/FUTURE_CONSIDERATIONS.md` with machine-specific findings, commit with Gitleaks check, and push to `origin/main`.
 
@@ -241,4 +260,7 @@ Once all verifications pass:
 | `Host key verification failed` during headless clone | GitHub SSH host key not pre-cached in `~/.ssh/known_hosts`. | Add `StrictHostKeyChecking accept-new` to SSH client config (`private_dot_ssh/private_config.tmpl`). |
 | LunarVim installer fails with permission denied | Git clones over SSH via `insteadOf = https://github.com/` without agent. | Connect to remote machine with SSH agent forwarding: `ssh -A <host>`. |
 | Unbottled `herdr` or `neovim` on Intel macOS | Homebrew Tahoe x86_64 lacks bottles for modern formulae. | Bootstrap script automatically downloads official standalone binaries into `~/.local/bin`. |
+| `No GitHub artifact attestations found for python@X` on every `python` call in a project | The project pins an old patch release whose prebuilt build has no attestations; mise auto-installs on each call and refuses it. | Pin the latest patch of the same minor in the project (`mise ls-remote python 3.11 \| tail -1`). Do not disable `github_attestations`. |
+| A project runs `/usr/bin/ruby` (or the global Python/Node) despite its `.ruby-version`, Gemfile `ruby` line, `.python-version` or `.nvmrc` | mise ignores idiomatic version files for tools not in `idiomatic_version_file_enable_tools`, and with no mise Ruby there is no shim, so the system one answers without an error. | Keep `ruby`, `python` and `node` in that setting (chezmoi's mise config does), then `mise-audit --install`. |
+| `no precompiled ruby found for core:ruby@2.x on macos` | EOL Ruby has no prebuilt build, and Apple silicon hosts set `ruby.compile = false`; compiling would need OpenSSL 1.1, which Homebrew no longer ships. | Run that project in a container. `MISE_RUBY_COMPILE=true` forces a compile for a 3.x version that lacks a prebuilt build. |
 | Unbottled modern CLI utilities on Intel macOS (`bat`, `dust`, `fx`, `eza`) | Homebrew Tier 3 deprecation skips unbottled formulae under `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1`. | Automated standalone fallbacks in bootstrap hook for `bat`, `dust`, `fx` into `~/.local/bin`; `httpie` via `default-python-packages`; guarded `ll` alias safely degrades to `ls -lah`. |

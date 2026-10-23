@@ -657,6 +657,20 @@ All three tools were removed from all four Macs on the owner's instruction, afte
 * **`simar-mbp` had been broken since 2026-10-16.** A `brew upgrade` interrupted that evening at about 18:55 left VS Code as an empty app shell and removed the Slack and Docker Desktop apps, with stale Caskroom records. VS Code 1.142.0 and Slack 4.52.178 were reinstalled with `brew reinstall --cask --force`, and the deprecated `chromium` cask record (its app was already gone) was removed. Docker Desktop's engine was still running from the deleted app with a live container stack, so the stack was stopped gracefully (`docker-compose stop`, then SIGTERM to the engine) and the app was reinstalled by the owner, because the cask links into the root-owned `/usr/local/bin` and needs `sudo`. Afterwards Docker Desktop 4.95.0 ran with all 14 containers and 30 volumes intact, and `brew doctor` no longer flagged the Caskroom.
 * **Stale files.** `~/.zshrc_backup` (an untracked April copy of the old zshrc, identical on Work and 16i) was deleted. `MACHINE_SYNC_REPORT.md` and `MISE_MIGRATION.md` in the private repos mention nvm only as something migrated away from, which is accurate, so they were left as they are.
 
+### 9.13 Project Runtimes Under mise (2026-10-23)
+
+The handling is described in `FUTURE_CONSIDERATIONS.md` §10. Results on `Simars-MacBook-Work` (arm64, mise 2026.10.17):
+
+| Check | Result |
+|---|---|
+| `mise-audit` before installing | 8 missing pins in 14 projects: six Ruby (2.6.5, 2.7.6, 3.2.1, 3.2.3, 3.2.10, 3.3.5), one Node (22.13.0) and one Python (3.11.7, whose build has no attestations; the project now pins 3.11.17) |
+| `mise-audit --install` | Ruby 3.2.1, 3.2.3, 3.2.10 and 3.3.5, Node 22.13.0 and Python 3.11.17 installed, all native arm64. Ruby 2.6.5 and 2.7.6 failed in about a second (`no precompiled ruby found`), as intended |
+| `ruby` outside any project | `/usr/bin/ruby` 2.6.10, both through the mise shim (login shell) and with `mise activate` (interactive); `gem`, `bundle` and `irb` likewise. Global Python 3.12, Node 22 and Go 1.27.2 unchanged |
+| `ruby` in a pinned project | The pinned version. Before the change these projects ran 2.6.10 without any error; the two EOL pins now fail loudly instead |
+| Go | In a fresh login shell `GOBIN` is unset and `go env GOBIN` is `~/go/bin`, which is on `PATH`, so `gopls` and `dlv` resolve again |
+| `chezmoi apply` | 2.3 s including the audit; the assert script ends with the audit's `WARN` |
+| Removed | `~/.asdf` (2.7 GB, unused), `~/.rbenv` (Ruby 2.6.5, 3.2.3, 3.3.0) and `~/.pyenv` (Python 3.8.10), the last two x86_64 builds that fail with `bad CPU type`; `~/.tool-versions`; a second `mise activate` and `zoxide init` in the machine-local zshrc |
+
 ---
 
 ## 10. Global Secret-Scanning Hook Verification (2026-10-17)

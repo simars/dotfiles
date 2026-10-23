@@ -9,6 +9,10 @@ fi
 
 # 2. User Binaries & Mise Shims
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+# `go install` writes to ~/go/bin (mise leaves GOBIN unset). Appended, so it never shadows another tool.
+if [[ -d "$HOME/go/bin" ]]; then
+    export PATH="$PATH:$HOME/go/bin"
+fi
 
 # 3. macOS Docker Socket Routing
 {{ if eq .chezmoi.os "darwin" -}}

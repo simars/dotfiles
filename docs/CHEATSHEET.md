@@ -185,6 +185,16 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `mise install` | Install Missing Tools | Install all runtime versions specified in `.tool-versions` or `mise.toml`:<br>`mise install` |
 | `mise current` | Active Versions | Display currently active versions for all tools in active shell:<br>`mise current` |
 | `mise prune` | Cleanup Runtimes | Uninstall unused and outdated runtime versions:<br>`mise prune -y` |
+| `mise-audit` | Find Missing Project Pins | List the runtime pins under `$HOME` that mise has not installed (also run, as a warning, after every `chezmoi apply`):<br>`mise-audit` |
+| `mise-audit --install` | Install Missing Project Pins | Run `mise install` in every project with a missing pin, then report what still failed:<br>`mise-audit --install` |
+
+### Project Runtimes
+Projects choose their runtime; nothing global changes outside them.
+
+* **Files mise reads:** `.tool-versions`, `mise.toml`, and (enabled in `~/.config/mise/config.toml`) `.ruby-version`, a Gemfile `ruby "3.2.3"` line, `.python-version`, `.nvmrc` and `.node-version`.
+* **Ruby:** no global version, so outside a project `ruby` is macOS's `/usr/bin/ruby`. Apple silicon installs prebuilt Rubies and refuses versions that have none (EOL 2.x); force a compile with `MISE_RUBY_COMPILE=true mise install ruby@<version>`. Intel Macs compile.
+* **Go:** `go.mod` is not read as a pin (Go runs older modules on the newest toolchain); pin an exact Go in `.tool-versions` if a project needs one. `go install` writes to `~/go/bin`, which is on `PATH`.
+* **Pin fails with `No GitHub artifact attestations found`:** the pinned patch release has no signed build. Pin the latest patch of the same minor instead: `mise ls-remote python 3.11 | tail -1`.
 
 ### Default Editor
 `~/.zshrc` sets `EDITOR` to the first of `nvim`, `vim` and `vi` found on `PATH`, and `VISUAL` to the same unless it is already set. A value already in the environment wins, so to choose another editor export both in `~/.zshenv`, which zsh reads before `~/.zshrc`. This runs before `~/.aliases` is read, so the aliases below get the chosen editor.

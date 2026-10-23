@@ -4,3 +4,8 @@
 # Git 2.54 added config-defined hooks (hook.<name>.event / hook.<name>.command), which run the
 # global gitleaks pre-commit hook in every repo. Older git ignores them silently.
 min = "2.54.0"
+
+[requirements.mise]
+# The release ~/.config/mise/config.toml was verified on: idiomatic version files for Ruby, Python and Node,
+# go.set_gobin, ruby.compile, and GitHub attestation checks for prebuilt Python and Ruby. Older releases only warn.
+min = "2026.10.17"

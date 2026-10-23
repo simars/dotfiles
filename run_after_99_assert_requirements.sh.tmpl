@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Assert minimum tool versions after every apply. A failure here means the global
-# gitleaks pre-commit hook is not protecting commits on this machine.
+# gitleaks pre-commit hook is not protecting commits on this machine. The mise checks
+# at the end only warn.
 set -uo pipefail
 
 if [[ "${CHEZMOI_CI:-false}" == "true" ]]; then
@@ -81,6 +82,31 @@ else
     echo "FAIL: gitleaks is not installed, so the pre-commit hook skips scanning. Fix: install the release binary from https://github.com/gitleaks/gitleaks/releases into /usr/local/bin"
 {{- end }}
     failed=1
+fi
+
+# mise: warn only. An old mise or an uninstalled project pin is not a secret-scanning gap, and a stale pin
+# in some side repo must not fail the apply. The audit never installs anything; `mise-audit --install` does.
+MISE_MIN="{{ .requirements.mise.min }}"
+if command -v mise &> /dev/null; then
+    mise_bin="$(command -v mise)"
+    mise_v="$(mise --version 2> /dev/null | awk '{print $1}')"
+    case "$(readlink -f "$mise_bin" 2> /dev/null || echo "$mise_bin")" in
+        */Cellar/*) mise_fix="brew upgrade mise" ;;
+        *) mise_fix="mise self-update" ;;
+    esac
+    if [[ -n "$mise_v" ]] && version_ge "$mise_v" "$MISE_MIN"; then
+        echo "OK:   mise $mise_v ($mise_bin)"
+    else
+        report warn "mise ${mise_v:-of unknown version} ($mise_bin) is older than $MISE_MIN, the release ~/.config/mise/config.toml was verified on. Fix: $mise_fix"
+    fi
+    if command -v mise-audit &> /dev/null; then
+        if audit_out="$(mise-audit --quiet 2>&1)"; then
+            echo "OK:   mise-audit: every project runtime pin under \$HOME is installed"
+        else
+            while IFS= read -r line; do echo "      $line"; done <<< "$audit_out"
+            report warn "the project runtime pins above are not installed (a pin that cannot install stays listed until its project changes it). Fix: mise-audit --install"
+        fi
+    fi
 fi
 
 if [[ "$failed" -ne 0 ]]; then
