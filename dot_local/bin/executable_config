@@ -1,0 +1,8 @@
+#!/bin/sh
+#
+# The legacy bare-repo helper as a command, for shells without the `config` alias
+# in ~/.zshrc: Claude Code's bash, scripts, xargs. Interactive zsh still runs the
+# alias, which takes precedence. Same command as the alias:
+#   alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
+
+exec /usr/bin/git --git-dir="$HOME/.cfg/" --work-tree="$HOME" "$@"

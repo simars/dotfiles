@@ -1,0 +1,14 @@
+# ==============================================================================
+# Bash Configuration for Claude Code (.bashrc, macOS)
+# ==============================================================================
+# zsh is the interactive shell. bash runs Claude Code's Bash tool (CLAUDE_CODE_SHELL in ~/.zprofile): at session
+# start Claude Code sources this file and replays the aliases, functions and options it defines into every command.
+# PATH, Homebrew and mise come from the zsh login environment that launched Claude, so this file sets none of them.
+#
+# Keep aliases out. In that replay an alias also blocks a function of the same name: `g() { ...; }` fails to parse
+# when g is an alias. The bare-repo helper is ~/.local/bin/config, a script, for the same reason.
+
+# Host-specific additions, such as the lines installers (fzf, LM Studio) append to ~/.bashrc
+if [[ -f "$HOME/.bashrc.local" ]]; then
+    source "$HOME/.bashrc.local"
+fi

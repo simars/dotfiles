@@ -25,4 +25,17 @@ fi
 
 # 4. macOS Keychain SSH Identity Preload
 ssh-add --apple-load-keychain 2>/dev/null || true
+
+# 5. Claude Code's Bash tool runs bash, not zsh. Claude writes bash, and zsh reads `$v:a` as a modifier and `$v[x]` as
+# a subscript, and does not split an unquoted `$v`. Homebrew's bash 5, else Apple's 3.2 (Intel Macs have no Homebrew
+# bash). A value already in the environment wins. Claude Code then sources ~/.bashrc instead of ~/.zshrc.
+if [[ -z "${CLAUDE_CODE_SHELL:-}" ]]; then
+    for _claude_bash in "${HOMEBREW_PREFIX:-/opt/homebrew}/bin/bash" /bin/bash; do
+        if [[ -x "$_claude_bash" ]]; then
+            export CLAUDE_CODE_SHELL="$_claude_bash"
+            break
+        fi
+    done
+    unset _claude_bash
+fi
 {{ end -}}

@@ -41,6 +41,7 @@ Agents must strictly uphold these architectural guarantees at all times:
   alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
   ```
 - **Rationale:** Legacy scripts, historical commits, and manual recovery workflows rely on this alias to interact with the raw `~/.cfg` repository.
+- **Companion script:** `dot_local/bin/executable_config` runs the same command for shells without the alias, including Claude Code's bash (`CLAUDE_CODE_SHELL`, set in `dot_zprofile.tmpl`). Keep the two in step. Never add aliases to `dot_bashrc`: Claude Code replays them into every command, and an alias also blocks a function of the same name.
 
 ### 3.2 Non-Destructive Aliases
 - **Invariant:** Never overwrite standard POSIX utility binaries (`ls`, `cat`, `df`, `du`, `top`) with hard unaliased overrides that alter default POSIX flags or output formatting.

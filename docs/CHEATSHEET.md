@@ -132,6 +132,7 @@ Before migration to `chezmoi`, dotfiles were historically tracked via an unmanag
   * Use `config status` or `config diff` to inspect legacy unmigrated files during audits.
   * Never commit new files to `config`. All active workstation dotfiles are strictly managed by `chezmoi`.
   * The `config` alias is preserved in `.zshrc` to protect historical auditability and prevent legacy automation breaks.
+  * `~/.local/bin/config` runs the same command in shells that do not have the alias: Claude Code's bash, scripts, `xargs`. Interactive zsh still uses the alias.
   * `~/.cfg` no longer depends on the retired thoughtbot `~/dotfiles`: its hook shims are gone, `info/exclude` links to the shared list below, and it inherits the global `~/.gitignore`.
 
 ### Shared Per-Repo Git Exclude List
@@ -206,6 +207,16 @@ Projects choose their runtime; nothing global changes outside them.
 | `v <file>` | Open in `$VISUAL` | `v notes.md` |
 | `echo $EDITOR $VISUAL` | See which editor was picked | Prints `nvim nvim` where Neovim is installed, `vim vim` otherwise |
 
+### Claude Code's Shell (macOS)
+Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh differs from it in ways that break those commands: `"$sha:path"` applies the `:a` or `:s` modifier, `"$r[: ]"` is read as an array subscript, and an unquoted `$pair` is not split on spaces. `~/.zprofile` therefore exports `CLAUDE_CODE_SHELL`: Homebrew's bash 5, or Apple's `/bin/bash` 3.2 where Homebrew has none (Intel Macs). Claude Code then sources `~/.bashrc` instead of `~/.zshrc`. That file is deployed by chezmoi and defines no aliases, because an alias also blocks a function of the same name.
+
+| Command | Purpose | Example |
+| :--- | :--- | :--- |
+| `echo $CLAUDE_CODE_SHELL` | See which bash Claude Code will use | `/opt/homebrew/bin/bash`. Takes effect for `claude` started from a new terminal |
+| Ask Claude to run `echo "$BASH_VERSION"` | Confirm the tool shell | Prints `5.3...`. Empty output means it is still zsh |
+| `export CLAUDE_CODE_SHELL=/bin/zsh` | Go back to zsh on one host | In `~/.zshenv`, which zsh reads before `~/.zprofile` |
+| `~/.bashrc.local` | Host additions to Claude's bash | Lines installers append to `~/.bashrc` (fzf, LM Studio) belong here |
+
 ### tmux Sessions
 `tat` (`~/.local/bin/tat`, deployed by chezmoi) opens the tmux session named after the current directory, so each project keeps its own session that survives a detach. Dots and colons in the directory name become dashes (`my.app` gives `my-app`), because tmux cannot target a session name that contains them. It is a POSIX `sh` script adapted from [thoughtbot/dotfiles](https://github.com/thoughtbot/dotfiles/blob/main/bin/tat).
 
@@ -228,6 +239,7 @@ The configuration strictly separates shared, tracked dotfiles from machine-speci
 | :--- | :--- | :--- |
 | `~/.aliases.local` | Sourced at end of `~/.aliases` | Machine-specific shell aliases, hardware shortcuts, or team-specific alias overrides. |
 | `~/.zshrc.local` | Sourced at end of `~/.zshrc` | Host-specific Zsh functions, custom prompt overrides, local PATH additions, the sourcing of work-specific env files, or private configurations. |
+| `~/.bashrc.local` | Sourced at end of `~/.bashrc` (macOS) | Host additions to Claude Code's bash, such as the lines installers append to `~/.bashrc`. No aliases. |
 | `~/.gitconfig.local` | Included via `~/.gitconfig` | Machine-specific Git configurations, alternative email addresses, or hardware GPG/SSH signing keys. |
 | `~/.gitconfig.work` | `includeIf` in `~/.gitconfig.local` | Work email for remotes in the work GitHub orgs and for clones under the matching `~/<org>/` directories. Check with `git config --show-origin user.email`. |
 | `~/secrets.env` | Sourced if readable by `~/.zshrc` | Local environment variables, personal API tokens, and development secrets (never committed to Git). |

@@ -10,3 +10,8 @@ docs/**
 # that rely on it. Keep them repo-only.
 AGENTS.md
 CLAUDE.md
+# ~/.bashrc is Claude Code's shell config on macOS only (CLAUDE_CODE_SHELL in ~/.zprofile). Leave the distribution's
+# ~/.bashrc alone elsewhere.
+{{ if ne .chezmoi.os "darwin" }}
+.bashrc
+{{ end }}
