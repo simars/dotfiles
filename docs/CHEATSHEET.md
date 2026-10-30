@@ -38,6 +38,7 @@ On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, 
 * **Host default:** `export MACOS_USERLAND=apple` (or `gnu-path`) in `~/.zshrc.local`.
 * **One Apple command in `gnu` mode:** `\sed ...` or `command sed ...` skips the alias; full paths (`/usr/bin/sed`, `/bin/ls`) always work.
 * **Where the aliases stop:** after `sudo`, `xargs`, `find -exec`, `watch`, `env` and `nohup`, and inside `bash -c`, commands come from `PATH`, which is Apple's in `gnu` mode. Use the `g` name there (`find . -name '*.txt' -exec gsed -i 's/a/b/' {} +`) or switch to `userland gnu-path`.
+* **Interactive shells only:** `~/.zshrc` runs `userland` only when the shell is interactive. Claude Code sources `~/.zshrc` in a non-interactive shell and replays its aliases into every command, so without this guard `date -v-1d` ran `gdate` there and failed.
 
 | Linux Command | Formula | Notes & Example |
 | :--- | :--- | :--- |

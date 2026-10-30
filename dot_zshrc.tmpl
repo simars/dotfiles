@@ -180,5 +180,9 @@ userland() {
     fi
     _userland_mode="$mode"
 }
-userland "${MACOS_USERLAND:-gnu}"
+# Interactive shells only. Claude Code sources this file in a non-interactive shell (`zsh -c -l`) and replays its
+# aliases into every command it runs, where gdate in place of date broke `date -v`.
+if [[ -o interactive ]]; then
+    userland "${MACOS_USERLAND:-gnu}"
+fi
 {{- end }}
