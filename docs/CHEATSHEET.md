@@ -25,6 +25,8 @@ The workstation environment provides modern Rust and Go command-line utilities c
 ### Guarded Alias Architecture
 In `~/.aliases`, modern aliases (`ll`, `lt`, `ltree`, `preview`, `fp`, `dfh`, `duh`, `top`) are strictly guarded with `if command -v <tool> &> /dev/null`. If a tool is not installed or unavailable on legacy architectures, the alias gracefully falls back (e.g. `ll` falling back to `ls -lah`) or remains cleanly inactive without throwing shell syntax errors.
 
+All aliases are for interactive shells. When `~/.zshrc` is sourced by a shell that is not interactive, as Claude Code does to build its tool shell, it ends by removing every alias, including those from `~/.aliases.local`, `~/.zshrc.local` and the env files it sources. Commands then run as typed, and a helper function named like an alias (`g`, `config`) can be defined. `config` still works there as `~/.local/bin/config`.
+
 ### GNU & Linux-Compatible Tools (macOS)
 On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, `find`, `tar`, `awk`, `make` and the rest of coreutils run. The default, `gnu`, aliases them to the GNU versions in your interactive shell only; scripts and other child processes keep Apple's tools, so macOS scripts that use BSD flags keep working. On Ubuntu the plain names are GNU already.
 

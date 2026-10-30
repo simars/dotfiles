@@ -186,3 +186,11 @@ if [[ -o interactive ]]; then
     userland "${MACOS_USERLAND:-gnu}"
 fi
 {{- end }}
+
+# 10. Aliases are for interactive shells. Claude Code sources this file in a non-interactive shell and replays every
+# alias into each command it runs, where an alias also blocks a function of the same name (`g() { ...; }` fails to
+# parse). Dropping them here also covers those defined by ~/.zshrc.local and the env files it sources. `config` still
+# works without its alias, as ~/.local/bin/config.
+if [[ ! -o interactive ]]; then
+    unalias -a
+fi
