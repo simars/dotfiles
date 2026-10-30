@@ -683,6 +683,40 @@ Results on `simars-macbook-32i` (Intel, macOS 26.7.1), reached over the tailnet 
 | Go | `GOBIN` unset in a fresh login shell, `go env GOBIN` is `~/go/bin`, `gopls` resolves |
 | Python | `python3` was a hand-made link to a `uv` Python 3.14.8 in `~/.local/bin`, ahead of the mise shims, so mise's 3.12 and every project pin were bypassed. The link was removed (the `uv` tool that needs 3.14 points at uv's own copy and still runs); `python3` is now mise's 3.12.15. The new shadow check in the requirement script warns about this case |
 
+### 9.14 Claude Code's Shell: Rollout of `5f2e8d9`, `f58b788` and `14d3333` (2026-10-30)
+
+Claude Code ran its Bash tool in zsh and replayed the aliases of `~/.zshrc` into every command. The three commits keep `userland` to interactive shells, run the tool under bash on macOS (`CHEATSHEET.md` §4, "Claude Code's Shell"), and drop every alias in non-interactive zsh. They were pushed as a fast-forward (`da4de40..14d3333`; no merge commits, no bypassed rules).
+
+**Cause, established from Claude Code transcripts and the Claude Code binary.**
+* Claude Code builds its tool shell once per session with `$SHELL -c -l <script>`, which sources `~/.zshrc` (`~/.bashrc` for bash) with `CLAUDECODE=1` set and replays the aliases, functions and options into every command. That shell is a login shell but not interactive, so only `[[ -o interactive ]]` tells it apart from a terminal.
+* zsh dialect: `"$sha:path"` (the `:a` and `:s` modifiers), `"$r[: ]"` (an array subscript) and an unquoted `$pair` (not split) broke Claude's commands; the split case once gave wrong results with no error. These predate the chezmoi migration (seen on 2026-09-21).
+* Aliases: `config`, and `g` once `alias g=git` came with the migration, blocked helper functions of the same name (`defining function based on alias`). From `d9b9771` on, about 90 `userland gnu` aliases also reached Claude's shell, and `date -v` ran `gdate` and failed.
+
+**Tested on `Simars-MacBook-Work`.**
+
+| Check | Result |
+|---|---|
+| `claude -p` with `CLAUDE_CODE_SHELL` from the environment, and from a settings `env` block | bash 5.3, no zsh aliases, Apple `sed` and `date`; `PATH` order as in zsh (git, python3, jq and mise resolve alike) |
+| Rendered `~/.zshrc` under `zsh -c -l`, as Claude Code sources it | 0 aliases, Apple `sed` and `date`; `g()` and `config()` can be defined |
+| Rendered `~/.zshrc` under `zsh -i` | Every alias, `userland gnu` |
+| Rendered `~/.zprofile` | Homebrew bash on arm64; `/bin/bash` without Homebrew bash (Intel); a value already set wins |
+| After apply, `claude -p` started from a new login zsh | bash 5.3, 0 aliases, `config` is `~/.local/bin/config`, the three dialect cases behave as in bash |
+| After apply, `CLAUDE_CODE_SHELL=/bin/zsh` | 0 aliases; `g()` and `config()` can be defined |
+
+**Rollout.**
+
+| Host | Arch | `chezmoi apply` | Notes |
+|---|---|---|---|
+| `Simars-MacBook-Work` | arm64 | exit 0 | `~/.bashrc` lost two installer lines (fzf, LM Studio `PATH`) that zsh already provides |
+| `simar-mbp` | arm64 | exit 0, 5 s | Also applied the mise config and `mise-audit`, which it had not applied before. `~/.zprofile` held a Docker Desktop installer line; it was overwritten with `--force` after checking that `docker` still resolves (section 3 adds `~/.docker/bin` when Colima is not running). New `WARN`: mise 2026.10.15 is older than 2026.10.17 |
+| `simars-macbook-32i` | x86_64 | exit 0 | Pulled over `ssh -A`. `CLAUDE_CODE_SHELL=/bin/bash` (no Homebrew bash on Intel). Known `WARN`s only |
+| `simars-macbook-16i` | x86_64 | not run | Offline during the rollout |
+| Mac Studio (`macstudio`) | arm64 | not run | Not on chezmoi: still the retired thoughtbot `~/dotfiles` with `~/.cfg` |
+
+* Verified on the three applied hosts: a new login shell sets `CLAUDE_CODE_SHELL`; `zsh -c -l 'source ~/.zshrc'` has 0 aliases, Apple `sed` and `config` from `~/.local/bin`; an interactive shell keeps its aliases and `userland gnu`; `config rev-parse --git-dir` prints `~/.cfg`; `chezmoi status` lists only the always-run scripts.
+* The replaced files were kept as `~/.bashrc.before-claude-bash` on `simar-mbp` and 32i, and `~/.zprofile.before-claude-bash` on `simar-mbp`.
+* A login bash also reads `~/.bash_profile`, `~/.bash_login` or `~/.profile`. `simar-mbp` and 32i have a `~/.profile` with `PATH` lines only (uv, Docker Desktop, Antigravity); Work has none. Check them before applying on another host: `conda init bash` writes `~/.bash_profile`.
+
 ---
 
 ## 10. Global Secret-Scanning Hook Verification (2026-10-17)
