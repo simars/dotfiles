@@ -11,6 +11,8 @@ fi
 
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 GIT_MIN="{{ .requirements.git.min }}"
+{{- /* Arch-based Linux (Arch, Omarchy) gets its fixes from pacman; other Linux from apt. */}}
+{{- $archLike := or (eq (dig "osRelease" "id" "" .chezmoi) "arch" "omarchy") (regexMatch "(^| )arch( |$)" (dig "osRelease" "idLike" "" .chezmoi)) }}
 failed=0
 warned=0
 
@@ -69,6 +71,8 @@ if ! xcode-select -p &> /dev/null; then
 else
     check_git /usr/bin/git "Apple /usr/bin/git ($(xcode-select -p))" "$APPLE_FIX" "$APPLE_LEVEL"
 fi
+{{- else if $archLike }}
+check_git "$(command -v git)" "git" "sudo pacman -S git"
 {{- else }}
 check_git "$(command -v git)" "git" "sudo add-apt-repository -y ppa:git-core/ppa && sudo apt-get install -y git"
 {{- end }}
@@ -78,6 +82,8 @@ if command -v gitleaks &> /dev/null; then
 else
 {{- if eq .chezmoi.os "darwin" }}
     echo "FAIL: gitleaks is not installed, so the pre-commit hook skips scanning. Fix: brew install gitleaks"
+{{- else if $archLike }}
+    echo "FAIL: gitleaks is not installed, so the pre-commit hook skips scanning. Fix: sudo pacman -S gitleaks"
 {{- else }}
     echo "FAIL: gitleaks is not installed, so the pre-commit hook skips scanning. Fix: install the release binary from https://github.com/gitleaks/gitleaks/releases into /usr/local/bin"
 {{- end }}
@@ -90,6 +96,10 @@ MISE_MIN="{{ .requirements.mise.min }}"
 if command -v mise &> /dev/null; then
     mise_bin="$(command -v mise)"
     mise_v="$(mise --version 2> /dev/null | awk '{print $1}')"
+{{- if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+    # Omarchy installs and configures mise itself, and this repository leaves its ~/.config/mise alone.
+    echo "OK:   mise ${mise_v:-of unknown version} ($mise_bin) is Omarchy's; its version is not checked here"
+{{- else }}
     case "$(readlink -f "$mise_bin" 2> /dev/null || echo "$mise_bin")" in
         */Cellar/*) mise_fix="brew upgrade mise" ;;
         *) mise_fix="mise self-update" ;;
@@ -99,6 +109,7 @@ if command -v mise &> /dev/null; then
     else
         report warn "mise ${mise_v:-of unknown version} ($mise_bin) is older than $MISE_MIN, the release ~/.config/mise/config.toml was verified on. Fix: $mise_fix"
     fi
+{{- end }}
     # A runtime ahead of mise's shims in a login shell wins in every project, pin or not. `uv python install`
     # puts such a python3 into ~/.local/bin, which ~/.zprofile places before the shims.
     shims="$HOME/.local/share/mise/shims"

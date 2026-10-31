@@ -177,7 +177,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `tests/host-profiles.sh --base main` | Check All Host Kinds | From the source directory: checks what macOS, Omarchy, Arch, Ubuntu and Debian hosts get (CI runs it on every push), and notes scripts that would re-run on existing hosts. |
 
 * **What chezmoi touches:** single files, written as real files (no symlinks). It never deletes or replaces anything it does not manage, so the rest of `~/.config` stays as it is. It does set the permissions of the directories it manages (`~/.vim` is `0700`).
-* **Linux:** system packages install only on Ubuntu and Debian (apt); other distributions skip that step. On Omarchy, its own Neovim, tmux, Alacritty, Starship, mise and herdr configs are left alone.
+* **Linux:** system packages install only on Ubuntu and Debian (apt); other distributions skip that step. On Omarchy, its own Neovim, tmux, Alacritty, Starship, mise and herdr configs are left alone, and git keeps fetching GitHub over HTTPS (no rewrite to SSH there).
 
 ---
 

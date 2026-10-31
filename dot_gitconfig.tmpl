@@ -64,9 +64,13 @@
 
 [diff]
     colorMoved = zebra
+{{- /* Omarchy keeps HTTPS for GitHub: its SSH key needs a passphrase, and LazyVim and Omarchy's plugins fetch from
+       GitHub where none may be at hand, so SSH would make their updates fail. */}}
+{{- if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 
 [url "git@github.com:"]
     insteadOf = https://github.com/
+{{- end }}
 
 {{- if .is_work }}
 [url "git@github.com:corporate-org/"]

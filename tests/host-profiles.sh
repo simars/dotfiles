@@ -95,6 +95,32 @@ for host in ubuntu debian; do
     check "$host package script installs with apt" yes "$(grep -q 'sudo apt-get install' "$work/$host.packages" && echo yes || echo no)"
 done
 
+# Omarchy keeps HTTPS for GitHub: its SSH key needs a passphrase, and LazyVim and Omarchy plugins fetch without one.
+for host in $hosts; do
+    expected=yes
+    [[ "$host" == omarchy ]] && expected=no
+    check "$host ~/.gitconfig rewrites GitHub HTTPS to SSH" "$expected" \
+        "$(render "$host" dot_gitconfig.tmpl | grep -qF 'insteadOf = https://github.com/' && echo yes || echo no)"
+done
+
+# The requirement check suggests fixes from the host's own package manager, and leaves Omarchy's mise alone.
+requirements=run_after_99_assert_requirements.sh.tmpl
+for host in $hosts; do
+    render "$host" "$requirements" > "$work/$host.requirements"
+    check "$host requirement check is valid bash" "" "$(bash -n "$work/$host.requirements" 2>&1)"
+done
+for host in omarchy arch; do
+    check "$host requirement check suggests pacman for gitleaks" 1 "$(grep -c 'Fix: sudo pacman -S gitleaks' "$work/$host.requirements")"
+    check "$host requirement check never suggests apt" 0 "$(grep -c 'apt-get' "$work/$host.requirements")"
+done
+check "ubuntu requirement check suggests apt for git" 1 "$(grep -c 'apt-get install -y git' "$work/ubuntu.requirements")"
+for host in $hosts; do
+    expected=1
+    [[ "$host" == omarchy ]] && expected=0
+    check "$host requirement check compares mise with this repository's version" "$expected" \
+        "$(grep -c 'the release ~/.config/mise/config.toml was verified on' "$work/$host.requirements")"
+done
+
 if [[ -n "$base" ]]; then
     mkdir -p "$work/base"
     git archive "$base" | tar -x -C "$work/base"
