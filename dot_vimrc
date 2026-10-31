@@ -30,6 +30,10 @@ endif
 
 filetype plugin indent on
 
+" EditorConfig: a project's .editorconfig applies, as it does in Neovim (built in there). `end_of_line = lf` makes the
+" next save write LF. Vim ships it as an optional package; silent! skips a Vim that lacks it.
+silent! packadd! editorconfig
+
 " Indentation (Tabs to Spaces)
 set tabstop=4
 set shiftwidth=4
@@ -48,6 +52,10 @@ nnoremap <C-j> <C-w>j
 nnoremap <C-k> <C-w>k
 nnoremap <C-h> <C-w>h
 nnoremap <C-l> <C-w>l
+
+" Status Line: Vim's default with 'ruler' (from :help 'statusline'), plus the line-endings label of
+" ~/.vim/plugin/line-endings.vim: [CRLF] or [mixed], nothing for LF
+set statusline=%<%f\ %h%m%r%=%{exists('*LineEndings')?LineEndings():''}%-14.(%l,%c%V%)\ %P
 
 " Local configuration override (if present)
 if filereadable(expand("~/.vimrc.local"))

@@ -15,6 +15,16 @@ vim.opt.signcolumn = "yes"
 vim.opt.updatetime = 250
 vim.opt.timeoutlen = 300
 
+-- Line endings: the script Vim and LunarVim share warns when a CRLF or mixed file is opened and adds :Lf, which saves
+-- the file with LF. Its label ([CRLF] or [mixed], nothing for LF) goes first on the right of the default status line.
+local line_endings = vim.fn.expand("~/.vim/plugin/line-endings.vim")
+if vim.fn.filereadable(line_endings) == 1 then
+  vim.cmd.source(line_endings)
+  if not vim.o.statusline:find("LineEndings", 1, true) then
+    vim.o.statusline = vim.o.statusline:gsub("%%=", "%%=%%{LineEndings()}", 1)
+  end
+end
+
 -- Bootstrap lazy.nvim (compatible with vim.uv and vim.loop)
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 local uv = vim.uv or vim.loop

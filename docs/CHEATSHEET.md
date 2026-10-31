@@ -209,6 +209,21 @@ Projects choose their runtime; nothing global changes outside them.
 | `v <file>` | Open in `$VISUAL` | `v notes.md` |
 | `echo $EDITOR $VISUAL` | See which editor was picked | Prints `nvim nvim` where Neovim is installed, `vim vim` otherwise |
 
+### Line Endings (Vim, Neovim, LunarVim)
+`~/.vim/plugin/line-endings.vim`, which all three editors load, flags files that are not LF. Opening one prints `notes.txt: CRLF line endings; :Lf saves it with LF`, and the status line shows `[CRLF]` or `[mixed]` (in LunarVim's lualine, `CRLF` or `mixed`) until the file is saved with LF. Mixed means some lines end in CRLF and others in LF: Vim shows those lines with `^M`, and `:set ff?` still says `unix`. `~/.config/lvim/config.lua` is managed by chezmoi for this; change it with `chezmoi edit`.
+
+| Command | Purpose | Example |
+| :--- | :--- | :--- |
+| `:Lf` | Save the file with LF: converts CRLF and mixed lines and drops a UTF-8 byte-order mark | `:Lf`, or `:Lf!` for a read-only file |
+| `:set ff?` | The buffer's format (`dos` is CRLF) | Says `unix` for a mixed file; the label does not |
+| `.editorconfig` in a project | Every save in that project writes LF | `root = true`, `[*]`, `end_of_line = lf`. Built into Neovim; `~/.vimrc` turns it on in Vim |
+| `file <path>` | Check one file from the shell | `ASCII text, with CRLF line terminators` |
+| `rg -l '\r$'` | List the files with CRLF lines | `rg -l '\r$' ~/projects/app` |
+| `perl -pi -e 's/\r$//' <files>` | Convert in bulk, the same with Apple or GNU tools | `rg -l0 '\r$' . \| xargs -0 perl -pi -e 's/\r$//'` |
+
+* Git already stores LF: `core.autocrlf=input` converts CRLF when you commit. Files outside a repository keep their CRLF until saved with `:Lf`.
+* Files that end lines with CR alone (old Mac OS) are flagged as mixed; `:Lf` does not split them.
+
 ### Claude Code's Shell (macOS)
 Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh differs from it in ways that break those commands: `"$sha:path"` applies the `:a` or `:s` modifier, `"$r[: ]"` is read as an array subscript, and an unquoted `$pair` is not split on spaces. `~/.zprofile` therefore exports `CLAUDE_CODE_SHELL`: Homebrew's bash 5, or Apple's `/bin/bash` 3.2 where Homebrew has none (Intel Macs). Claude Code then sources `~/.bashrc` instead of `~/.zshrc`. That file is deployed by chezmoi and defines no aliases, because an alias also blocks a function of the same name.
 
