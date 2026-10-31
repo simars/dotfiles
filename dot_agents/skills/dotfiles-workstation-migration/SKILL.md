@@ -147,7 +147,7 @@ Monitor during execution:
 2. **Resilient Binary Fallbacks:** Standalone binaries (`herdr`, `neovim`, `age`, `starship`, `mise`, `fzf`, `zoxide`, `bat`, `dust`, `fx`) automatically downloaded into `~/.local/bin` if Homebrew skips unbottled formulae on Intel macOS.
 3. **Editor Automation:** LunarVim (`lvim`) installed automatically via unattended installer once `neovim` and runtimes are present.
 4. **Runtime Compilation:** `mise install --yes` (Node 22, Go latest, Python 3.12 + httpie/pip/ruff/black/pytest). This installs the global tools only; project pins are listed by the `mise-audit` warning at the end of the apply and installed in Stage 6.
-5. **Post-Apply Hooks:** Gitleaks pre-commit hook in `~/.local/share/chezmoi/.git/hooks/pre-commit` and Keychain enrollment.
+5. **Post-Apply Hooks:** Keychain enrollment. Secret scanning is the global gitleaks hook from `~/.gitconfig` (`git hook list pre-commit` lists it in any repo); this repository installs no hook of its own.
 
 ---
 

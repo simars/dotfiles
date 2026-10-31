@@ -99,7 +99,6 @@ newgrp docker
 ├── dot_zshrc.tmpl                     # Aliases, Docker helpers, mise & starship activation
 ├── private_dot_ssh/
 │   └── private_config.tmpl            # Port 443 SSH routing for GitHub + personal hosts
-├── run_after_00_install_hooks.sh.tmpl # Installs Gitleaks pre-commit hook into chezmoi git repo
 ├── run_onchange_before_00_install_packages.sh.tmpl # Homebrew / APT automated package installer
 └── run_onchange_after_90_sync_runtimes.sh.tmpl    # Automatic mise tool installer
 ```
