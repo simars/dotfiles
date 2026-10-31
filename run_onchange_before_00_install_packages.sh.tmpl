@@ -296,6 +296,11 @@ if ! command -v lvim &> /dev/null; then
 fi
 
 {{ else if eq .chezmoi.os "linux" -}}
+{{- /* Everything below uses apt-get, dpkg and Ubuntu's Docker and 1Password repositories, under sudo, so it runs on
+       Ubuntu and Debian only. Other distributions, Omarchy among them, bring their own packages: the script then only
+       says it skipped, rather than failing at apt-get and aborting the whole apply. */}}
+{{- $osID := dig "osRelease" "id" "" .chezmoi }}
+{{- if or (eq $osID "ubuntu" "debian") (regexMatch "(^| )(ubuntu|debian)( |$)" (dig "osRelease" "idLike" "" .chezmoi)) -}}
 echo "==> Starting Ubuntu Linux Bootstrap ({{ .chezmoi.arch }})..."
 export DEBIAN_FRONTEND=noninteractive
 
@@ -427,4 +432,7 @@ fi
 if ! id -nG "$USER" | grep -qw "docker"; then
     sudo usermod -aG docker "$USER"
 fi
+{{ else -}}
+echo "==> Skipping system packages: {{ $osID | default "this Linux" }} is not Ubuntu or Debian, and this bootstrap uses apt."
+{{ end -}}
 {{ end -}}

@@ -15,3 +15,22 @@ CLAUDE.md
 {{ if ne .chezmoi.os "darwin" }}
 .bashrc
 {{ end }}
+# Omarchy (/etc/os-release ID=omarchy) ships and updates its own Neovim, tmux, Alacritty, Starship and mise configs,
+# and herdr there keeps a config this repository never wrote. Leave them all alone. ~/.tmux.conf goes too: tmux reads
+# it before ~/.config/tmux/tmux.conf, so it would hide Omarchy's. 90_sync_runtimes.sh runs `mise install` for the
+# mise config skipped here.
+{{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+.config/nvim
+.config/nvim/**
+.config/tmux
+.config/tmux/**
+.tmux.conf
+.config/alacritty
+.config/alacritty/**
+.config/starship.toml
+.config/mise
+.config/mise/**
+.config/herdr
+.config/herdr/**
+90_sync_runtimes.sh
+{{ end }}

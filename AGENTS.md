@@ -92,6 +92,11 @@ Agents must strictly uphold these architectural guarantees at all times:
   - `bat` on Debian/Ubuntu is installed as `batcat`. Normalize `batcat` -> `bat` via a symlink in `~/.local/bin/bat`.
   - Package manager is APT (`apt-get install -y`).
 
+### 4.4 Omarchy and Other Non-Debian Linux
+- **Packages:** the Linux branch of `run_onchange_before_00_install_packages.sh.tmpl` (apt, dpkg, Ubuntu's Docker and 1Password repositories, under sudo) renders only when `/etc/os-release` is Ubuntu or Debian (`.chezmoi.osRelease.id`, or `idLike` naming either). Elsewhere it prints that it skipped. Keep any new Linux package step inside that branch, or add a separate branch for the distribution.
+- **Omarchy owns its configs:** on Omarchy (`.chezmoi.osRelease.id` is `omarchy`), `.chezmoiignore` leaves `~/.config/nvim`, `~/.config/tmux` (and `~/.tmux.conf`, which tmux would read first), `~/.config/alacritty`, `~/.config/starship.toml`, `~/.config/mise` (and the `mise install` script) and `~/.config/herdr` alone. Never manage an Omarchy-shipped config there; add new ones to that block.
+- **Check without a Linux host:** `chezmoi --override-data '{"chezmoi":{"os":"linux","osRelease":{"id":"omarchy","idLike":"arch"}}}' managed --include=all` lists what an Omarchy host would get, and the same flag works with `execute-template`. Changes to the Linux branch must leave the macOS and Ubuntu renders of the package script byte-identical, or those hosts re-run it.
+
 ---
 
 ## 5. Development & Verification Workflow
