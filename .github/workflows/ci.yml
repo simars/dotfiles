@@ -86,6 +86,9 @@ jobs:
             --promptString "What is your Git full name=CI Runner" \
             --promptBool "Is this a work machine=false"
 
+      - name: Check What Each Kind of Host Gets (macOS, Omarchy, Arch, Ubuntu, Debian)
+        run: bash tests/host-profiles.sh
+
       - name: Verify Template Compilation (chezmoi diff)
         run: chezmoi diff
 

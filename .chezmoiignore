@@ -1,6 +1,8 @@
 README.md
 docs/
 docs/**
+tests/
+tests/**
 .github/
 .github/**
 .gitleaks.toml

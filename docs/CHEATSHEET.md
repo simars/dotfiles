@@ -174,6 +174,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `chezmoi update` | Pull & Apply | Pull latest changes from remote Git repository and apply them immediately. |
 | `chezmoi edit <target>` | Edit Source File | Open the source file or template corresponding to `<target>` in `$EDITOR`. |
 | `chezmoi --override-data '{"chezmoi":{"os":"linux","osRelease":{"id":"omarchy"}}}' managed --include=all` | Preview Another Host | List what an Omarchy host would get, from this machine. Change `os` and `id` for others (`ubuntu`, `arch`). Nothing is applied. |
+| `tests/host-profiles.sh --base main` | Check All Host Kinds | From the source directory: checks what macOS, Omarchy, Arch, Ubuntu and Debian hosts get (CI runs it on every push), and notes scripts that would re-run on existing hosts. |
 
 * **What chezmoi touches:** single files, written as real files (no symlinks). It never deletes or replaces anything it does not manage, so the rest of `~/.config` stays as it is. It does set the permissions of the directories it manages (`~/.vim` is `0700`).
 * **Linux:** system packages install only on Ubuntu and Debian (apt); other distributions skip that step. On Omarchy, its own Neovim, tmux, Alacritty, Starship, mise and herdr configs are left alone.
