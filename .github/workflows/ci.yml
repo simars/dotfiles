@@ -45,7 +45,8 @@ jobs:
         include:
           - os: ubuntu-latest
             arch: x86_64
-          - os: macos-13
+          # GitHub retired macos-13, whose jobs then queued until the run was cancelled. The Intel Macs run macOS 26.
+          - os: macos-26-intel
             arch: x86_64
           - os: macos-14
             arch: arm64
