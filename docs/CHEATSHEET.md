@@ -121,6 +121,9 @@ Common Zsh Git aliases and customized Git config aliases:
 | `git ci` | `git commit -v` | Commit with verbose diff displayed in commit message editor. |
 | `git pf` | `git push --force-with-lease` | Push safely with lease verification to avoid overwriting teammate commits. |
 | `git st` | `git status` | Native Git status alias. |
+| `git clone git@github.com:<owner>/<repo>.git` | Clone over SSH | Git rewrites no URLs, so an `https://` clone stays HTTPS: fine for public repositories, but private ones then ask for a token. Clone your own and work repositories with the SSH URL. |
+| `gh config set git_protocol ssh` | Once per machine | Makes `gh repo clone` store SSH URLs. Check with `gh config get git_protocol`. |
+| `git remote set-url origin git@github.com:<owner>/<repo>.git` | Move a clone to SSH | For an existing clone whose `git config --get remote.origin.url` starts with `https://github.com/`. |
 | `git branches` | `git for-each-ref ...` | View branches formatted with relative commit age, author, and branch name. |
 
 ### Legacy Atlassian Bare Repository Invariant (`config`)
@@ -177,7 +180,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `tests/host-profiles.sh --base main` | Check All Host Kinds | From the source directory: checks what macOS, Omarchy, Arch, Ubuntu and Debian hosts get (CI runs it on every push), and notes scripts that would re-run on existing hosts. |
 
 * **What chezmoi touches:** single files, written as real files (no symlinks). It never deletes or replaces anything it does not manage, so the rest of `~/.config` stays as it is. It does set the permissions of the directories it manages (`~/.vim` is `0700`).
-* **Linux:** system packages install only on Ubuntu and Debian (apt); other distributions skip that step. On Omarchy, its own Neovim, tmux, Alacritty, Starship, mise and herdr configs are left alone, and git keeps fetching GitHub over HTTPS (no rewrite to SSH there).
+* **Linux:** system packages install only on Ubuntu and Debian (apt); other distributions skip that step. On Omarchy, its own Neovim, tmux, Alacritty, Starship, mise and herdr configs are left alone.
 
 ---
 

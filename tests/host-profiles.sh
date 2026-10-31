@@ -95,12 +95,9 @@ for host in ubuntu debian; do
     check "$host package script installs with apt" yes "$(grep -q 'sudo apt-get install' "$work/$host.packages" && echo yes || echo no)"
 done
 
-# Omarchy keeps HTTPS for GitHub: its SSH key needs a passphrase, and LazyVim and Omarchy plugins fetch without one.
+# No host rewrites URLs: a rewrite to SSH made every fetch need an unlocked key (brew update, LazyVim).
 for host in $hosts; do
-    expected=yes
-    [[ "$host" == omarchy ]] && expected=no
-    check "$host ~/.gitconfig rewrites GitHub HTTPS to SSH" "$expected" \
-        "$(render "$host" dot_gitconfig.tmpl | grep -qF 'insteadOf = https://github.com/' && echo yes || echo no)"
+    check "$host ~/.gitconfig rewrites no URLs" 0 "$(render "$host" dot_gitconfig.tmpl | grep -ciE 'insteadof')"
 done
 
 # The requirement check suggests fixes from the host's own package manager, and leaves Omarchy's mise alone.
