@@ -717,6 +717,34 @@ Claude Code ran its Bash tool in zsh and replayed the aliases of `~/.zshrc` into
 * The replaced files were kept as `~/.bashrc.before-claude-bash` on `simar-mbp` and 32i, and `~/.zprofile.before-claude-bash` on `simar-mbp`.
 * A login bash also reads `~/.bash_profile`, `~/.bash_login` or `~/.profile`. `simar-mbp` and 32i have a `~/.profile` with `PATH` lines only (uv, Docker Desktop, Antigravity); Work has none. Check them before applying on another host: `conda init bash` writes `~/.bash_profile`.
 
+### 9.15 Line Endings in Vim, Neovim and LunarVim: Rollout of `9eaa81b` (2026-10-30)
+
+`9eaa81b` adds `~/.vim/plugin/line-endings.vim`, shared by the three editors: a `[CRLF]` or `[mixed]` status-line label, a message when such a file is opened, and `:Lf` to save it with LF (`CHEATSHEET.md` §4, "Line Endings"). It also turns on Vim's EditorConfig package and brings `~/.config/lvim/config.lua` under chezmoi. It was pushed as a fast-forward (`7f2c58c..9eaa81b`; no merge commits, no bypassed rules).
+
+**How the editors read line endings, before the change** (vim 9.2, nvim 0.12.6, LunarVim on the same nvim):
+
+| File on disk | `fileformat` | What shows |
+|---|---|---|
+| All CRLF | `dos` | Nothing: the CR is hidden |
+| CRLF and LF lines | `unix` | `^M` on the CRLF lines; `:set ff?` says `unix` |
+| CR alone (old Mac OS) | `unix` | One long line; flagged as mixed now, and `:Lf` does not split it |
+
+**Tested on `Simars-MacBook-Work` before applying:** a scratch suite of 28 checks, all passing. They cover detection in Vim and Neovim, `:Lf` on CRLF, mixed and byte-order-mark files, the message on open (and none for LF), the Vim and Neovim status lines from the rendered configs, LunarVim's lualine in a pseudo-terminal, and a project `.editorconfig` with `end_of_line = lf`. With that file both editors open a CRLF file as `unix` without marking it modified, the label still says CRLF until the file is saved, and a plain `:w` writes LF. `:LvimReload` does not add the lualine label twice.
+
+**Rollout.**
+
+| Host | Arch | `chezmoi apply` | Vim | Neovim | LunarVim |
+|---|---|---|---|---|---|
+| `Simars-MacBook-Work` | arm64 | exit 0 | Homebrew 9.2: message, `[CRLF]`, EditorConfig loaded, `:Lf` writes LF | `[CRLF]` with the real `init.lua` | `CRLF` in lualine |
+| `simar-mbp` | arm64 | exit 0 | Homebrew 9.2: same | `[CRLF]` with the real `init.lua` | `CRLF` |
+| `simars-macbook-32i` | x86_64 | exit 0 | Apple 9.1 (`+timers`, EditorConfig package present): same | Label and `:Lf` checked with `--clean`; `init.lua` was not run because its plugins are not installed and would be downloaded | `CRLF` |
+| `simars-macbook-16i` | x86_64 | not run | | | Offline |
+
+* The LunarVim config was stock on every host and was kept as `~/.config/lvim/config.lua.before-line-endings`.
+* `~/.vim` became `0700` on every host (it was `0750` on Work and `0755` on the others): chezmoi sets a directory to `0755` or, with `private_`, `0700`, and the tighter one was chosen.
+* False alarm: over `ssh`, nvim waits for a terminal that never answers its colour query (`E1568: Terminal did not respond to DSR request`), so LunarVim starts several seconds late. A status-line capture taken after 3 s found nothing; after 4 s (6 s on 32i) it showed the label.
+* Side effect on Work: an `nvim --headless` run with the real config made lazy.nvim install its four plugins and write `~/.config/nvim/lazy-lock.json`, as the first interactive start would have.
+
 ---
 
 ## 10. Global Secret-Scanning Hook Verification (2026-10-17)
