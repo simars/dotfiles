@@ -36,7 +36,7 @@ hosts="darwin intel omarchy arch ubuntu debian"
 
 # Targets Omarchy ships and updates itself (plus herdr's existing config there, and the script that runs
 # `mise install`). They must be managed everywhere else, so the Omarchy rule cannot leak.
-omarchy_owned=".config/nvim/init.lua .config/tmux/tmux.conf .tmux.conf .config/alacritty/alacritty.toml
+omarchy_owned=".config/nvim/init.lua .config/tmux/tmux.conf .config/alacritty/alacritty.toml
 .config/starship.toml .config/mise/config.toml .config/herdr/config.toml 90_sync_runtimes.sh"
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/host-profiles.XXXXXX")"

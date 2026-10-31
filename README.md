@@ -89,7 +89,6 @@ sh -c "$(curl -fsLS https://get.chezmoi.io)" -- init --apply git@github.com:sima
 │   └── tmux/tmux.conf                 # 256-color, vi-keys, mouse mode tmux config
 ├── dot_gitconfig.tmpl                 # Cross-platform git configuration + work overrides
 ├── dot_local/bin/executable_tat       # tat: attach to or create a tmux session named after the directory
-├── dot_tmux.conf.tmpl                 # Sourcing ~/.config/tmux/tmux.conf
 ├── dot_zprofile.tmpl                  # Architecture-aware Homebrew & mise shims
 ├── dot_zshrc.tmpl                     # Aliases, Docker helpers, mise & starship activation
 ├── private_dot_ssh/
