@@ -1,6 +1,6 @@
 ---
 name: dotfiles-workstation-migration
-description: Use when migrating a new or existing workstation (Apple Silicon arm64, Intel x86_64, or Ubuntu Linux) to modern chezmoi, mise, and hybrid age dotfiles, conducting pre-apply impact audits, adopting legacy thoughtbot/rcm dotfiles, or running post-apply verification.
+description: Use when migrating a new or existing workstation (Apple Silicon arm64, Intel x86_64, or Omarchy Linux) to modern chezmoi, mise, and hybrid age dotfiles, conducting pre-apply impact audits, adopting legacy thoughtbot/rcm dotfiles, or running post-apply verification.
 ---
 
 # Dotfiles Workstation Migration
@@ -16,7 +16,7 @@ A safe, idempotent, and reversible workflow for bootstrapping or migrating devel
 ## When to Use
 
 Use this process whenever:
-- Onboarding a new workstation (macOS Apple Silicon `arm64`, macOS Intel `x86_64`, or Ubuntu Linux).
+- Onboarding a new workstation (macOS Apple Silicon `arm64`, macOS Intel `x86_64`, or Omarchy Linux).
 - Migrating a machine from legacy dotfiles systems (e.g. thoughtbot `rcm`, symlink farms, or bare git repos like `~/.cfg`).
 - Applying major template refactors or new runtime versions across machines.
 - Running health checks or post-migration verification on existing setups.
@@ -53,8 +53,8 @@ ls -la ~/.ssh/id_rsa ~/.ssh/id_rsa.pub ~/.config/chezmoi/key.txt ~/secrets.env 2
 
 **Key Architectural Invariants:**
 * **Apple Silicon (`arm64`):** Homebrew prefix is `/opt/homebrew`.
-* **Intel Mac (`x86_64`):** Homebrew prefix is `/usr/local`. Enforce `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` and `--no-upgrade` to prevent source compilation lockups on Tier 3 architectures.
-* **Linux (`Ubuntu/Debian`):** Package manager is `apt`. Standalone binaries (`mise`, `starship`, `gitleaks`) installed into `~/.local/bin`.
+* **Intel Mac (`x86_64`):** Homebrew prefix is `/usr/local`. `chezmoi apply` installs no packages there; install tools by hand with `docs/INTEL_MACS.md` in the chezmoi source, and never `brew install` a formula its check reports as `compile` (Homebrew on Intel builds those from source).
+* **Linux (Omarchy):** no packages are installed, and Omarchy keeps its own Neovim, tmux, Alacritty, Starship, mise and herdr configs (`AGENTS.md` section 4.2).
 
 ---
 
@@ -143,8 +143,8 @@ chezmoi apply -v
 ```
 
 Monitor during execution:
-1. **Package Provisioning:** Homebrew `brew bundle --no-upgrade` or Apt package installations (including `vim`, `neovim`, `herdr`, and modern CLI utilities: `eza`, `bat`, `btop`, `duf`, `dust`, `httpie`, `jq`, `fx`).
-2. **Resilient Binary Fallbacks:** Standalone binaries (`herdr`, `neovim`, `age`, `starship`, `mise`, `fzf`, `zoxide`, `bat`, `dust`, `fx`) automatically downloaded into `~/.local/bin` if Homebrew skips unbottled formulae on Intel macOS.
+1. **Package Provisioning:** on Apple silicon only, Homebrew `brew bundle --no-upgrade` (including `vim`, `neovim`, `herdr`, and modern CLI utilities: `eza`, `bat`, `btop`, `duf`, `dust`, `httpie`, `jq`, `fx`).
+2. **Intel Macs and Linux:** the package script only prints that it skipped. On an Intel Mac, install the tools afterwards with `docs/INTEL_MACS.md`: its bottle check, the standalone binaries, and the optional git build for the global hooks.
 3. **Editor Automation:** LunarVim (`lvim`) installed automatically via unattended installer once `neovim` and runtimes are present.
 4. **Runtime Compilation:** `mise install --yes` (Node 22, Go latest, Python 3.12 + httpie/pip/ruff/black/pytest). This installs the global tools only; project pins are listed by the `mise-audit` warning at the end of the apply and installed in Stage 6.
 5. **Post-Apply Hooks:** Keychain enrollment. Secret scanning is the global gitleaks hook from `~/.gitconfig` (`git hook list pre-commit` lists it in any repo); this repository installs no hook of its own.
@@ -211,14 +211,14 @@ test -f ~/.local/share/chezmoi/AGENTS.md && test ! -e ~/AGENTS.md && test ! -e ~
 
 #### Multi-Platform Subsystem Verification Matrix
 
-| Subsystem / Component | Verification Command | Apple Silicon Mac (`arm64`) | Intel Mac (`x86_64`) | Ubuntu Linux (`amd64`/`arm64`) | Verification Strategy & Invariants |
+| Subsystem / Component | Verification Command | Apple Silicon Mac (`arm64`) | Intel Mac (`x86_64`) | Omarchy Linux | Verification Strategy & Invariants |
 |---|---|---|---|---|---|
 | **Cheatsheet Command** | `type cheat && cheat \| head -n 20` | Function active (`bat` pager) | Function active (`bat` or `less`) | Function active (`bat` or `less`) | Sourced via `~/.aliases`, renders formatted cheatsheet with graceful fallback |
 | **Cheatsheet File** | `test -f ~/.cheatsheet.md` | Present & up-to-date | Present & up-to-date | Present & up-to-date | Managed via `dot_cheatsheet.md.tmpl`, rendered from single source `docs/CHEATSHEET.md` |
 | **Agentic Invariants** | `test ! -e ~/AGENTS.md && test ! -e ~/CLAUDE.md` | Repo-only | Repo-only | Repo-only | `AGENTS.md` (and its `CLAUDE.md` symlink) stay in `~/.local/share/chezmoi` via `.chezmoiignore`, so agents read them only when working in the repo |
-| **Prompt & Shell** | `starship prompt` | Native `/opt/homebrew` | Native `/usr/local` / `~/.local/bin` | Native `~/.local/bin` | Fast, deterministic prompt with git status & exit codes |
-| **Core Utilities** | `which zoxide fzf rg tmux age gitleaks herdr` | Native Homebrew bottles | Native bottles / fallback binaries | Standalone release binaries | Zero compilation overhead; modern CLI tools installed |
-| **Observability Tools** | `which eza bat btop duf dust http jq fx` | Native Homebrew bottles | Homebrew / `~/.local/bin` / `mise` | APT / `~/.local/bin` / `mise` | Guarded aliases degrade safely on Tier 3 Intel |
+| **Prompt & Shell** | `starship prompt` | Native `/opt/homebrew` | By hand: `/usr/local` or `~/.local/bin` | Omarchy's own | Fast, deterministic prompt with git status & exit codes |
+| **Core Utilities** | `which zoxide fzf rg tmux age gitleaks herdr` | Native Homebrew bottles | By hand: bottles or standalone binaries (`docs/INTEL_MACS.md`) | pacman (Omarchy) | Zero compilation overhead; modern CLI tools installed |
+| **Observability Tools** | `which eza bat btop duf dust http jq fx` | Native Homebrew bottles | By hand: Homebrew / `~/.local/bin` / `mise` | pacman / `mise` | Guarded aliases degrade safely on Tier 3 Intel |
 | **Modern Aliases** | `type fp ll lt ltree preview dfh duh top` | Modern `eza`, `bat`, `duf`, `dust`, `btop` | Guarded `ls -lah`, `bat`, `duf`, `dust`, `btop` | Guarded aliases active | Idempotent aliases across all architectures |
 | **Bare-Repo Invariant** | `type config` | Active (`alias config=...`) | Active (`alias config=...`) | Active (`alias config=...`) | Preserved for legacy bare repo interaction (`~/.cfg`) |
 | **Polyglot Runtimes** | `mise current` (Node, Go, Python) | Managed by `mise` | Managed by `mise` | Managed by `mise` | Fully isolated polyglot environment |
@@ -252,16 +252,15 @@ Once all verifications pass:
 | Symptom | Root Cause | Remediation |
 |---|---|---|
 | `mixed case` error on age recipient | Chezmoi built-in Go age library does not handle RSA SSH recipients. | Set `useBuiltin = false` in `.chezmoi.toml.tmpl` to invoke `/opt/homebrew/bin/age` or `~/.local/bin/age`. |
-| `brew bundle` hangs compiling LLVM | Unbottled formula on Intel Mac falling back to source compilation. | Set `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` and `--no-upgrade` in bootstrap script. |
+| `brew bundle` hangs compiling LLVM | Unbottled formula on an Intel Mac, which Homebrew builds from source. | Intel Macs are no longer automated: install by hand with `docs/INTEL_MACS.md`, and never `brew install` a formula its check reports as `compile`. |
 | Cask install fails with `already an App at ...` | App was previously downloaded outside Homebrew. | Adopt before apply: `brew install --cask --force <app>`. |
 | Prompt fails with `TERM=dumb` in non-interactive tests | Subshell launched without full terminal emulation. | Run with `TERM=xterm-256color zsh -lic 'starship prompt'`. |
-| `zi: command not found` | `zoxide` or `fzf` missing from package registry. | Both must be declared in `.chezmoidata/packages.toml` with curl fallbacks in bootstrap script. |
+| `zi: command not found` | `zoxide` or `fzf` missing from package registry. | Both must be declared in `.chezmoidata/packages.toml` (Apple silicon); on an Intel Mac, install them by hand (`docs/INTEL_MACS.md`). |
 | `promptStringOnce` hangs in headless SSH | Automated script lacks interactive `/dev/tty`. | Provide default parameters in `.chezmoi.toml.tmpl` so headless runs resolve automatically. |
 | `Host key verification failed` during headless clone | GitHub SSH host key not pre-cached in `~/.ssh/known_hosts`. | Add `StrictHostKeyChecking accept-new` to SSH client config (`private_dot_ssh/private_config.tmpl`). |
-| LunarVim installer fails with permission denied | Git clones over SSH via `insteadOf = https://github.com/` without agent. | Connect to remote machine with SSH agent forwarding: `ssh -A <host>`. |
-| Unbottled `herdr` or `neovim` on Intel macOS | Homebrew Tahoe x86_64 lacks bottles for modern formulae. | Bootstrap script automatically downloads official standalone binaries into `~/.local/bin`. |
+| Unbottled `herdr` or `neovim` on Intel macOS | Homebrew Tahoe x86_64 lacks bottles for modern formulae. | Install the standalone binaries by hand (`docs/INTEL_MACS.md`, section 3). |
 | `No GitHub artifact attestations found for python@X` on every `python` call in a project | The project pins an old patch release whose prebuilt build has no attestations; mise auto-installs on each call and refuses it. | Pin the latest patch of the same minor in the project (`mise ls-remote python 3.11 \| tail -1`). Do not disable `github_attestations`. |
 | A project runs `/usr/bin/ruby` (or the global Python/Node) despite its `.ruby-version`, Gemfile `ruby` line, `.python-version` or `.nvmrc` | mise ignores idiomatic version files for tools not in `idiomatic_version_file_enable_tools`, and with no mise Ruby there is no shim, so the system one answers without an error. | Keep `ruby`, `python` and `node` in that setting (chezmoi's mise config does), then `mise-audit --install`. |
 | `WARN: python3 resolves to ~/.local/bin/python3 in a login shell, ahead of mise's shim` | Something put a runtime into `~/.local/bin`, which `.zprofile` places before the mise shims, most often `uv python install` or a hand-made link to a uv Python. It wins in every project, pin or not. | Remove that link. uv tools keep working: their venvs point at uv's own Python directory, and a versioned `python3.X` link does not collide with mise. |
 | `no precompiled ruby found for core:ruby@X on macos` | macOS hosts set `ruby.compile = false`. On Apple silicon only EOL Ruby lacks a prebuilt build (compiling it would need OpenSSL 1.1, which Homebrew no longer ships); Intel Macs have no prebuilt Rubies at all. | EOL pins: run that project in a container. Otherwise compile on purpose: `MISE_RUBY_COMPILE=true mise install ruby@X`. |
-| Unbottled modern CLI utilities on Intel macOS (`bat`, `dust`, `fx`, `eza`) | Homebrew Tier 3 deprecation skips unbottled formulae under `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1`. | Automated standalone fallbacks in bootstrap hook for `bat`, `dust`, `fx` into `~/.local/bin`; `httpie` via `default-python-packages`; guarded `ll` alias safely degrades to `ls -lah`. |
+| Unbottled modern CLI utilities on Intel macOS (`bat`, `dust`, `fx`, `eza`) | Homebrew on Intel (Tier 3) has no bottle for them and would build them from source. | Standalone binaries by hand for `bat`, `dust`, `fx` (`docs/INTEL_MACS.md`); `httpie` via `default-python-packages`; guarded `ll` alias safely degrades to `ls -lah`. |

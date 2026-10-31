@@ -24,14 +24,15 @@ cd "$(dirname "$0")/.." || exit 1
 # ID_LIKE=debian would otherwise leak into the Arch host.
 host_data() {
     case "$1" in
-        darwin) echo '{"chezmoi":{"os":"darwin","osRelease":{"id":"","idLike":""}}}' ;;
+        darwin) echo '{"chezmoi":{"os":"darwin","arch":"arm64","osRelease":{"id":"","idLike":""}}}' ;;
+        intel) echo '{"chezmoi":{"os":"darwin","arch":"amd64","osRelease":{"id":"","idLike":""}}}' ;;
         omarchy) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"omarchy","idLike":"arch"}}}' ;;
         arch) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"arch","idLike":""}}}' ;;
         ubuntu) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"ubuntu","idLike":"debian"}}}' ;;
         debian) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"debian","idLike":""}}}' ;;
     esac
 }
-hosts="darwin omarchy arch ubuntu debian"
+hosts="darwin intel omarchy arch ubuntu debian"
 
 # Targets Omarchy ships and updates itself (plus herdr's existing config there, and the script that runs
 # `mise install`). They must be managed everywhere else, so the Omarchy rule cannot leak.
@@ -77,7 +78,7 @@ done
 
 for host in $hosts; do
     expected=no
-    [[ "$host" == darwin ]] && expected=yes
+    [[ "$host" == darwin || "$host" == intel ]] && expected=yes
     check "$host manages .bashrc" "$expected" "$(manages "$host" .bashrc)"
     check "$host does not manage the repository's own tests" no "$(manages "$host" tests/host-profiles.sh)"
 done
@@ -87,12 +88,11 @@ for host in $hosts; do
     render "$host" "$packages" > "$work/$host.packages"
     check "$host package script is valid bash" "" "$(bash -n "$work/$host.packages" 2>&1)"
 done
-for host in omarchy arch; do
-    check "$host package script has no apt, dpkg or sudo" 0 "$(grep -cE 'apt-get|dpkg|sudo' "$work/$host.packages")"
-    check "$host package script reports the skip" 1 "$(grep -c 'Skipping system packages' "$work/$host.packages")"
-done
-for host in ubuntu debian; do
-    check "$host package script installs with apt" yes "$(grep -q 'sudo apt-get install' "$work/$host.packages" && echo yes || echo no)"
+# Packages install only on Apple silicon Macs. Intel Macs and Linux hosts are set up by hand and only say so.
+check "darwin package script runs brew bundle" yes "$(grep -q 'brew bundle --no-upgrade' "$work/darwin.packages" && echo yes || echo no)"
+for host in intel omarchy arch ubuntu debian; do
+    check "$host package script installs nothing (no brew, apt, curl or sudo)" 0 "$(grep -cE 'brew |apt-get|dpkg|curl|sudo' "$work/$host.packages")"
+    check "$host package script reports the skip" 1 "$(grep -c '==> Skipping' "$work/$host.packages")"
 done
 
 # No host rewrites URLs: a rewrite to SSH made every fetch need an unlocked key (brew update, LazyVim).
@@ -107,10 +107,10 @@ for host in $hosts; do
     check "$host requirement check is valid bash" "" "$(bash -n "$work/$host.requirements" 2>&1)"
 done
 for host in omarchy arch; do
-    check "$host requirement check suggests pacman for gitleaks" 1 "$(grep -c 'Fix: sudo pacman -S gitleaks' "$work/$host.requirements")"
+    check "$host requirement check suggests pacman for gitleaks" 1 "$(grep -c 'sudo pacman -S gitleaks' "$work/$host.requirements")"
     check "$host requirement check never suggests apt" 0 "$(grep -c 'apt-get' "$work/$host.requirements")"
 done
-check "ubuntu requirement check suggests apt for git" 1 "$(grep -c 'apt-get install -y git' "$work/ubuntu.requirements")"
+check "intel requirement check points to the Intel guide" yes "$(grep -q 'docs/INTEL_MACS.md' "$work/intel.requirements" && echo yes || echo no)"
 for host in $hosts; do
     expected=1
     [[ "$host" == omarchy ]] && expected=0

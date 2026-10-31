@@ -8,8 +8,8 @@
 
 This repository contains multi-machine, cross-platform workstation dotfiles managed via [chezmoi](https://www.chezmoi.io/). It provides deterministic developer environment bootstrapping, shell configuration, and runtime tooling across:
 - **macOS Apple Silicon (`arm64`)**: Primary modern Mac workstations (e.g. Mac Studio, Apple Silicon MacBook Pro). Homebrew lives in `/opt/homebrew`.
-- **macOS Intel (`x86_64`)**: Legacy Intel Mac hardware (e.g. 16" and 32GB MacBook Pro). Homebrew lives in `/usr/local`.
-- **Ubuntu Linux (`amd64` / `arm64`)**: Linux servers, cloud instances, and devcontainers.
+- **macOS Intel (`x86_64`)**: Legacy Intel Mac hardware (e.g. 16" and 32GB MacBook Pro). Homebrew lives in `/usr/local`. Dotfiles only; tools by hand (`docs/INTEL_MACS.md`).
+- **Linux (Omarchy)**: dotfiles only; Omarchy keeps its own configs (section 4.2).
 
 ---
 
@@ -80,26 +80,15 @@ Agents must strictly uphold these architectural guarantees at all times:
 
 ## 4. Platform Specifics & Multi-Architecture Rules
 
-### 4.1 macOS Intel (`x86_64`) Tier 3 Homebrew Deprecation
-- Intel macOS (macOS 26+) is classified as Tier 3 / deprecated in Homebrew.
-- **Do Not Compile from Source:** Homebrew 7 on Intel builds any formula that has no bottle (its "no bottle available" refusal only applies to arm64 CPUs), and `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK` no longer exists (it only covered failed bottle downloads, and the install script still exports it as a no-op). One apply compiled `llvm`, `rust` and `node` for 7 hours. On Intel the install script therefore runs `brew bundle --no-upgrade` through `brew_bundle_bottled_only`, which drops every formula that is not installed and whose runtime dependencies are not all bottled (any non-arm64 tag) or installed and current, prints the reason for each skip, and keeps only already-installed formulae if Homebrew cannot be queried. Do not bypass it with `brew install --build-from-source` unless the user asks.
-- **Standalone Binary Fallback:** For unbottled or failing Rust/C++/Go packages (`bat`, `dust`, `fx`, `mise`, `age`, `starship`), provision or instruct fallback to precompiled standalone binaries installed into `~/.local/bin`. `timeout` comes from the uutils `coreutils` multicall binary (symlinked as `~/.local/bin/timeout`), and `ip`, `bridge` and `ss` from iproute2mac's Python scripts in `~/.local/share/iproute2mac`, run on mise's Python because they need 3.10+ and Apple's `/usr/bin/python3` is 3.9. Intel Macs are not the primary machines, so GNU tools without an Intel bottle (`gnu-tar`, `grep`, `gawk`, `bash`, `rsync`, `wget`, the rest of `coreutils`) are simply absent there; do not compile them.
-- **Exception, `git`:** No precompiled git exists for Intel macOS, Intel Homebrew has no git bottle, and Xcode 27 (Apple git 2.54) is Apple silicon only. The install script therefore builds a pinned git from source into `~/.local` on Intel Macs (checksum verified, `NO_RUST=YesPlease NO_GETTEXT=YesPlease NO_TCLTK=YesPlease`, about a minute). This is outside Homebrew, so the "do not compile" rule above is unaffected. The post-apply check treats `/usr/bin/git` as a warning on Intel and as a failure on Apple silicon.
+### 4.1 Packages: Apple Silicon Only
+- **Apple silicon Macs** (Homebrew in `/opt/homebrew`) are the only hosts `run_onchange_before_00_install_packages.sh.tmpl` installs anything on: `brew bundle --no-upgrade` with `.chezmoidata/packages.toml`, then LunarVim. Every other host gets dotfiles only and a one-line skip message.
+- **Intel Macs** (`x86_64`, Homebrew in `/usr/local`, Tier 3 in Homebrew) are set up by hand with `docs/INTEL_MACS.md`: Homebrew 7 on Intel compiles any formula without an Intel bottle (one apply built `llvm`, `rust` and `node` for 7 hours), and the automation that avoided it (a bottled-only `brew bundle` filter, standalone binary fallbacks, a from-source git) cost more than it saved. Never automate package installs there again, and never `brew install` a formula the guide's check reports as `compile`.
+- **Linux hosts** (Omarchy today; no Ubuntu host uses this repository) bring their own packages. The Ubuntu bootstrap was removed on 2026-10-30; if an Ubuntu host joins, add a branch for it rather than reviving the old one, which was never run.
 
-### 4.2 macOS Apple Silicon (`arm64`)
-- Homebrew prefix is `/opt/homebrew`.
-- Precompiled bottles are fully supported and preferred.
-
-### 4.3 Ubuntu Linux (`amd64` / `arm64`)
-- Package names occasionally differ from Homebrew formula names:
-  - `bat` on Debian/Ubuntu is installed as `batcat`. Normalize `batcat` -> `bat` via a symlink in `~/.local/bin/bat`.
-  - Package manager is APT (`apt-get install -y`).
-
-### 4.4 Omarchy and Other Non-Debian Linux
-- **Packages:** the Linux branch of `run_onchange_before_00_install_packages.sh.tmpl` (apt, dpkg, Ubuntu's Docker and 1Password repositories, under sudo) renders only when `/etc/os-release` is Ubuntu or Debian (`.chezmoi.osRelease.id`, or `idLike` naming either). Elsewhere it prints that it skipped. Keep any new Linux package step inside that branch, or add a separate branch for the distribution.
+### 4.2 Omarchy
 - **Omarchy owns its configs:** on Omarchy (`.chezmoi.osRelease.id` is `omarchy`), `.chezmoiignore` leaves `~/.config/nvim`, `~/.config/tmux` (and `~/.tmux.conf`, which tmux would read first), `~/.config/alacritty`, `~/.config/starship.toml`, `~/.config/mise` (and the `mise install` script) and `~/.config/herdr` alone. Never manage an Omarchy-shipped config there; add new ones to that block.
-- **Shared configs on Omarchy:** `~/.gitconfig` there keeps every Omarchy setting in `~/.config/git/config` (git reads both). The requirement check suggests `pacman` fixes on Arch-based hosts and treats mise there as Omarchy's, so it does not compare its version.
-- **Check without a Linux host:** `tests/host-profiles.sh` (run by CI on every push) renders the repository as macOS, Omarchy, Arch, Ubuntu and Debian with `chezmoi --override-data` and fails if a rule above breaks. Add new platform rules to it. `tests/host-profiles.sh --base main` also reports each `run_onchange_` script whose macOS or Ubuntu render changed: hosts like that re-run it on their next apply, so a change meant for one platform must leave the others byte-identical.
+- **Shared configs on Omarchy:** `~/.gitconfig` there keeps every Omarchy setting in `~/.config/git/config` (git reads both). The requirement check suggests `pacman` fixes on Linux and treats mise on Omarchy as Omarchy's, so it does not compare its version.
+- **Check without the host:** `tests/host-profiles.sh` (run by CI on every push) renders the repository as an Apple silicon Mac, an Intel Mac, Omarchy, Arch, Ubuntu and Debian with `chezmoi --override-data` and fails if a rule above breaks. Add new platform rules to it. `tests/host-profiles.sh --base main` also reports each `run_onchange_` script whose macOS or Ubuntu render changed: hosts like that re-run it on their next apply, so a change meant for one platform must leave the others byte-identical.
 
 ---
 

@@ -1,6 +1,6 @@
 # Cross-Platform Dotfiles (`chezmoi` + `mise` + `age`)
 
-Deterministic workstation setup for **macOS (Apple Silicon & Intel)** and **Ubuntu Linux 26.04 LTS**.
+Deterministic workstation setup for **macOS on Apple silicon** (dotfiles and packages), **Intel Macs** (dotfiles; tools by hand, see `docs/INTEL_MACS.md`) and **Omarchy Linux** (dotfiles only).
 
 ## Fresh Machine Bootstrap
 
@@ -18,11 +18,6 @@ ls -la ~/.ssh/id_rsa
 ### 2. Initialize & Apply Dotfiles
 ```bash
 sh -c "$(curl -fsLS https://get.chezmoi.io)" -- init --apply git@github.com:simars/dotfiles.git
-```
-
-### 3. Activate Docker Group on Ubuntu (Without Logging Out)
-```bash
-newgrp docker
 ```
 
 ---
@@ -45,7 +40,7 @@ newgrp docker
 ---
 
 ## Secret Providers (1Password, Bitwarden & Age)
-* **1Password:** `1password-cli` is auto-installed via Homebrew/APT. Retrieve secrets with:
+* **1Password:** `1password-cli` is installed by Homebrew on Apple silicon Macs. Retrieve secrets with:
   `{{ onepasswordRead "op://vault/item/field" }}` or `{{ (onepassword "Item" "Vault").password }}`
 * **Bitwarden:** `bitwarden-cli` is auto-installed. Unlock with `bw login` / `export BW_SESSION="$(bw unlock --raw)"` and retrieve secrets with:
   `{{ (bitwarden "item" "ItemName").notes }}` or `{{ (bitwardenFields "item" "ItemName").fieldName.value }}`
@@ -57,7 +52,7 @@ newgrp docker
 
 * **Apple Silicon vs. Intel macOS:**
   * Apple Silicon (`arm64`): Homebrew installs to `/opt/homebrew`, full precompiled bottle coverage.
-  * Intel (`x86_64`): Homebrew lives in `/usr/local`. Because newer macOS versions (macOS 26+) are Tier 3 / deprecated for Intel x86_64 in Homebrew, `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1` and `--no-upgrade` are enforced to prevent hours of compiling unbottled dependencies from source. Core tools (`mise`, `age`, `starship`) are automatically provisioned as standalone precompiled binaries into `~/.local/bin`.
+  * Intel (`x86_64`): Homebrew lives in `/usr/local` and is Tier 3 there; it compiles any formula without an Intel bottle. `chezmoi apply` installs no packages on Intel Macs: install tools by hand with `docs/INTEL_MACS.md`, which also checks what Homebrew can pour without compiling.
 * **Remote Machine Management (`ssh -A`):**
   * Dotfiles configure Git to route GitHub URLs through `ssh.github.com:443`.
   * When administering secondary machines over SSH headlessly, connect with agent forwarding:
@@ -72,13 +67,13 @@ newgrp docker
 ## Directory Structure Overview
 ```text
 ~/.local/share/chezmoi/
-├── .github/workflows/ci.yml           # Cross-platform CI matrix (macOS Intel/ARM, Ubuntu)
+├── .github/workflows/ci.yml           # CI: secret scan, shellcheck, host profiles and a test apply on Ubuntu, Intel and Apple silicon macOS
 ├── .gitleaks.toml                     # Secret scanner allowlist configuration
 ├── .gitignore                         # Local key and OS artifact exclusion
 ├── .chezmoi.toml.tmpl                 # Interactive init config + hybrid encryption setup
 ├── .chezmoiignore                     # Repository metadata exclusion
 ├── .chezmoidata/
-│   └── packages.toml                  # Declarative package definitions (Homebrew + APT)
+│   └── packages.toml                  # Homebrew formulae and casks for Apple silicon Macs
 ├── README.md                          # Bootstrap instructions & cheat sheet
 ├── docs/
 │   ├── FUTURE_CONSIDERATIONS.md          # Platform lifecycle roadmap & remediation
@@ -99,6 +94,6 @@ newgrp docker
 ├── dot_zshrc.tmpl                     # Aliases, Docker helpers, mise & starship activation
 ├── private_dot_ssh/
 │   └── private_config.tmpl            # Port 443 SSH routing for GitHub + personal hosts
-├── run_onchange_before_00_install_packages.sh.tmpl # Homebrew / APT automated package installer
+├── run_onchange_before_00_install_packages.sh.tmpl # brew bundle on Apple silicon; a skip message everywhere else
 └── run_onchange_after_90_sync_runtimes.sh.tmpl    # Automatic mise tool installer
 ```

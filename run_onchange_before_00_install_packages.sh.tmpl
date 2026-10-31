@@ -9,7 +9,7 @@ fi
 
 {{- $packages := index . "packages" | default . }}
 
-{{ if eq .chezmoi.os "darwin" -}}
+{{ if and (eq .chezmoi.os "darwin") (eq .chezmoi.arch "arm64") -}}
 echo "==> Starting macOS Bootstrap ({{ .chezmoi.arch }})..."
 
 # Verify Xcode Command Line Tools presence
@@ -21,93 +21,19 @@ fi
 # Evaluate existing Homebrew installation if present
 if [[ -x "/opt/homebrew/bin/brew" ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
-elif [[ -x "/usr/local/bin/brew" ]]; then
-    eval "$(/usr/local/bin/brew shellenv)"
 fi
 
 if ! command -v brew &> /dev/null; then
-{{- if eq .chezmoi.arch "arm64" }}
     echo "==> Installing Homebrew..."
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
-{{- else }}
-    echo "WARNING: Homebrew not found and upstream installer does not support Intel macOS. Proceeding with standalone tools..."
-{{- end }}
 fi
 
-{{ if ne .chezmoi.arch "arm64" -}}
-# Intel Macs: Homebrew 7 on Intel no longer refuses to compile (its "no bottle available" refusal needs an arm64 CPU),
-# and HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK is gone, so brew builds anything without a bottle: llvm, rust and node took
-# 7 hours on one host. Read a Brewfile on stdin and run `brew bundle` on it after dropping every formula that is not
-# installed and whose runtime dependencies are not all bottled or installed and current. If Homebrew cannot be asked,
-# keep only the formulae that are already installed.
-# shellcheck disable=SC2086 # word splitting of $names and $all is intended: one formula per argument
-brew_bundle_bottled_only() {
-    local brewfile names deps all info decision skip ruby brew_home cache logs
-    brewfile="$(cat)"
-    names="$(printf '%s\n' "$brewfile" | sed -n 's/^brew "\(.*\)"$/\1/p')"
-    ruby="$(brew --repository)/Library/Homebrew/vendor/portable-ruby/current/bin/ruby"
-    [[ -x "$ruby" ]] || ruby=/usr/bin/ruby
-    export HOMEBREW_NO_ENV_HINTS=1
-    # Homebrew's repos are public, but the global url.insteadOf rule (https to ssh) makes `brew update` fail on hosts whose
-    # SSH key cannot be unlocked non-interactively, which leaves brew itself on an old version. bin/brew drops every
-    # variable except HOME and HOMEBREW_*, so the only way past the rule is an empty HOME (cache and logs stay put).
-    brew_home="$(mktemp -d)"
-    cache="$HOME/Library/Caches/Homebrew"
-    logs="$HOME/Library/Logs/Homebrew"
-    HOME="$brew_home" HOMEBREW_CACHE="${HOMEBREW_CACHE:-$cache}" HOMEBREW_LOGS="${HOMEBREW_LOGS:-$logs}" \
-        brew update --quiet > /dev/null 2>&1 || true
-    rm -rf "${brew_home:?}"
-    export HOMEBREW_NO_AUTO_UPDATE=1
-    decision=""
-    if [[ -n "$names" ]]; then
-        if deps="$(brew deps --formula --for-each $names 2> /dev/null)" &&
-            all="$({ printf '%s\n' "$names"; printf '%s\n' "$deps" | sed 's/^[^:]*://' | tr ' ' '\n'; } | sed '/^$/d' | sort -u)" &&
-            info="$(brew info --json=v2 --formula $all 2> /dev/null)"; then
-            decision="$(printf '%s' "$info" | NAMES="$names" DEPS="$deps" "$ruby" -rjson -e '
-                info = JSON.parse(STDIN.read)["formulae"].to_h { |f| [f["name"], f] }
-                deps = ENV["DEPS"].lines.to_h { |l| n, d = l.split(":", 2); [n.strip, d.to_s.split] }
-                # A bottle for any Intel macOS tag (or "all") pours; older tags work on newer macOS.
-                ok = lambda do |n|
-                  f = info[n]
-                  next false unless f
-                  tags = (f.dig("bottle", "stable", "files") || {}).keys
-                  tags.any? { |t| t == "all" || !(t.start_with?("arm64_") || t.end_with?("_linux")) } ||
-                    (!f["installed"].empty? && !f["outdated"])
-                end
-                ENV["NAMES"].split.each do |n|
-                  if info[n] && !info[n]["installed"].empty?
-                    puts "keep #{n}"
-                    next
-                  end
-                  missing = ([n] + deps.fetch(n, [])).uniq.reject(&ok)
-                  puts(missing.empty? ? "keep #{n}" : "skip #{n} #{missing.join(",")}")
-                end
-            ')" || decision=""
-        fi
-    fi
-    if [[ -n "$decision" ]]; then
-        skip="$(printf '%s\n' "$decision" | awk '$1 == "skip" { printf "%s ", $2 }')"
-        printf '%s\n' "$decision" | awk '$1 == "skip" { printf "    skipping %s: Homebrew would have to compile %s\n", $2, $3 }'
-    elif [[ -n "$names" ]]; then
-        echo "WARNING: could not ask Homebrew which formulae have bottles; installing only what is already installed."
-        skip="$(printf '%s\n' "$names" | while IFS= read -r n; do brew list --formula "$n" > /dev/null 2>&1 || printf '%s ' "$n"; done)"
-    else
-        skip=""
-    fi
-    printf '%s\n' "$brewfile" | awk -v skip=" $skip " '
-        /^brew "/ { n = $2; gsub(/[",]/, "", n); if (index(skip, " " n " ")) next }
-        { print }' | brew bundle --no-upgrade --file=/dev/stdin
-}
-
-{{ end -}}
-if command -v brew &> /dev/null; then
-    echo "==> Synchronizing Homebrew Formulae & Casks via Brew Bundle..."
-    export HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK=1
-    # Give brew bundle the Brewfile as a file, not on stdin: its auto-update runs first and can start builds that inherit
-    # stdin. On 2026-10-20 the pkgconf rebuild after a macOS upgrade swallowed the whole Brewfile, and nothing installed.
-    brewfile="$(mktemp)"
-    cat > "$brewfile" <<EOF
+echo "==> Synchronizing Homebrew Formulae & Casks via Brew Bundle..."
+# Give brew bundle the Brewfile as a file, not on stdin: its auto-update runs first and can start builds that inherit
+# stdin. On 2026-10-20 the pkgconf rebuild after a macOS upgrade swallowed the whole Brewfile, and nothing installed.
+brewfile="$(mktemp)"
+cat > "$brewfile" <<EOF
 {{ range $packages.darwin.brew.formulae -}}
 brew {{ . | quote }}
 {{ end -}}
@@ -115,324 +41,24 @@ brew {{ . | quote }}
 cask {{ . | quote }}
 {{ end -}}
 EOF
-    if ! {{ if eq .chezmoi.arch "arm64" }}brew bundle --no-upgrade --file="$brewfile" < /dev/null{{ else }}brew_bundle_bottled_only < "$brewfile"{{ end }}; then
-        echo "WARNING: Some Homebrew packages could not be installed (e.g. unbottled on this architecture). Continuing..."
-    fi
-    rm -f "$brewfile"
-
-    echo "==> Pruning orphaned Homebrew dependencies and cleaning cache..."
-    brew autoremove || true
-    brew cleanup -s || true
+if ! brew bundle --no-upgrade --file="$brewfile" < /dev/null; then
+    echo "WARNING: Some Homebrew packages could not be installed. Continuing..."
 fi
+rm -f "$brewfile"
 
-# Standalone binary fallbacks for core CLI tools if Homebrew skipped them
-mkdir -p "$HOME/.local/bin"
-export PATH="$HOME/.local/bin:$PATH"
-
-if ! command -v starship &> /dev/null; then
-    echo "==> Installing Starship prompt fallback..."
-    curl -sS https://starship.rs/install.sh | sh -s -- --yes --bin-dir "$HOME/.local/bin"
-fi
-
-if ! command -v mise &> /dev/null; then
-    echo "==> Installing Mise runtime manager fallback..."
-    curl https://mise.run | sh
-fi
-
-if ! command -v age &> /dev/null; then
-    echo "==> Installing Age encryption fallback..."
-    AGE_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
-    curl -fsSL "https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-darwin-${AGE_ARCH}.tar.gz" | tar -xz -C "$HOME/.local/bin" --strip-components=1 age/age age/age-keygen
-fi
-
-if ! command -v zoxide &> /dev/null; then
-    echo "==> Installing Zoxide directory jumper fallback..."
-    curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
-fi
-
-if ! command -v fzf &> /dev/null; then
-    echo "==> Installing fzf fallback..."
-    FZF_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
-    curl -fsSL "https://github.com/junegunn/fzf/releases/download/v0.56.3/fzf-0.56.3-darwin_${FZF_ARCH}.tar.gz" | tar -xz -C "$HOME/.local/bin" fzf 2>/dev/null || true
-fi
-
-if ! command -v herdr &> /dev/null; then
-    echo "==> Installing Herdr standalone fallback..."
-    HERDR_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
-    curl -fsSL "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-${HERDR_ARCH}" -o "$HOME/.local/bin/herdr"
-    chmod +x "$HOME/.local/bin/herdr"
-fi
-
-if ! command -v nvim &> /dev/null; then
-    echo "==> Installing Neovim standalone fallback..."
-    NVIM_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}x86_64{{ end }}"
-    curl -fsSL "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-macos-${NVIM_ARCH}.tar.gz" | tar -xz -C "$HOME/.local" --strip-components=1
-fi
-
-if ! command -v bat &> /dev/null; then
-    echo "==> Installing bat fallback..."
-    BAT_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
-    curl -fsSL "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-${BAT_ARCH}-apple-darwin.tar.gz" | tar -xz -C "$HOME/.local/bin" --strip-components=1 "bat-v0.26.1-${BAT_ARCH}-apple-darwin/bat" 2>/dev/null || true
-fi
-
-if ! command -v dust &> /dev/null; then
-    echo "==> Installing dust fallback..."
-    DUST_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
-    curl -fsSL "https://github.com/bootandy/dust/releases/download/v1.2.6/dust-v1.2.6-${DUST_ARCH}-apple-darwin.tar.gz" | tar -xz -C "$HOME/.local/bin" --strip-components=1 "dust-v1.2.6-${DUST_ARCH}-apple-darwin/dust" 2>/dev/null || true
-fi
-
-if ! command -v fx &> /dev/null; then
-    echo "==> Installing fx fallback..."
-    FX_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
-    curl -fsSL "https://github.com/antonmedv/fx/releases/download/40.0.0/fx_darwin_${FX_ARCH}" -o "$HOME/.local/bin/fx" 2>/dev/null || true
-    chmod +x "$HOME/.local/bin/fx" 2>/dev/null || true
-fi
-
-{{ if ne .chezmoi.arch "arm64" -}}
-# Intel Macs only: on Apple silicon these would outlive a failed brew bundle and shadow the Homebrew versions, because
-# ~/.local/bin comes before them on PATH and the command -v guards never revisit them.
-# timeout fallback, as coreutils has no Intel bottle. uutils (the Rust coreutils) ships one multicall binary that
-# runs as whichever command it is invoked as, so ~/.local/bin/timeout is a symlink to it.
-if ! command -v timeout &> /dev/null; then
-    echo "==> Installing timeout fallback (uutils coreutils)..."
-    UU_TRIPLE="x86_64-apple-darwin"
-    UU_SHA="a845b274f91c23b779f097e15045f4bf7cbcf99d6e62e6878d9db816e6887586"
-    UU_TMP="$(mktemp -d)"
-    if curl -fsSL -o "$UU_TMP/uutils.tar.gz" "https://github.com/uutils/coreutils/releases/download/0.12.0/coreutils-0.12.0-${UU_TRIPLE}.tar.gz" &&
-        echo "${UU_SHA}  $UU_TMP/uutils.tar.gz" | shasum -a 256 -c - > /dev/null &&
-        tar -xzf "$UU_TMP/uutils.tar.gz" -C "$UU_TMP" --strip-components=1 "coreutils-0.12.0-${UU_TRIPLE}/coreutils"; then
-        mv "$UU_TMP/coreutils" "$HOME/.local/bin/coreutils"
-        ln -sfn coreutils "$HOME/.local/bin/timeout"
-    else
-        echo "WARNING: could not install the timeout fallback."
-    fi
-    rm -rf "${UU_TMP:?}"
-fi
-
-# ip, bridge and ss fallback, as iproute2mac's python@3.15 has no Intel bottle. iproute2mac is Python
-# scripts that need Python >= 3.10 (Apple's /usr/bin/python3 is 3.9), so, like Homebrew's own wrappers, these run
-# them on a managed Python: mise's, or else whatever python3 is on PATH.
-if ! command -v ip &> /dev/null; then
-    echo "==> Installing iproute2mac fallback (ip, bridge, ss)..."
-    IR_VER="1.7.6"
-    IR_SHA="a5b8e4ec28e38232d5b9b149d824598fd561336e5456af39dfa21a75d707dfde"
-    IR_HOME="$HOME/.local/share/iproute2mac"
-    IR_TMP="$(mktemp -d)"
-    if curl -fsSL -o "$IR_TMP/iproute2mac.tar.gz" "https://github.com/brona/iproute2mac/releases/download/v${IR_VER}/iproute2mac-${IR_VER}.tar.gz" &&
-        echo "${IR_SHA}  $IR_TMP/iproute2mac.tar.gz" | shasum -a 256 -c - > /dev/null &&
-        tar -xzf "$IR_TMP/iproute2mac.tar.gz" -C "$IR_TMP" --strip-components=1 "iproute2mac-${IR_VER}/src"; then
-        mkdir -p "$HOME/.local/share"
-        rm -rf "${IR_HOME:?}"
-        mv "$IR_TMP/src" "$IR_HOME"
-        for cmd in ip bridge ss; do
-            cat > "$IR_TMP/$cmd" <<EOF
-#!/bin/sh
-if command -v mise > /dev/null 2>&1; then exec mise exec python -- python3 "$IR_HOME/$cmd.py" "\$@"; fi
-exec python3 "$IR_HOME/$cmd.py" "\$@"
-EOF
-            chmod +x "$IR_TMP/$cmd"
-            mv "$IR_TMP/$cmd" "$HOME/.local/bin/$cmd"
-        done
-    else
-        echo "WARNING: could not install the iproute2mac fallback."
-    fi
-    rm -rf "${IR_TMP:?}"
-fi
-
-{{ end -}}
-{{ if ne .chezmoi.arch "arm64" -}}
-# Standalone git for Intel Macs. Xcode 27 is Apple silicon only, so Apple's git here stops at 2.50.1, and
-# Intel Homebrew has no git bottle; the global gitleaks hook needs git >= {{ .requirements.git.min }}. Build from source into
-# ~/.local (needs the Command Line Tools; about a minute). Steps are chained with && because bash ignores
-# `set -e` inside a function called from `|| true`.
-# shellcheck disable=SC2086 # $flags is a list of make variables, split on purpose
-install_standalone_git() {
-    local min="{{ .requirements.git.min }}" ver="2.56.0"
-    local sha="26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
-    local have work log flags sysconf tmp
-    have="$("$HOME/.local/bin/git" --version 2> /dev/null | awk '{print $3}' | sed 's/[^0-9.].*//')"
-    if [[ -n "$have" && "$(printf '%s\n%s\n' "$have" "$min" | sort -V | head -n 1)" == "$min" ]]; then
-        return 0
-    fi
-    if ! xcrun --find cc &> /dev/null || ! xcrun --find make &> /dev/null; then
-        echo "WARNING: no compiler found (install the Command Line Tools with xcode-select --install); cannot build the standalone git."
-        return 1
-    fi
-    echo "==> Building standalone git ${ver} into ~/.local (Intel Mac: no Homebrew bottle, Xcode 27 is Apple silicon only)..."
-    work="$(mktemp -d "${TMPDIR:-/tmp}/gitbuild.XXXXXX")" || return 1
-    log="${work}/build.log"
-    flags="NO_RUST=YesPlease NO_GETTEXT=YesPlease NO_TCLTK=YesPlease"
-    if ! (
-        cd "$work" &&
-        curl -fsSL -o git.tar.xz "https://mirrors.edge.kernel.org/pub/software/scm/git/git-${ver}.tar.xz" &&
-        echo "${sha}  git.tar.xz" | shasum -a 256 -c - &&
-        tar -xJf git.tar.xz &&
-        cd "git-${ver}" &&
-        make -j"$(sysctl -n hw.ncpu)" prefix="$HOME/.local" $flags all &&
-        make prefix="$HOME/.local" $flags install &&
-        make -C contrib/credential/osxkeychain prefix="$HOME/.local" $flags &&
-        install -m 755 contrib/credential/osxkeychain/git-credential-osxkeychain "$HOME/.local/libexec/git-core/git-credential-osxkeychain"
-    ) > "$log" 2>&1; then
-        echo "WARNING: building the standalone git failed; see ${log}"
-        return 1
-    fi
-    # Apple's git takes its keychain credential helper from its own system config; give this git the same.
-    sysconf="$HOME/.local/etc/gitconfig"
-    if [[ ! -e "$sysconf" ]]; then
-        mkdir -p "$HOME/.local/etc" &&
-            tmp="$(mktemp "${sysconf}.XXXXXX")" &&
-            printf '[credential]\n\thelper = osxkeychain\n' > "$tmp" &&
-            mv "$tmp" "$sysconf"
-    fi
-    echo "==> Standalone git $("$HOME/.local/bin/git" --version | awk '{print $3}') installed in ~/.local/bin"
-    rm -rf "${work:?}"
-}
-install_standalone_git || true
-
-{{ end -}}
-if ! command -v lvim &> /dev/null; then
-    echo "==> Installing LunarVim..."
-    bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies || true
-fi
-
-{{ else if eq .chezmoi.os "linux" -}}
-{{- /* Everything below uses apt-get, dpkg and Ubuntu's Docker and 1Password repositories, under sudo, so it runs on
-       Ubuntu and Debian only. Other distributions, Omarchy among them, bring their own packages: the script then only
-       says it skipped, rather than failing at apt-get and aborting the whole apply. */}}
-{{- $osID := dig "osRelease" "id" "" .chezmoi }}
-{{- if or (eq $osID "ubuntu" "debian") (regexMatch "(^| )(ubuntu|debian)( |$)" (dig "osRelease" "idLike" "" .chezmoi)) -}}
-echo "==> Starting Ubuntu Linux Bootstrap ({{ .chezmoi.arch }})..."
-export DEBIAN_FRONTEND=noninteractive
-
-sudo apt-get update -y
-sudo apt-get install -y \
-{{- range $packages.ubuntu.apt.packages }}
-    {{ . | quote }} \
-{{- end }}
-    ;
-
-# Normalize fd-find binary name to fd on Ubuntu
-mkdir -p "$HOME/.local/bin"
-export PATH="$HOME/.local/bin:$PATH"
-if command -v fdfind &> /dev/null && ! command -v fd &> /dev/null; then
-    ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
-fi
-
-# Normalize batcat binary name to bat on Debian/Ubuntu
-if command -v batcat &> /dev/null && ! command -v bat &> /dev/null; then
-    mkdir -p "$HOME/.local/bin"
-    ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
-fi
-
-if ! command -v eza &> /dev/null; then
-    echo "==> Installing eza fallback..."
-    EZA_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
-    curl -fsSL "https://github.com/eza-community/eza/releases/latest/download/eza_${EZA_ARCH}-unknown-linux-gnu.tar.gz" | tar -xz -C "$HOME/.local/bin" eza 2>/dev/null || true
-fi
-
-if ! command -v fx &> /dev/null; then
-    echo "==> Installing fx fallback..."
-    FX_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}amd64{{ end }}"
-    curl -fsSL "https://github.com/antonmedv/fx/releases/latest/download/fx_linux_${FX_ARCH}" -o "$HOME/.local/bin/fx" 2>/dev/null || true
-    chmod +x "$HOME/.local/bin/fx" 2>/dev/null || true
-fi
-
-# Install Starship if missing
-if ! command -v starship &> /dev/null; then
-    echo "==> Installing Starship prompt..."
-    curl -sS https://starship.rs/install.sh | sh -s -- --yes --bin-dir "$HOME/.local/bin"
-fi
-
-# Install Mise if missing
-if ! command -v mise &> /dev/null; then
-    echo "==> Installing mise polyglot runtime..."
-    curl -fsSL https://mise.run | sh
-fi
-
-# Install Gitleaks if missing
-if ! command -v gitleaks &> /dev/null; then
-    echo "==> Installing Gitleaks..."
-    GITLEAKS_VERSION="8.21.2"
-    ARCH="$(dpkg --print-architecture)"
-    if [[ "$ARCH" == "amd64" ]]; then GL_ARCH="x64"; else GL_ARCH="arm64"; fi
-    curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_${GL_ARCH}.tar.gz" \
-        | sudo tar -xz -C /usr/local/bin gitleaks
-fi
-
-# Install Zoxide if missing
-if ! command -v zoxide &> /dev/null; then
-    echo "==> Installing Zoxide directory jumper..."
-    curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
-fi
-
-if ! command -v herdr &> /dev/null; then
-    echo "==> Installing Herdr standalone fallback..."
-    HERDR_ARCH="{{ if eq .chezmoi.arch "arm64" }}aarch64{{ else }}x86_64{{ end }}"
-    curl -fsSL "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-linux-${HERDR_ARCH}" -o "$HOME/.local/bin/herdr"
-    chmod +x "$HOME/.local/bin/herdr"
-fi
-
-if ! command -v nvim &> /dev/null; then
-    echo "==> Installing Neovim standalone fallback..."
-    NVIM_ARCH="{{ if eq .chezmoi.arch "arm64" }}arm64{{ else }}x86_64{{ end }}"
-    curl -fsSL "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-linux-${NVIM_ARCH}.tar.gz" | tar -xz -C "$HOME/.local" --strip-components=1
-fi
+echo "==> Pruning orphaned Homebrew dependencies and cleaning cache..."
+brew autoremove || true
+brew cleanup -s || true
 
 if ! command -v lvim &> /dev/null; then
     echo "==> Installing LunarVim..."
     bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies || true
 fi
-
-# Install JetBrainsMono Nerd Font on Linux if missing
-FONT_DIR="$HOME/.local/share/fonts/JetBrainsMono"
-if [[ ! -d "$FONT_DIR" ]]; then
-    echo "==> Installing JetBrainsMono Nerd Font..."
-    mkdir -p "$FONT_DIR"
-    curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip" -o /tmp/JetBrainsMono.zip
-    unzip -q -o /tmp/JetBrainsMono.zip -d "$FONT_DIR"
-    rm -f /tmp/JetBrainsMono.zip
-    fc-cache -fv &> /dev/null || true
-fi
-
-# Install Official Docker Engine if missing
-if ! command -v docker &> /dev/null; then
-    echo "==> Installing Official Docker Engine..."
-    sudo install -m 0755 -d /etc/apt/keyrings
-    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    sudo chmod a+r /etc/apt/keyrings/docker.asc
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-        | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update -y
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-fi
-
-# Install 1Password CLI on Linux if missing
-if ! command -v op &> /dev/null; then
-    echo "==> Installing 1Password CLI..."
-    curl -sS https://downloads.1password.com/linux/keys/1password.asc | sudo gpg --dearmor --output /usr/share/keyrings/1password-archive-keyring.gpg 2>/dev/null || true
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main' | sudo tee /etc/apt/sources.list.d/1password.list > /dev/null || true
-    sudo apt-get update -y && sudo apt-get install -y 1password-cli || true
-fi
-
-# Install Bitwarden CLI on Linux if missing
-if ! command -v bw &> /dev/null; then
-    echo "==> Installing Bitwarden CLI..."
-    mkdir -p "$HOME/.local/bin"
-    curl -fsSL "https://vault.bitwarden.com/download/?app=cli&platform=linux" -o /tmp/bw.zip 2>/dev/null || true
-    if [[ -f /tmp/bw.zip ]]; then
-        unzip -q -o /tmp/bw.zip -d "$HOME/.local/bin" 2>/dev/null || true
-        chmod +x "$HOME/.local/bin/bw" 2>/dev/null || true
-        rm -f /tmp/bw.zip
-    fi
-fi
-
-if ! getent group docker > /dev/null; then
-    sudo groupadd docker
-fi
-if ! id -nG "$USER" | grep -qw "docker"; then
-    sudo usermod -aG docker "$USER"
-fi
+{{ else if eq .chezmoi.os "darwin" -}}
+{{- /* Intel Macs: Homebrew compiles any formula without an Intel bottle there (one apply built llvm, rust and node for 7
+       hours), so this repository installs nothing on them. docs/INTEL_MACS.md says what to install by hand. */}}
+echo "==> Skipping packages: Intel Macs are set up by hand (docs/INTEL_MACS.md in the chezmoi source)."
 {{ else -}}
-echo "==> Skipping system packages: {{ $osID | default "this Linux" }} is not Ubuntu or Debian, and this bootstrap uses apt."
-{{ end -}}
+{{- /* Linux hosts bring their own packages (Omarchy, Arch); this repository manages only their dotfiles. */}}
+echo "==> Skipping system packages: {{ dig "osRelease" "id" "" .chezmoi | default "this Linux" }} installs them with its own package manager."
 {{ end -}}

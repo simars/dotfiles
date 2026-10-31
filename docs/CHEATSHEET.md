@@ -62,7 +62,7 @@ On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, 
 
 * **The same in every mode:** `bash` 5, `rsync` 3, `wget`, `timeout`, `ip`, `watch` and `pstree` are on `PATH` regardless (`/bin/bash` stays 3.2 and `/usr/bin/rsync` stays `openrsync`).
 * **Scripts for both systems:** where BSD and GNU flags differ, try the GNU form first and fall back: `stat -c %Y f 2>/dev/null || stat -f %m f`. Never the other way round: GNU `stat -f` prints filesystem information and fails, so the fallback's output is appended to it. Or use a form both accept: `sed -i.bak`, `base64 -d`, `mktemp "${TMPDIR:-/tmp}/x.XXXXXX"`. Branch on `$OSTYPE` only for OS facts such as paths, launchd vs systemd, or the package manager.
-* **Intel Macs (secondary hosts):** only `findutils`, `gnu-sed`, `make`, `pstree` and `watch` have Intel bottles, so in `gnu` mode `sed`, `find`, `xargs` and `make` are GNU there while `ls`, `grep`, `awk` and `tar` stay Apple's. `timeout` comes from a uutils fallback and `ip`, `bridge` and `ss` from an iproute2mac fallback, both in `~/.local/bin`; `bash` 5, `rsync` 3 and `wget` are absent.
+* **Intel Macs (secondary hosts):** dotfiles only; their tools are installed by hand (`docs/INTEL_MACS.md`). `userland gnu` aliases only the GNU tools that are installed there: `findutils`, `gnu-sed` and `make` pour on Intel, so `sed`, `find`, `xargs` and `make` are GNU while `ls`, `grep`, `awk` and `tar` stay Apple's.
 
 ---
 
@@ -159,9 +159,9 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | **Skip once** | `git commit --no-verify` | Bypasses all pre-commit and commit-msg hooks for this commit only (`git push --no-verify` for pre-push). |
 | **Opt a repo out** | `git config hook.gitleaks.enabled false` | Disables the secret scan in the current repo only (or `hook.identity-pre-commit.enabled false`, etc. for the identity guard). |
 | **Scan by hand** | `gitleaks git --pre-commit --staged --redact` | Same check the hook runs, without committing. |
-| **Check requirements** | `git --version` and `/usr/bin/git --version` | Both must be >= 2.54 (`.chezmoidata/requirements.toml`). Every `chezmoi apply` asserts this and that `gitleaks` is installed, printing the fix and failing until met. On Intel Macs only the terminal git is a hard requirement; `/usr/bin/git` is reported as a `WARN` and the apply still passes. |
-| **Intel Macs: standalone git** | `~/.local/bin/git --version` | Xcode 27 is Apple silicon only and Intel Homebrew has no git bottle, so `chezmoi apply` builds git from source into `~/.local` (pinned version, checksum verified, about a minute, needs the Command Line Tools). GUI apps that use `/usr/bin/git` (Apple's 2.50.1) skip the hook, so commit from a terminal. |
-| **Intel Macs: bottled formulae only** | `chezmoi apply` (look for `skipping X: Homebrew would have to compile ...`) | Homebrew on Intel compiles anything that has no bottle (llvm, rust and node took 7 hours). The install script gives `brew bundle` only the formulae whose runtime dependencies are all bottled or installed, and prints each skip with its reason. Build a skipped one on purpose with `brew install --build-from-source <formula>`. |
+| **Check requirements** | `git --version` | The global hooks need git >= 2.54 (`.chezmoidata/requirements.toml`). Every `chezmoi apply` ends with a check: a `WARN` when git is older (the hooks then do not run on that machine), a `FAIL` when `gitleaks` is missing, each with its fix. |
+| **Intel Macs: git for the hooks** | `~/.local/bin/git --version` | Apple's git there stops at 2.50.1 and Intel Homebrew has no git bottle: build git into `~/.local` by hand (`docs/INTEL_MACS.md`, section 4), or commits there go unscanned. |
+| **Intel Macs: what Homebrew can install** | The check in `docs/INTEL_MACS.md`, section 1 | Lists each formula as `installed`, `pour` (safe to `brew install`) or `compile` (do not: Homebrew on Intel builds it from source, as it once did for 7 hours). |
 
 ### Chezmoi Workflow Commands
 `chezmoi` manages dotfiles declaratively from `~/.local/share/chezmoi`.
@@ -180,7 +180,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `tests/host-profiles.sh --base main` | Check All Host Kinds | From the source directory: checks what macOS, Omarchy, Arch, Ubuntu and Debian hosts get (CI runs it on every push), and notes scripts that would re-run on existing hosts. |
 
 * **What chezmoi touches:** single files, written as real files (no symlinks). It never deletes or replaces anything it does not manage, so the rest of `~/.config` stays as it is. It does set the permissions of the directories it manages (`~/.vim` is `0700`).
-* **Linux:** system packages install only on Ubuntu and Debian (apt); other distributions skip that step. On Omarchy, its own Neovim, tmux, Alacritty, Starship, mise and herdr configs are left alone.
+* **Linux:** no system packages are installed; Omarchy and other distributions bring their own. On Omarchy, its own Neovim, tmux, Alacritty, Starship, mise and herdr configs are left alone.
 
 ---
 
