@@ -321,7 +321,9 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 
 | Key | tmux | Herdr |
 | :--- | :--- | :--- |
-| `h` `j` `k` `l` | Focus pane left, down, up, right | Same |
+| `h` `j` `k` `l` (or arrows) | Focus pane left, down, up, right | Same |
+| `{` `}` / `Shift-h` `Shift-l` | Swap pane up, down / left, right | Same |
+| `Alt-arrows` (after the prefix) | Resize pane (tmux default) | Same |
 | `"` `-` (or `Alt-Enter`) | Split, new pane below | Same |
 | `%` `v` (or `Alt-Shift-Enter`) | Split, new pane to the right | Same |
 | `x` (or `Alt-Esc`) | Kill pane, no prompt | Close pane |
@@ -330,13 +332,16 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 | `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab |
 | `1`..`9` (or `Alt-1`..`9`), `n` `p` (or `Alt-Right` `Alt-Left`) | Go to window | Go to tab |
 | `R` `C` `K` `P` `N` | Rename / new / kill / previous / next session | `Shift-r` (or `$`) `Shift-c` `Shift-k` `Shift-p` `Shift-n` for workspaces |
-| `s` | (tmux default: choose session) | Workspace picker |
-| `r` or `q` | Reload config | Same |
-| `[` | Copy mode (`v` select, `y` copy) | Copy mode; `e` edits the scrollback |
+| `s` / `w` | Choose session / choose window (tmux defaults) | Workspace picker (both keys) |
+| `q` | Show pane numbers; press one to jump (tmux default) | Goto picker (also `g`); Herdr has no pane numbers |
+| `r` | Reload config | Same |
+| `[` | Copy mode (`v` select, `y` copy) | Same |
+| `e` | Open the scrollback in `$EDITOR` (popup) | Same |
+| `Shift-t` | Rename pane (tmux: pane title) | Same |
 | `?` | Key list (Omarchy's menu on Omarchy) | Help |
 | `d` | Detach | Same |
 | `Ctrl-Alt-arrows` / `Ctrl-Alt-Shift-arrows` | Focus / resize pane, no prefix | Same |
-| `b`, `Shift-o`, `Shift-m`, `Shift-s` | | Sidebar, notification target, rename pane, settings |
+| `b`, `Shift-o`, `Shift-s`, `Shift-g` | | Sidebar, notification target, settings, new git worktree |
 
 `omarchy refresh tmux` (or `herdr`) puts Omarchy's stock file back; `chezmoi apply ~/.config/tmux/tmux.conf` (or `~/.config/herdr/config.toml`) restores the shared one.
 

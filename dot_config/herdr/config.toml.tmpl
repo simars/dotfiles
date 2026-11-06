@@ -30,7 +30,7 @@ new_cwd = "follow"
 prefix = "ctrl+b"
 
 # Config and help
-reload_config = ["prefix+r", "prefix+q"]
+reload_config = "prefix+r"
 help = "prefix+?"
 detach = "prefix+d"
 settings = "prefix+shift+s"
@@ -47,21 +47,29 @@ zoom = "prefix+z"
 last_pane = "prefix+;"
 cycle_pane_next = "prefix+o"
 
-focus_pane_left = ["prefix+h", "ctrl+alt+left"]
-focus_pane_down = ["prefix+j", "ctrl+alt+down"]
-focus_pane_up = ["prefix+k", "ctrl+alt+up"]
-focus_pane_right = ["prefix+l", "ctrl+alt+right"]
+focus_pane_left = ["prefix+h", "prefix+left", "ctrl+alt+left"]
+focus_pane_down = ["prefix+j", "prefix+down", "ctrl+alt+down"]
+focus_pane_up = ["prefix+k", "prefix+up", "ctrl+alt+up"]
+focus_pane_right = ["prefix+l", "prefix+right", "ctrl+alt+right"]
+
+# swap-pane -U/-D on { and } (tmux defaults); H/L are Herdr's own, and tmux.conf binds them too
+swap_pane_up = "prefix+{"
+swap_pane_down = "prefix+}"
+swap_pane_left = "prefix+shift+h"
+swap_pane_right = "prefix+shift+l"
 
 resize_mode = ["prefix+ctrl+left", "prefix+ctrl+down", "prefix+ctrl+up", "prefix+ctrl+right"]
 
-# Like resize-pane on C-M-S-arrows
-resize_pane_left = "ctrl+alt+shift+left"
-resize_pane_down = "ctrl+alt+shift+down"
-resize_pane_up = "ctrl+alt+shift+up"
-resize_pane_right = "ctrl+alt+shift+right"
+# Like resize-pane on C-M-S-arrows and tmux's prefix M-arrows
+resize_pane_left = ["ctrl+alt+shift+left", "prefix+alt+left"]
+resize_pane_down = ["ctrl+alt+shift+down", "prefix+alt+down"]
+resize_pane_up = ["ctrl+alt+shift+up", "prefix+alt+up"]
+resize_pane_right = ["ctrl+alt+shift+right", "prefix+alt+right"]
+
+# Like select-pane -T (tmux prefix T)
+rename_pane = "prefix+shift+t"
 
 # No tmux equivalent
-rename_pane = "prefix+shift+m"
 open_notification_target = "prefix+shift+o"
 toggle_sidebar = "prefix+b"
 
@@ -77,8 +85,12 @@ next_tab = ["prefix+n", "alt+right"]
 move_tab_previous = "alt+shift+left"
 move_tab_next = "alt+shift+right"
 
+# No pane-number overlay (tmux q, display-panes) in Herdr; q opens the goto picker instead
+goto = ["prefix+g", "prefix+q"]
+
 # Sessions -> workspaces
-workspace_picker = "prefix+s"
+# s chooses a session, w a window; Herdr's workspace navigation covers both
+workspace_picker = ["prefix+s", "prefix+w"]
 new_workspace = "prefix+shift+c"
 rename_workspace = ["prefix+shift+r", "prefix+$"]
 close_workspace = "prefix+shift+k"
