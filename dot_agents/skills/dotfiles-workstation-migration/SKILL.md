@@ -145,7 +145,7 @@ chezmoi apply -v
 Monitor during execution:
 1. **Package Provisioning:** on Apple silicon only, Homebrew `brew bundle --no-upgrade` (including `vim`, `neovim`, `herdr`, and modern CLI utilities: `eza`, `bat`, `btop`, `duf`, `dust`, `httpie`, `jq`, `fx`).
 2. **Intel Macs and Linux:** the package script only prints that it skipped. On an Intel Mac, install the tools afterwards with `docs/INTEL_MACS.md`: its bottle check, the standalone binaries, and the optional git build for the global hooks.
-3. **Editors:** Vim and Neovim (LazyVim) configs are deployed; LunarVim is not managed by chezmoi.
+3. **Editor Automation:** LunarVim (`lvim`) installed automatically via unattended installer once `neovim` and runtimes are present.
 4. **Runtime Compilation:** `mise install --yes` (Node 22, Go latest, Python 3.12 + httpie/pip/ruff/black/pytest). This installs the global tools only; project pins are listed by the `mise-audit` warning at the end of the apply and installed in Stage 6.
 5. **Post-Apply Hooks:** Keychain enrollment. Secret scanning is the global gitleaks hook from `~/.gitconfig` (`git hook list pre-commit` lists it in any repo); this repository installs no hook of its own.
 
@@ -174,9 +174,10 @@ fi
 # 5. Dynamic FZF Bat Preview Verification
 zsh -lic 'head -n 20 ~/.zshrc | bat --style=numbers --color=always'
 
-# 6. Editor Ecosystem (Vim, Neovim)
+# 6. Editor Ecosystem (Vim, Neovim, LunarVim)
 zsh -lic 'which vim && vim --version | head -n 1'
 zsh -lic 'which nvim && nvim --version | head -n 1'
+zsh -lic 'which lvim && lvim --version | head -n 1'
 
 # 7. Directory Navigation Functions
 zsh -lic 'type z && type zi'

@@ -106,7 +106,7 @@ chezmoi apply -v
 **What happens during apply:**
 1. Packages are installed via `brew bundle --no-upgrade` or `apt-get` (including `vim`, `neovim`, and `herdr`, alongside modern CLI utilities `eza`, `bat`, `btop`, `duf`, `dust`, `httpie`, `jq`, and `fx`).
 2. Core standalone tools (`starship`, `mise`, `age`, `zoxide`, `fzf`, `herdr`, `neovim`, `bat`, `dust`, `fx`) fall back to standalone release binaries in `~/.local/bin` if package managers skip unbottled packages on legacy architectures (such as Intel macOS Tier 3 deprecation).
-3. LunarVim is not installed or configured by chezmoi; install it by hand if wanted (cheatsheet, "LunarVim (not managed)").
+3. LunarVim (`lvim`) is automatically installed via upstream installer once `nvim` and polyglot runtimes are available.
 4. Templates are rendered to `$HOME` (including `.config/herdr/config.toml`, `.vimrc`, `.config/nvim/init.lua`, and `.aliases`).
 5. Post-apply hooks install the Gitleaks pre-commit secret scanner.
 6. Language runtimes are synced via `mise install --yes` (Go, Python 3.12 + `httpie`, Node 22).
@@ -134,9 +134,10 @@ fi
 # 5. Dynamic FZF Bat Preview Verification
 zsh -lic 'head -n 20 ~/.zshrc | bat --style=numbers --color=always'
 
-# 6. Editor Ecosystem (Vim, Neovim)
+# 6. Editor Ecosystem (Vim, Neovim, LunarVim)
 zsh -lic 'which vim && vim --version | head -n 1'
 zsh -lic 'which nvim && nvim --version | head -n 1'
+zsh -lic 'which lvim && lvim --version | head -n 1'
 
 # 7. Directory Navigation Functions
 zsh -lic 'type z && type zi'

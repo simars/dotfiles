@@ -70,6 +70,6 @@ pacman = [
     "wget",
     "zsh"
 ]
-# AUR packages, installed with `omarchy pkg aur add`. None today: LunarVim is installed by hand, outside this
-# repository (lunarvim-git; then link ~/.local/share/lunarvim/lvim to /usr/share/lunarvim).
-aur = []
+aur = [
+    "lunarvim-git"
+]
