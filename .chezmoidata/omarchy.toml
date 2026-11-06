@@ -1,0 +1,15 @@
+# Omarchy-only switches, read by templates only when the host is Omarchy. The comparison and the switching steps
+# are in docs/CHEATSHEET.md, "mise on Omarchy".
+#
+# omarchy_mise_project_settings: does mise on Omarchy follow projects' own version files?
+#   false (option A, current): no. mise on Omarchy is entirely Omarchy's. ~/.config/mise/conf.d/50-shared.toml
+#         renders empty, so chezmoi deploys nothing there and deletes the file if an earlier apply put it there.
+#         Pin a project with `mise use --env local <tool>@<version>` (writes mise.local.toml, ignored by git).
+#   true  (option B): ~/.config/mise/conf.d/50-shared.toml deploys. .ruby-version (and a Gemfile `ruby` line),
+#         .python-version, .nvmrc and .node-version pick the runtime, and a uv project's .venv turns on at `cd`.
+#   Either way Go keeps mise's default GOBIN on Omarchy (bash has no ~/go/bin on PATH); add Go tools with
+#   `mise use -g go:<module>@latest`.
+#   Switch for good: change the value here, commit, then on Omarchy `chezmoi apply ~/.config/mise`.
+#   Try without a commit: put `omarchy_mise_project_settings = true` under [data] in ~/.config/chezmoi/chezmoi.toml
+#   (that wins over this file until `chezmoi init` rewrites the config), then `chezmoi apply ~/.config/mise`.
+omarchy_mise_project_settings = false

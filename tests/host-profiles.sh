@@ -128,10 +128,16 @@ for host in darwin intel arch ubuntu; do
     check "$host manages default-python-packages" yes "$(manages "$host" .config/mise/default-python-packages)"
     check "$host mise config skips deprecated default_packages_file" 0 "$(render "$host" dot_config/mise/config.toml.tmpl | grep -c default_packages_file)"
 done
-check "omarchy mise settings carry no tools" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE '^\[tools\]|^(node|python|go) *=')"
-check "omarchy mise settings skip the deprecated default_packages_file" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -c default_packages_file)"
-check "omarchy mise settings leave GOBIN to mise (bash has no ~/go/bin)" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE 'settings\.go|set_gobin')"
-check "omarchy mise settings keep version files and uv venvs" 2 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE '^idiomatic_version_file_enable_tools = \["node", "python", "ruby"\]$|^uv_venv_auto = true$')"
+# mise on Omarchy: option A (.chezmoidata/omarchy.toml, the default) renders the shared settings empty, so chezmoi
+# deletes any earlier copy; option B deploys them. Neither carries tools, default_packages_file or set_gobin.
+check "omarchy mise defaults to option A" false "$(chezmoi execute-template '{{ .omarchy_mise_project_settings }}')"
+check "omarchy option A renders no mise settings" "" "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | tr -d '[:space:]')"
+omarchy_b='{"chezmoi":{"os":"linux","osRelease":{"id":"omarchy","idLike":"arch"}},"omarchy_mise_project_settings":true}'
+chezmoi --override-data "$omarchy_b" execute-template < dot_config/mise/conf.d/50-shared.toml.tmpl > "$work/omarchy-b.mise"
+check "omarchy option B keeps version files and uv venvs" 2 "$(grep -cE '^idiomatic_version_file_enable_tools = \["node", "python", "ruby"\]$|^uv_venv_auto = true$' "$work/omarchy-b.mise")"
+check "omarchy option B mise settings carry no tools" 0 "$(grep -cE '^\[tools\]|^(node|python|go) *=' "$work/omarchy-b.mise")"
+check "omarchy option B skips the deprecated default_packages_file" 0 "$(grep -c default_packages_file "$work/omarchy-b.mise")"
+check "omarchy option B leaves GOBIN to mise (bash has no ~/go/bin)" 0 "$(grep -cE 'settings\.go|set_gobin' "$work/omarchy-b.mise")"
 for host in darwin intel arch ubuntu; do
     check "$host mise config keeps set_gobin = false" 1 "$(render "$host" dot_config/mise/config.toml.tmpl | grep -c '^set_gobin = false$')"
 done

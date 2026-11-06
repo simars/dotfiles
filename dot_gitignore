@@ -34,3 +34,7 @@ tmp/**/*
 
 # Claude Code machine-local settings
 **/.claude/settings.local.json
+
+# mise machine-local pins (`mise use --env local ...`), never shared
+mise.local.toml
+.mise.local.toml

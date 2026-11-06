@@ -212,12 +212,28 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `mise-audit --install` | Install Missing Project Pins | Run `mise install` in every project with a missing pin, then report what still failed:<br>`mise-audit --install` |
 
 ### mise on Omarchy
-Omarchy ships its tools (node `latest`, the agent CLIs, `uv`) in `/etc/mise/conf.d/` and owns `~/.config/mise/config.toml`. chezmoi leaves both alone and deploys only `~/.config/mise/conf.d/50-shared.toml`: the shared settings (version files for node, python and ruby, `uv_venv_auto`), no tools. Global Python packages use a tool postinstall hook in `config.toml` on managed hosts, avoiding the deprecated `python.default_packages_file` that warns on mise 2026.11+. `go.set_gobin = false` is left out on Omarchy, because bash there never puts `~/go/bin` on `PATH`: `go install` writes to the current Go version's `bin` directory, which is on `PATH` until the next Go upgrade. Install Go tools you keep with `mise use -g go:<module>@latest` (for example `mise use -g go:github.com/air-verse/air@latest`): mise builds each one into its own directory, so it survives Go upgrades, lists it in Omarchy's `~/.config/mise/config.toml`, and `mise up --bump` updates it. `mise-audit` is not deployed on Omarchy. Add runtimes with `omarchy install dev-env go` (or `python`, `ruby`, ...), never by pinning them in chezmoi.
+Omarchy ships its tools (node `latest`, the agent CLIs, `uv`) in `/etc/mise/conf.d/` and owns `~/.config/mise/config.toml`; chezmoi never touches either. Whether mise there also follows projects' own version files is one switch, `omarchy_mise_project_settings` in `.chezmoidata/omarchy.toml`:
+
+| | **A** (`false`, current) | **B** (`true`) |
+| :--- | :--- | :--- |
+| What chezmoi deploys | Nothing for mise. `~/.config/mise/conf.d/50-shared.toml` renders empty, so an apply deletes an earlier copy | `~/.config/mise/conf.d/50-shared.toml`: version files for node, python and ruby, `uv_venv_auto` |
+| `.ruby-version`, `.python-version`, `.nvmrc`, `.node-version`, Gemfile `ruby` | Ignored by mise | Pick the runtime in that project |
+| A repo's uv `.venv` | Not switched on (use `uv run`, or `source .venv/bin/activate`) | Switched on at `cd` |
+| `.tool-versions`, `mise.toml`, `mise.local.toml` | Read | Read |
+| Pinning a repo | `mise use --env local ruby@$(cat .ruby-version)` writes `mise.local.toml` (globally git-ignored) | Nothing to do; `mise install` once if the version is missing |
+
+| Task | Command |
+| :--- | :--- |
+| Which option is live | `chezmoi execute-template '{{ .omarchy_mise_project_settings }}'` (`false` is A) and `mise settings get idiomatic_version_file_enable_tools` (`[]` is A) |
+| Switch for good | Set the value in `.chezmoidata/omarchy.toml`, commit, then on Omarchy `chezmoi diff ~/.config/mise` and `chezmoi apply ~/.config/mise` |
+| Try B without a commit | Add `omarchy_mise_project_settings = true` under `[data]` in `~/.config/chezmoi/chezmoi.toml` (wins over the repo value until `chezmoi init` rewrites the file), then `chezmoi apply ~/.config/mise`. Remove the line and apply again to go back |
+
+Both options leave out `go.set_gobin = false` (bash on Omarchy never puts `~/go/bin` on `PATH`). The deprecated `python.default_packages_file` is gone everywhere: the other hosts install global Python packages with a postinstall hook in `config.toml`, which chezmoi does not manage on Omarchy. So on Omarchy `go install` writes to the current Go version's `bin` directory, which is on `PATH` until the next Go upgrade. Install Go tools you keep with `mise use -g go:<module>@latest` (for example `mise use -g go:github.com/air-verse/air@latest`): mise builds each one into its own directory, so it survives Go upgrades, lists it in Omarchy's `~/.config/mise/config.toml`, and `mise up --bump` updates it. `mise-audit` is not deployed on Omarchy. Add runtimes with `omarchy install dev-env go` (or `python`, `ruby`, ...), never by pinning them in chezmoi.
 
 ### Project Runtimes
 Projects choose their runtime; nothing global changes outside them.
 
-* **Files mise reads:** `.tool-versions`, `mise.toml`, and (enabled in `~/.config/mise/config.toml`) `.ruby-version`, a Gemfile `ruby "3.2.3"` line, `.python-version`, `.nvmrc` and `.node-version`.
+* **Files mise reads:** `.tool-versions`, `mise.toml`, and (enabled in `~/.config/mise/config.toml`; on Omarchy only with option B above) `.ruby-version`, a Gemfile `ruby "3.2.3"` line, `.python-version`, `.nvmrc` and `.node-version`.
 * **Ruby:** no global version, so outside a project `ruby` is macOS's `/usr/bin/ruby`. mise never compiles Ruby on its own on macOS: Apple silicon installs prebuilt Rubies and refuses versions that have none (EOL 2.x), and Intel Macs have no prebuilt Rubies. Compile on purpose with `MISE_RUBY_COMPILE=true mise install ruby@<version>` (or `MISE_RUBY_COMPILE=true mise-audit --install`).
 * **Go:** `go.mod` is not read as a pin (Go runs older modules on the newest toolchain); pin an exact Go in `.tool-versions` if a project needs one. `go install` writes to `~/go/bin`, which is on `PATH` (on Omarchy, see *mise on Omarchy* above).
 * **Pin fails with `No GitHub artifact attestations found`:** the pinned patch release has no signed build. Pin the latest patch of the same minor instead: `mise ls-remote python 3.11 | tail -1`.
