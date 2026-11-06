@@ -1,6 +1,6 @@
 # Cross-Platform Dotfiles (`chezmoi` + `mise` + `age`)
 
-Deterministic workstation setup for **macOS on Apple silicon** (dotfiles and packages), **Intel Macs** (dotfiles; tools by hand, see `docs/INTEL_MACS.md`) and **Omarchy Linux** (dotfiles only).
+Deterministic workstation setup for **macOS on Apple silicon** (dotfiles and packages), **Intel Macs** (dotfiles; tools by hand, see `docs/INTEL_MACS.md`) and **Omarchy Linux** (dotfiles, plus a short package list installed with `omarchy pkg add`).
 
 ## Fresh Machine Bootstrap
 

@@ -2,8 +2,8 @@
 #
 # Check what each kind of host gets from this repository, from any machine, without applying anything.
 # `chezmoi --override-data` renders the templates as if this were macOS, Omarchy, Arch, Ubuntu or Debian, and the
-# checks below hold the platform rules of AGENTS.md section 4: Omarchy keeps its own configs, apt runs on Ubuntu and
-# Debian only, and ~/.bashrc is managed on macOS only.
+# checks below hold the platform rules of AGENTS.md section 4: Omarchy keeps its own configs except the merged tmux and
+# Herdr ones, Omarchy installs only with `omarchy pkg`, and ~/.bashrc is managed on macOS only.
 #
 # Usage: tests/host-profiles.sh [--base <git ref>]
 #   --base also reports each run_onchange_ script whose macOS or Ubuntu render differs from <ref>: hosts like that

@@ -9,7 +9,7 @@
 This repository contains multi-machine, cross-platform workstation dotfiles managed via [chezmoi](https://www.chezmoi.io/). It provides deterministic developer environment bootstrapping, shell configuration, and runtime tooling across:
 - **macOS Apple Silicon (`arm64`)**: Primary modern Mac workstations (e.g. Mac Studio, Apple Silicon MacBook Pro). Homebrew lives in `/opt/homebrew`.
 - **macOS Intel (`x86_64`)**: Legacy Intel Mac hardware (e.g. 16" and 32GB MacBook Pro). Homebrew lives in `/usr/local`. Dotfiles only; tools by hand (`docs/INTEL_MACS.md`).
-- **Linux (Omarchy)**: dotfiles only; Omarchy keeps its own configs (section 4.2).
+- **Linux (Omarchy)**: dotfiles, plus the few packages listed for it, installed with Omarchy's own commands; Omarchy keeps its own configs except tmux and Herdr (section 4.2).
 
 ---
 
@@ -80,14 +80,17 @@ Agents must strictly uphold these architectural guarantees at all times:
 
 ## 4. Platform Specifics & Multi-Architecture Rules
 
-### 4.1 Packages: Apple Silicon Only
-- **Apple silicon Macs** (Homebrew in `/opt/homebrew`) are the only hosts `run_onchange_before_00_install_packages.sh.tmpl` installs anything on: `brew bundle --no-upgrade` with `.chezmoidata/packages.toml`, then LunarVim. Every other host gets dotfiles only and a one-line skip message.
+### 4.1 Packages: Apple Silicon and Omarchy
+- **Apple silicon Macs** (Homebrew in `/opt/homebrew`) get `brew bundle --no-upgrade` with `.chezmoidata/packages.toml`, then LunarVim, from `run_onchange_before_00_install_packages.sh.tmpl`. Omarchy gets its own short list (below). Every other host gets dotfiles only and a one-line skip message.
 - **Intel Macs** (`x86_64`, Homebrew in `/usr/local`, Tier 3 in Homebrew) are set up by hand with `docs/INTEL_MACS.md`: Homebrew 7 on Intel compiles any formula without an Intel bottle (one apply built `llvm`, `rust` and `node` for 7 hours), and the automation that avoided it (a bottled-only `brew bundle` filter, standalone binary fallbacks, a from-source git) cost more than it saved. Never automate package installs there again, and never `brew install` a formula the guide's check reports as `compile`.
-- **Linux hosts** (Omarchy today; no Ubuntu host uses this repository) bring their own packages. The Ubuntu bootstrap was removed on 2026-10-30; if an Ubuntu host joins, add a branch for it rather than reviving the old one, which was never run.
+- **Omarchy** installs only the packages in `[omarchy]` of `packages.toml`, only with `omarchy pkg add` and `omarchy pkg aur add` (never `pacman`, `yay`, `apt` or downloaded binaries), and only when stdin and stdout are a terminal, because they need the sudo password; otherwise the script prints the command and exits 0. The requirement check warns about listed packages still missing. Runtimes come from `omarchy install dev-env <lang>`, never from this repository.
+- **Other Linux hosts** (no Ubuntu host uses this repository) bring their own packages. The Ubuntu bootstrap was removed on 2026-10-30; if an Ubuntu host joins, add a branch for it rather than reviving the old one, which was never run.
 
 ### 4.2 Omarchy
-- **Omarchy owns its configs:** on Omarchy (`.chezmoi.osRelease.id` is `omarchy`), `.chezmoiignore` leaves `~/.config/nvim`, `~/.config/tmux`, `~/.config/alacritty`, `~/.config/starship.toml`, `~/.config/mise` (and the `mise install` script) and `~/.config/herdr` alone. Never manage an Omarchy-shipped config there; add new ones to that block.
-- **Shared configs on Omarchy:** `~/.gitconfig` there keeps every Omarchy setting in `~/.config/git/config` (git reads both). The requirement check suggests `pacman` fixes on Linux and treats mise on Omarchy as Omarchy's, so it does not compare its version.
+- **Omarchy owns its configs:** on Omarchy (`.chezmoi.osRelease.id` is `omarchy`), `.chezmoiignore` leaves Omarchy's Neovim files, `~/.config/alacritty`, `~/.config/starship.toml`, `~/.config/mise/config.toml` (and the `mise install` script) and `mise-audit` alone. Ignore **exact files or file patterns**, never a directory you need one file from: gitignore-style negation cannot undo an ignored parent directory. Never manage an Omarchy-shipped config there unless it is merged on purpose (below).
+- **Files chezmoi adds on Omarchy:** `~/.config/nvim/lua/plugins/shared.lua` is the only Neovim file (line endings, Go parsers); `~/.config/mise/conf.d/50-shared.toml` carries the shared mise settings and no tools (Omarchy's `node = latest` must win; `python.default_packages_file` stays off because mise 2026.11 warns on every call with it). Tests assert both sets exactly.
+- **Merged on purpose: tmux and Herdr.** `dot_config/tmux/tmux.conf` and `dot_config/herdr/config.toml.tmpl` are one config on every host, merged from Omarchy's stock files (`docs/omarchy-stock/`) and the Mac's keys; Herdr's look stays per platform, and Omarchy's block must keep `window_title` (Hyprland's group bar) and its `[theme.custom]`. `run_after_95_omarchy_stock_drift.sh` reports when an Omarchy update changes a stock file: merge the change, then refresh the snapshot in the same commit.
+- **Shared configs on Omarchy:** `~/.gitconfig` there keeps every Omarchy setting in `~/.config/git/config` (git reads both) and sets no `core.editor`, so git follows Omarchy's `$EDITOR`. `~/.aliases` is sourced at the end of `~/.bashrc`, after Omarchy's aliases, so never redefine an Omarchy name there unguarded (`lt` is defined only when missing). The requirement check suggests `omarchy pkg add` fixes there (`pacman` on Arch) and treats mise on Omarchy as Omarchy's, so it does not compare its version.
 - **Check without the host:** `tests/host-profiles.sh` (run by CI on every push) renders the repository as an Apple silicon Mac, an Intel Mac, Omarchy, Arch, Ubuntu and Debian with `chezmoi --override-data` and fails if a rule above breaks. Add new platform rules to it. `tests/host-profiles.sh --base main` also reports each `run_onchange_` script whose macOS or Ubuntu render changed: hosts like that re-run it on their next apply, so a change meant for one platform must leave the others byte-identical.
 
 ---

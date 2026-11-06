@@ -17,14 +17,15 @@ CLAUDE.md
 {{ if ne .chezmoi.os "darwin" }}
 .bashrc
 {{ end }}
-# Omarchy (/etc/os-release ID=omarchy) ships and updates its own Neovim, tmux, Alacritty, Starship and mise configs,
-# and herdr there keeps a config this repository never wrote. Leave them all alone. 90_sync_runtimes.sh runs
-# `mise install` for the mise config skipped here.
+# Off Omarchy, ~/.config/mise/config.toml carries the shared mise settings itself.
 {{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
-# Elsewhere ~/.config/mise/config.toml carries the shared settings itself.
 .config/mise/conf.d
 .config/mise/conf.d/**
 {{ end }}
+# Omarchy (/etc/os-release ID=omarchy) ships and updates its own Neovim, Alacritty, Starship and mise configs: leave
+# those files alone, and ignore exact files rather than directories so the shared files beside them still deploy.
+# tmux and Herdr are not here: they are one shared config, merged from Omarchy's stock files (AGENTS.md 4.2).
+# 90_sync_runtimes.sh runs `mise install` for the mise config skipped here.
 {{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 # Neovim: Omarchy's tree (from the omarchy-nvim package) stays as it is. File patterns, not the directory, so the
 # negation below works (gitignore-style negation cannot undo an ignored parent directory): Omarchy gets only

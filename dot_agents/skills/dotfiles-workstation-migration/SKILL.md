@@ -54,7 +54,7 @@ ls -la ~/.ssh/id_rsa ~/.ssh/id_rsa.pub ~/.config/chezmoi/key.txt ~/secrets.env 2
 **Key Architectural Invariants:**
 * **Apple Silicon (`arm64`):** Homebrew prefix is `/opt/homebrew`.
 * **Intel Mac (`x86_64`):** Homebrew prefix is `/usr/local`. `chezmoi apply` installs no packages there; install tools by hand with `docs/INTEL_MACS.md` in the chezmoi source, and never `brew install` a formula its check reports as `compile` (Homebrew on Intel builds those from source).
-* **Linux (Omarchy):** no packages are installed, and Omarchy keeps its own Neovim, tmux, Alacritty, Starship, mise and herdr configs (`AGENTS.md` section 4.2).
+* **Linux (Omarchy):** only the `[omarchy]` packages of `packages.toml`, with `omarchy pkg add` from a terminal. Omarchy keeps its own Neovim, Alacritty, Starship and mise configs; tmux and Herdr are shared, and chezmoi adds only `shared.lua` to Neovim and `conf.d/50-shared.toml` to mise (`AGENTS.md` section 4.2).
 
 ---
 
