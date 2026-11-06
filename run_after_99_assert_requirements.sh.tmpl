@@ -36,9 +36,13 @@ fix_gitleaks="brew install gitleaks"
 {{- else if eq .chezmoi.os "darwin" -}}
 fix_git="Intel Homebrew has no git bottle; build git into ~/.local as docs/INTEL_MACS.md in the chezmoi source describes"
 fix_gitleaks="docs/INTEL_MACS.md in the chezmoi source"
+{{- else if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" -}}
+{{- /* Omarchy installs packages through its own command, never pacman directly. */}}
+fix_git="omarchy pkg add git"
+fix_gitleaks="omarchy pkg add gitleaks"
 {{- else -}}
-fix_git="install it with the system package manager (Arch and Omarchy: sudo pacman -S git)"
-fix_gitleaks="install it with the system package manager (Arch and Omarchy: sudo pacman -S gitleaks)"
+fix_git="install it with the system package manager (Arch: sudo pacman -S git)"
+fix_gitleaks="install it with the system package manager (Arch: sudo pacman -S gitleaks)"
 {{- end }}
 
 git_v="$(git --version 2> /dev/null | awk '{print $3}' | sed 's/[^0-9.].*//')"
@@ -55,7 +59,7 @@ else
 fi
 
 # mise: warn only. An old mise or an uninstalled project pin is not a secret-scanning gap, and a stale pin
-# in some side repo must not fail the apply. The audit never installs anything; `mise-audit --install` does.
+# in some side repo must not fail the apply.
 MISE_MIN="{{ .requirements.mise.min }}"
 if command -v mise &> /dev/null; then
     mise_bin="$(command -v mise)"
@@ -81,6 +85,9 @@ if command -v mise &> /dev/null; then
         [[ -e "$shims/$tool" && -n "$first" && "$first" != "$shims/$tool" ]] || continue
         report warn "$tool resolves to $first in a login shell, ahead of mise's shim, so projects get it instead of their pinned version. Fix: remove that link (for a uv Python, its versioned python3.X link can stay)"
     done < <(zsh -lc 'for t in python3 python ruby node go; do print -r -- "$t=$(whence -p $t)"; done' 2> /dev/null)
+{{- if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+    {{- /* mise-audit is not deployed on Omarchy. */}}
+    # The audit never installs anything; `mise-audit --install` does.
     if command -v mise-audit &> /dev/null; then
         if audit_out="$(mise-audit --quiet 2>&1)"; then
             echo "OK:   mise-audit: every project runtime pin under \$HOME is installed"
@@ -89,6 +96,7 @@ if command -v mise &> /dev/null; then
             report warn "the project runtime pins above are not installed (a pin that cannot install stays listed until its project changes it). Fix: mise-audit --install"
         fi
     fi
+{{- end }}
 fi
 
 if [[ "$failed" -ne 0 ]]; then

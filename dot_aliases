@@ -7,7 +7,8 @@ alias ll="ls -lah"
 alias ln="ln -v"
 alias mkdir="mkdir -p"
 alias e="$EDITOR"
-alias v="$VISUAL"
+# VISUAL is often unset (Omarchy sets only EDITOR); fall back so `v` is never an empty alias.
+alias v="${VISUAL:-$EDITOR}"
 
 # Bundler & Rails
 alias b="bundle"
@@ -25,7 +26,8 @@ alias path='echo $PATH | tr -s ":" "\n"'
 # eza: Modern directory listing with git status & icons
 if command -v eza &> /dev/null; then
     alias ll="eza -la --icons --git"
-    alias lt="eza --tree --level=2 --icons"
+    # Omarchy defines its own lt (with --long --git); keep that one where it exists.
+    alias lt > /dev/null 2>&1 || alias lt="eza --tree --level=2 --icons"
     alias ltree="eza --tree --icons"
 fi
 
@@ -52,6 +54,23 @@ fi
 if command -v btop &> /dev/null; then
     alias top="btop"
 fi
+
+# ==============================================================================
+# chezmoi, tmux and Docker helpers
+# ==============================================================================
+alias cz="chezmoi"
+alias tm="tmux new-session -A -s main"
+
+# Stop every docker compose project in the subdirectories of the current directory
+dkill() {
+    local d
+    for d in */; do
+        if [[ -f "${d}docker-compose.yml" || -f "${d}docker-compose.yaml" ]]; then
+            (cd "$d" && docker compose down)
+        fi
+    done
+}
+alias dprune="docker system prune -a --volumes -f"
 
 # Workstation Cheatsheet Viewer
 cheat() {

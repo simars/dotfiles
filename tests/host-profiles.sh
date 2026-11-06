@@ -37,7 +37,7 @@ hosts="darwin intel omarchy arch ubuntu debian"
 # Targets Omarchy ships and updates itself (plus herdr's existing config there, and the script that runs
 # `mise install`). They must be managed everywhere else, so the Omarchy rule cannot leak.
 omarchy_owned=".config/nvim/init.lua .config/tmux/tmux.conf .config/alacritty/alacritty.toml
-.config/starship.toml .config/mise/config.toml .config/herdr/config.toml 90_sync_runtimes.sh"
+.config/starship.toml .config/mise/config.toml .config/herdr/config.toml 90_sync_runtimes.sh .local/bin/mise-audit"
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/host-profiles.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
@@ -100,6 +100,18 @@ for host in $hosts; do
     check "$host ~/.gitconfig rewrites no URLs" 0 "$(render "$host" dot_gitconfig.tmpl | grep -ciE 'insteadof')"
 done
 
+# git's editor: VS Code on macOS; none on Omarchy, so git follows $EDITOR (Omarchy's launcher); nvim elsewhere.
+check "darwin ~/.gitconfig editor" "editor = code --wait" "$(render darwin dot_gitconfig.tmpl | grep -E '^\s*editor' | xargs)"
+check "omarchy ~/.gitconfig sets no editor" 0 "$(render omarchy dot_gitconfig.tmpl | grep -c 'editor =')"
+check "ubuntu ~/.gitconfig editor" "editor = nvim" "$(render ubuntu dot_gitconfig.tmpl | grep -E '^\s*editor' | xargs)"
+
+# ssh: every host knows the Macs it reaches; the placeholder work stanza stays off Omarchy.
+for host in $hosts; do
+    check "$host ~/.ssh/config has the work MacBook" 1 "$(render "$host" private_dot_ssh/private_config.tmpl | grep -c '^Host mbp-work.local$')"
+    check "$host ~/.ssh/config has simar-mbp" 1 "$(render "$host" private_dot_ssh/private_config.tmpl | grep -c '^Host simar-mbp.local$')"
+done
+check "omarchy ~/.ssh/config has no work stanza" 0 "$(render omarchy private_dot_ssh/private_config.tmpl | grep -c 'internal')"
+
 # The requirement check suggests fixes from the host's own package manager, and leaves Omarchy's mise alone.
 requirements=run_after_99_assert_requirements.sh.tmpl
 for host in $hosts; do
@@ -107,9 +119,13 @@ for host in $hosts; do
     check "$host requirement check is valid bash" "" "$(bash -n "$work/$host.requirements" 2>&1)"
 done
 for host in omarchy arch; do
-    check "$host requirement check suggests pacman for gitleaks" 1 "$(grep -c 'sudo pacman -S gitleaks' "$work/$host.requirements")"
     check "$host requirement check never suggests apt" 0 "$(grep -c 'apt-get' "$work/$host.requirements")"
 done
+check "arch requirement check suggests pacman for gitleaks" 1 "$(grep -c 'sudo pacman -S gitleaks' "$work/arch.requirements")"
+# Omarchy installs packages only through its own command.
+check "omarchy requirement check suggests omarchy pkg add for gitleaks" 1 "$(grep -c 'omarchy pkg add gitleaks' "$work/omarchy.requirements")"
+check "omarchy requirement check never suggests pacman or sudo" 0 "$(grep -cE 'pacman|sudo' "$work/omarchy.requirements")"
+check "omarchy requirement check never mentions mise-audit" 0 "$(grep -c 'mise-audit' "$work/omarchy.requirements")"
 check "intel requirement check points to the Intel guide" yes "$(grep -q 'docs/INTEL_MACS.md' "$work/intel.requirements" && echo yes || echo no)"
 for host in $hosts; do
     expected=1

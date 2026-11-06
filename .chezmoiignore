@@ -33,4 +33,6 @@ CLAUDE.md
 .config/herdr
 .config/herdr/**
 90_sync_runtimes.sh
+# mise-audit is not wanted on Omarchy.
+.local/bin/mise-audit
 {{ end }}

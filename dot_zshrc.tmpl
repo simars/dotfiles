@@ -44,8 +44,7 @@ alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
 # 3. Global Navigation & Tool Aliases
 alias ll="ls -lah"
 alias g="git"
-alias cz="chezmoi"
-alias tm="tmux new-session -A -s main"
+# cz, tm, dkill and dprune live in ~/.aliases, shared with bash.
 
 {{ if eq .chezmoi.os "darwin" -}}
 alias flushdns="sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder"
@@ -54,19 +53,9 @@ alias cz-brew-prune="brew autoremove && brew cleanup -s"
 alias cz-update-clt="softwareupdate --all --install --force"
 alias d-up="colima start --cpu 4 --memory 8 --disk 40"
 alias d-down="colima stop"
-{{ else if eq .chezmoi.os "linux" -}}
+{{ else if has (dig "osRelease" "id" "" .chezmoi) (list "ubuntu" "debian") -}}
 alias update="sudo apt-get update && sudo apt-get upgrade -y"
 {{ end -}}
-
-# Container Helpers
-dkill() {
-    for d in */; do
-        if [[ -f "${d}docker-compose.yml" || -f "${d}docker-compose.yaml" ]]; then
-            (cd "$d" && docker compose down)
-        fi
-    done
-}
-alias dprune="docker system prune -a --volumes -f"
 
 # 4. History Configuration & Shell Options
 HISTFILE="$HOME/.zsh_history"

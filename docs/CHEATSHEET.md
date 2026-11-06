@@ -12,7 +12,7 @@ The workstation environment provides modern Rust and Go command-line utilities c
 | :--- | :--- | :--- | :--- |
 | **Dynamic Preview** | `fp` | `fzf` + `bat` | Fuzzy find files with real-time syntax-highlighted preview:<br>`fp` |
 | **Directory List** | `ll` | `eza` (or `ls`) | Detailed list with file icons and git status:<br>`ll` (falls back to `ls -lah` if `eza` absent) |
-| **Directory Tree (Depth 2)** | `lt` | `eza --tree` | Tree view limited to 2 directory levels:<br>`lt` |
+| **Directory Tree (Depth 2)** | `lt` | `eza --tree` | Tree view limited to 2 directory levels:<br>`lt` (on Omarchy, Omarchy's own `lt` is kept: it adds `--long --git`) |
 | **Directory Tree (Full)** | `ltree` | `eza --tree` | Recursive directory tree visualization with icons:<br>`ltree [path]` |
 | **Syntax Pager** | `preview <file>` | `bat` | View file with line numbers, syntax highlighting, and Git gutter:<br>`preview config.json` |
 | **JSON Explorer (Interactive)** | `fx <file.json>` | `fx` | Interactive TUI for navigating, folding, and querying JSON:<br>`fx package.json` or `curl ... \| fx` |
@@ -177,7 +177,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 
 | Command / Alias | Action | Description |
 | :--- | :--- | :--- |
-| `cz` | `chezmoi` | Shorthand alias for `chezmoi`. |
+| `cz` | `chezmoi` | Shorthand alias for `chezmoi` (in `~/.aliases`: zsh and bash). |
 | `chezmoi diff` | Inspect Changes | Compare managed dotfiles in `$HOME` against templates/sources without modifying disk. |
 | `chezmoi diff <file>` | Inspect Specific File | Diff a specific target file (e.g. `chezmoi diff ~/.cheatsheet.md`). |
 | `chezmoi apply -v` | Apply State | Render templates and apply desired dotfiles to `$HOME` with verbose progress. |
@@ -222,8 +222,8 @@ Projects choose their runtime; nothing global changes outside them.
 
 | Command | Purpose | Example |
 | :--- | :--- | :--- |
-| `e <file>` | Open in `$EDITOR` | `e notes.md` (`chezmoi edit` uses the same program; `git commit` follows `core.editor`: VS Code on macOS, `nvim` elsewhere) |
-| `v <file>` | Open in `$VISUAL` | `v notes.md` |
+| `e <file>` | Open in `$EDITOR` | `e notes.md` (`chezmoi edit` uses the same program; `git commit` follows `core.editor`: VS Code on macOS, `nvim` on other Linux; Omarchy sets no `core.editor`, so git follows `$EDITOR`, Omarchy's `omarchy-launch-editor`) |
+| `v <file>` | Open in `$VISUAL`, or `$EDITOR` when `VISUAL` is unset (Omarchy sets only `EDITOR`) | `v notes.md` |
 | `echo $EDITOR $VISUAL` | See which editor was picked | Prints `nvim nvim` where Neovim is installed, `vim vim` otherwise |
 
 ### Line Endings (Vim, Neovim, LunarVim)
@@ -240,6 +240,17 @@ Projects choose their runtime; nothing global changes outside them.
 
 * Git already stores LF: `core.autocrlf=input` converts CRLF when you commit. Files outside a repository keep their CRLF until saved with `:Lf`.
 * Files that end lines with CR alone (old Mac OS) are flagged as mixed; `:Lf` does not split them.
+
+### Docker Helpers
+Defined in `~/.aliases`, so they work in zsh and bash (Omarchy).
+
+| Command | Purpose | Example |
+| :--- | :--- | :--- |
+| `dkill` | `docker compose down` in every subdirectory of the current directory that has a `docker-compose.yml` or `.yaml` | `cd ~/code && dkill` |
+| `dprune` | `docker system prune -a --volumes -f`: removes every stopped container, unused image, network and volume, without asking | `dprune` |
+
+### SSH Hosts
+`~/.ssh/config` (chezmoi) names the machines by the same aliases everywhere: `ssh mbp-work.local` (work MacBook), `ssh simar-mbp.local`, `ssh macstudio`, `ssh simar-works`. GitHub goes over port 443 (`ssh.github.com`). Omarchy gets no work-network stanza.
 
 ### Claude Code's Shell (macOS)
 Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh differs from it in ways that break those commands: `"$sha:path"` applies the `:a` or `:s` modifier, `"$r[: ]"` is read as an array subscript, and an unquoted `$pair` is not split on spaces. `~/.zprofile` therefore exports `CLAUDE_CODE_SHELL`: Homebrew's bash 5, or Apple's `/bin/bash` 3.2 where Homebrew has none (Intel Macs). Claude Code then sources `~/.bashrc` instead of `~/.zshrc`. That file is deployed by chezmoi and defines no aliases, because an alias also blocks a function of the same name.
@@ -259,7 +270,7 @@ Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh dif
 | `tat` | Attach to, or create, the session named after the current directory | `cd ~/code/my.app && tat` attaches `my-app`, creating it on first use |
 | `tat <name>` | Same, with an explicit session name | `tat scratch` |
 | `tat` (inside tmux) | Switch the client to that session instead of nesting one, creating it first if needed | `tat other-project` from any session |
-| `tm` | Attach to, or create, one fixed session called `main` | Alias for `tmux new-session -A -s main` |
+| `tm` | Attach to, or create, one fixed session called `main` | Alias for `tmux new-session -A -s main` (in `~/.aliases`, so bash has it too) |
 | `Ctrl-b d` | Detach and leave the session running | `tmux ls` lists sessions, `tat` re-attaches |
 | `Ctrl-b !` | Break the current pane out into its own window | Press `Ctrl-b`, release, then `Shift-1`. herdr binds the same keys to move the pane into a new tab |
 

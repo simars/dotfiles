@@ -11,6 +11,16 @@ Host macstudio
     User Simar
     IdentityFile ~/.ssh/id_rsa
 
+Host mbp-work.local
+    HostName simars-macbook-work.local
+    User simars
+    IdentityFile ~/.ssh/id_rsa
+
+Host simar-mbp.local
+    HostName simar-mbp.local
+    User simars
+    IdentityFile ~/.ssh/id_rsa
+
 Host simar-works
     HostName simars.ddns.net
     User simars
@@ -22,7 +32,8 @@ Host github.com
     User git
     IdentityFile ~/.ssh/id_rsa
 
-{{- if .is_work }}
+{{- /* Not on Omarchy until a work machine there is confirmed to need it. */}}
+{{- if and .is_work (ne (dig "osRelease" "id" "" .chezmoi) "omarchy") }}
 Host *.internal.company.com
     User engineering
     IdentityFile ~/.ssh/id_rsa

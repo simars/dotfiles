@@ -23,9 +23,10 @@
 [core]
     excludesfile = ~/.gitignore
     autocrlf = input
+{{- /* No editor on Omarchy: git then follows $EDITOR, Omarchy's launcher (omarchy-launch-editor). */}}
 {{- if eq .chezmoi.os "darwin" }}
     editor = code --wait
-{{- else }}
+{{- else if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
     editor = nvim
 {{- end }}
 
