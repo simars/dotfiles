@@ -99,7 +99,12 @@ for host in intel arch ubuntu debian; do
 done
 # Omarchy installs its listed packages with Omarchy's own commands only, never pacman directly.
 check "omarchy package script installs with omarchy pkg add" 1 "$(grep -c '^install_missing "pkg add" ' "$work/omarchy.packages")"
-check "omarchy package script installs AUR with omarchy pkg aur add" 1 "$(grep -c '^install_missing "pkg aur add" "lunarvim-git"$' "$work/omarchy.packages")"
+# LunarVim is not managed by this repository on any host.
+check "omarchy package script installs nothing from the AUR" 0 "$(grep -c '^install_missing "pkg aur add"' "$work/omarchy.packages")"
+for host in $hosts; do
+    check "$host does not manage LunarVim's config" no "$(manages "$host" .config/lvim/config.lua)"
+    check "$host package script does not install LunarVim" 0 "$(grep -ci 'lunarvim' "$work/$host.packages")"
+done
 check "omarchy package list leaves out bitwarden-cli (Node conflict)" 0 "$(grep -c 'bitwarden' "$work/omarchy.packages")"
 check "omarchy package script never calls pacman or yay" 0 "$(grep -cE 'pacman |yay ' "$work/omarchy.packages")"
 check "omarchy package script installs only from a terminal" 1 "$(grep -c '\[\[ -t 0 && -t 1 \]\]' "$work/omarchy.packages")"

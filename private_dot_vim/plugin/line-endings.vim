@@ -1,7 +1,8 @@
 " ==============================================================================
 " Line Endings: flag CRLF and mixed files, and save them with LF (:Lf)
 " ==============================================================================
-" Shared by Vim (which loads ~/.vim/plugin itself), Neovim and LunarVim (both source this file from their config).
+" Shared by Vim (which loads ~/.vim/plugin itself) and Neovim (lua/plugins/shared.lua sources it). A LunarVim config can
+" source it too; this repository no longer manages one.
 "
 " b:line_endings describes the file on disk as last read or written: '' for LF, 'CRLF', or 'mixed' (CRLF and LF lines;
 " Vim reads such a file as unix and shows ^M on the CRLF lines, so 'fileformat' alone does not reveal it). It is set

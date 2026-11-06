@@ -53,7 +53,7 @@ Each goes into `~/.local/bin`, which `~/.zprofile` puts on `PATH`. Run `mkdir -p
 | dust 1.2.6 | `curl -fsSL https://github.com/bootandy/dust/releases/download/v1.2.6/dust-v1.2.6-x86_64-apple-darwin.tar.gz \| tar -xz -C ~/.local/bin --strip-components=1 dust-v1.2.6-x86_64-apple-darwin/dust` |
 | fx 40.0.0 | `curl -fsSL https://github.com/antonmedv/fx/releases/download/40.0.0/fx_darwin_amd64 -o ~/.local/bin/fx && chmod +x ~/.local/bin/fx` |
 | lazygit and tree-sitter-cli | Needed by Neovim's LazyVim config (the `lazygit` window, and compiling Treesitter parsers on first launch). Apple silicon gets them from `packages.toml`. On Intel take the macOS x86_64 binaries from their GitHub releases into `~/.local/bin`; `brew install` them only if section 2's check does not report `compile` |
-| LunarVim | `bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies` (after Neovim) |
+| LunarVim (optional; not managed by chezmoi) | `bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies` (after Neovim) |
 
 **`timeout`**, from uutils coreutils 0.12.0, one multicall binary that runs as whatever it is called:
 

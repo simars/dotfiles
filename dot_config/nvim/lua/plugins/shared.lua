@@ -1,7 +1,7 @@
 -- Shared by every machine, Omarchy included (chezmoi: dot_config/nvim/lua/plugins/shared.lua).
 -- On Omarchy this is the only Neovim file chezmoi writes; Omarchy's own files are left alone.
 return {
-  -- Line endings: the script Vim and LunarVim share warns when a CRLF or mixed file is opened and adds :Lf, which
+  -- Line endings: the script Vim also loads warns when a CRLF or mixed file is opened and adds :Lf, which
   -- saves the file with LF. Neovim does not read ~/.vim, so it is sourced here, at startup (lualine's init runs before
   -- the first buffer is read). lualine shows its label (CRLF or mixed, nothing for LF) first in section x.
   {

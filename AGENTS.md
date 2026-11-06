@@ -81,9 +81,10 @@ Agents must strictly uphold these architectural guarantees at all times:
 ## 4. Platform Specifics & Multi-Architecture Rules
 
 ### 4.1 Packages: Apple Silicon and Omarchy
-- **Apple silicon Macs** (Homebrew in `/opt/homebrew`) get `brew bundle --no-upgrade` with `.chezmoidata/packages.toml`, then LunarVim, from `run_onchange_before_00_install_packages.sh.tmpl`. Omarchy gets its own short list (below). Every other host gets dotfiles only and a one-line skip message.
+- **Apple silicon Macs** (Homebrew in `/opt/homebrew`) get `brew bundle --no-upgrade` with `.chezmoidata/packages.toml` from `run_onchange_before_00_install_packages.sh.tmpl`. Omarchy gets its own short list (below). Every other host gets dotfiles only and a one-line skip message.
 - **Intel Macs** (`x86_64`, Homebrew in `/usr/local`, Tier 3 in Homebrew) are set up by hand with `docs/INTEL_MACS.md`: Homebrew 7 on Intel compiles any formula without an Intel bottle (one apply built `llvm`, `rust` and `node` for 7 hours), and the automation that avoided it (a bottled-only `brew bundle` filter, standalone binary fallbacks, a from-source git) cost more than it saved. Never automate package installs there again, and never `brew install` a formula the guide's check reports as `compile`.
 - **Omarchy** installs only the packages in `[omarchy]` of `packages.toml`, only with `omarchy pkg add` and `omarchy pkg aur add` (never `pacman`, `yay`, `apt` or downloaded binaries), and only when stdin and stdout are a terminal, because they need the sudo password; otherwise the script prints the command and exits 0. The requirement check warns about listed packages still missing. Runtimes come from `omarchy install dev-env <lang>`, never from this repository.
+- **LunarVim is not managed on any host** (removed 2026-11-05): no install step and no `~/.config/lvim`. Install and configure it by hand where wanted; do not add it back.
 - **Other Linux hosts** (no Ubuntu host uses this repository) bring their own packages. The Ubuntu bootstrap was removed on 2026-10-30; if an Ubuntu host joins, add a branch for it rather than reviving the old one, which was never run.
 
 ### 4.2 Omarchy

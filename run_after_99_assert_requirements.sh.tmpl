@@ -73,8 +73,10 @@ missing_packages() {
 }
 need="$(missing_packages{{ range $packages.omarchy.pacman }} {{ . | quote }}{{ end }})"
 [[ -z "$need" ]] || report warn "packages.toml lists packages that are not installed. Fix: omarchy pkg add ${need% }"
+{{- if $packages.omarchy.aur }}
 need="$(missing_packages{{ range $packages.omarchy.aur }} {{ . | quote }}{{ end }})"
 [[ -z "$need" ]] || report warn "packages.toml lists AUR packages that are not installed. Fix: omarchy pkg aur add ${need% }"
+{{- end }}
 {{- end }}
 
 # mise: warn only. An old mise or an uninstalled project pin is not a secret-scanning gap, and a stale pin

@@ -50,10 +50,6 @@ echo "==> Pruning orphaned Homebrew dependencies and cleaning cache..."
 brew autoremove || true
 brew cleanup -s || true
 
-if ! command -v lvim &> /dev/null; then
-    echo "==> Installing LunarVim..."
-    bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies || true
-fi
 {{ else if eq .chezmoi.os "darwin" -}}
 {{- /* Intel Macs: Homebrew compiles any formula without an Intel bottle there (one apply built llvm, rust and node for 7
        hours), so this repository installs nothing on them. docs/INTEL_MACS.md says what to install by hand. */}}
@@ -81,8 +77,8 @@ install_missing() { # install_missing "pkg add" | "pkg aur add", then the packag
         echo "==> Omarchy packages ($subcommand): all installed."
     elif [[ -t 0 && -t 1 ]]; then
         echo "==> Installing with omarchy $subcommand: ${need[*]}"
-        # AUR builds run whatever `python` is first on PATH. After `omarchy install dev-env python` that is mise's,
-        # which has no setuptools, so neovim-remote (for lunarvim-git) fails to build; use the system one.
+        # Package builds run whatever `python` is first on PATH. After `omarchy install dev-env python` that is mise's,
+        # which has no setuptools, so Python-based AUR builds fail; use the system one.
         # shellcheck disable=SC2086
         if ! PATH="/usr/bin:$PATH" omarchy $subcommand "${need[@]}"; then
             echo "WARNING: omarchy $subcommand failed. Run it yourself: omarchy $subcommand ${need[*]}"
@@ -93,7 +89,9 @@ install_missing() { # install_missing "pkg add" | "pkg aur add", then the packag
 }
 
 install_missing "pkg add"{{ range $packages.omarchy.pacman }} {{ . | quote }}{{ end }}
+{{- if $packages.omarchy.aur }}
 install_missing "pkg aur add"{{ range $packages.omarchy.aur }} {{ . | quote }}{{ end }}
+{{- end }}
 {{ else -}}
 {{- /* Other Linux hosts (Arch, Ubuntu) bring their own packages; this repository manages only their dotfiles. */}}
 echo "==> Skipping system packages: {{ dig "osRelease" "id" "" .chezmoi | default "this Linux" }} installs them with its own package manager."
