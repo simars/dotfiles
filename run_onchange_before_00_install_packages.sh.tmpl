@@ -58,7 +58,41 @@ fi
 {{- /* Intel Macs: Homebrew compiles any formula without an Intel bottle there (one apply built llvm, rust and node for 7
        hours), so this repository installs nothing on them. docs/INTEL_MACS.md says what to install by hand. */}}
 echo "==> Skipping packages: Intel Macs are set up by hand (docs/INTEL_MACS.md in the chezmoi source)."
+{{ else if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" -}}
+{{- /* Omarchy: only the packages listed in packages.toml, only through Omarchy's own commands. They need sudo, so
+       they run only from a terminal; otherwise the command is printed and the apply carries on. The requirement check
+       after every apply keeps reporting what is still missing. */}}
+# Each package on its own: `omarchy pkg missing` is true when any of the packages it is given is missing.
+missing() {
+    local package
+    for package in "$@"; do
+        if omarchy pkg missing "$package"; then
+            printf '%s\n' "$package"
+        fi
+    done
+}
+
+install_missing() { # install_missing "pkg add" | "pkg aur add", then the packages
+    local subcommand="$1"
+    shift
+    local -a need
+    mapfile -t need < <(missing "$@")
+    if [[ ${#need[@]} -eq 0 ]]; then
+        echo "==> Omarchy packages ($subcommand): all installed."
+    elif [[ -t 0 && -t 1 ]]; then
+        echo "==> Installing with omarchy $subcommand: ${need[*]}"
+        # shellcheck disable=SC2086
+        if ! omarchy $subcommand "${need[@]}"; then
+            echo "WARNING: omarchy $subcommand failed. Run it yourself: omarchy $subcommand ${need[*]}"
+        fi
+    else
+        echo "==> Not a terminal, so nothing is installed. Run: omarchy $subcommand ${need[*]}"
+    fi
+}
+
+install_missing "pkg add"{{ range $packages.omarchy.pacman }} {{ . | quote }}{{ end }}
+install_missing "pkg aur add"{{ range $packages.omarchy.aur }} {{ . | quote }}{{ end }}
 {{ else -}}
-{{- /* Linux hosts bring their own packages (Omarchy, Arch); this repository manages only their dotfiles. */}}
+{{- /* Other Linux hosts (Arch, Ubuntu) bring their own packages; this repository manages only their dotfiles. */}}
 echo "==> Skipping system packages: {{ dig "osRelease" "id" "" .chezmoi | default "this Linux" }} installs them with its own package manager."
 {{ end -}}

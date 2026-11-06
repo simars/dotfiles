@@ -58,6 +58,25 @@ else
     report fail "gitleaks is not installed, so the pre-commit hook skips scanning. Fix: $fix_gitleaks"
 fi
 
+{{- if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+{{- $packages := index . "packages" | default . }}
+
+# Omarchy: the packages listed in packages.toml. The install step runs only when packages.toml changes and installs
+# only from a terminal, so keep reporting what is still missing. Warn only.
+missing_packages() {
+    local package
+    for package in "$@"; do
+        if omarchy pkg missing "$package"; then
+            printf '%s ' "$package"
+        fi
+    done
+}
+need="$(missing_packages{{ range $packages.omarchy.pacman }} {{ . | quote }}{{ end }})"
+[[ -z "$need" ]] || report warn "packages.toml lists packages that are not installed. Fix: omarchy pkg add ${need% }"
+need="$(missing_packages{{ range $packages.omarchy.aur }} {{ . | quote }}{{ end }})"
+[[ -z "$need" ]] || report warn "packages.toml lists AUR packages that are not installed. Fix: omarchy pkg aur add ${need% }"
+{{- end }}
+
 # mise: warn only. An old mise or an uninstalled project pin is not a secret-scanning gap, and a stale pin
 # in some side repo must not fail the apply.
 MISE_MIN="{{ .requirements.mise.min }}"

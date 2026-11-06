@@ -189,7 +189,9 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `tests/host-profiles.sh --base main` | Check All Host Kinds | From the source directory: checks what macOS, Omarchy, Arch, Ubuntu and Debian hosts get (CI runs it on every push), and notes scripts that would re-run on existing hosts. |
 
 * **What chezmoi touches:** single files, written as real files (no symlinks). It never deletes or replaces anything it does not manage, so the rest of `~/.config` stays as it is. It does set the permissions of the directories it manages (`~/.vim` is `0700`).
-* **Linux:** no system packages are installed; Omarchy and other distributions bring their own. On Omarchy, its own Neovim, Alacritty, Starship and mise configs are left alone; tmux and Herdr use the shared configs.
+* **Omarchy:** chezmoi installs only the packages in `[omarchy]` of `.chezmoidata/packages.toml` (`age`, `bitwarden-cli`, `duf`, `dust`, `fx`, `gitleaks`, `httpie`, `shellcheck`, `vim`, `wget`, `zsh`, and `lunarvim-git` from the AUR), only with `omarchy pkg add` / `omarchy pkg aur add`, and only when `chezmoi apply` runs in a terminal (they ask for the sudo password). Otherwise it prints the command, and the check after every apply keeps listing what is missing. Runtimes: `omarchy install dev-env go` (or `python`, ...). Omarchy's own Alacritty, Starship, `~/.config/mise/config.toml` and Neovim files are left alone; tmux and Herdr use the shared configs; Neovim gets only `lua/plugins/shared.lua`.
+* **Other Linux:** no system packages are installed; the distribution brings its own.
+* **zsh on Omarchy:** an optional shell (`zsh` from bash); the login shell stays bash, and Omarchy's bash aliases do not exist in it. `~/.zshrc` there skips the macOS parts and keeps history, fzf, zoxide, mise, starship and `~/.aliases`.
 
 ---
 

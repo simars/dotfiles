@@ -92,8 +92,16 @@ done
 check "darwin package script runs brew bundle" yes "$(grep -q 'brew bundle --no-upgrade' "$work/darwin.packages" && echo yes || echo no)"
 for host in intel omarchy arch ubuntu debian; do
     check "$host package script installs nothing (no brew, apt, curl or sudo)" 0 "$(grep -cE 'brew |apt-get|dpkg|curl|sudo' "$work/$host.packages")"
-    check "$host package script reports the skip" 1 "$(grep -c '==> Skipping' "$work/$host.packages")"
 done
+for host in intel arch ubuntu debian; do
+    check "$host package script reports the skip" 1 "$(grep -c '==> Skipping' "$work/$host.packages")"
+    check "$host package script never calls omarchy" 0 "$(grep -c 'omarchy pkg\|install_missing' "$work/$host.packages")"
+done
+# Omarchy installs its listed packages with Omarchy's own commands only, never pacman directly.
+check "omarchy package script installs with omarchy pkg add" 1 "$(grep -c '^install_missing "pkg add" ' "$work/omarchy.packages")"
+check "omarchy package script installs AUR with omarchy pkg aur add" 1 "$(grep -c '^install_missing "pkg aur add" "lunarvim-git"$' "$work/omarchy.packages")"
+check "omarchy package script never calls pacman or yay" 0 "$(grep -cE 'pacman |yay ' "$work/omarchy.packages")"
+check "omarchy package script installs only from a terminal" 1 "$(grep -c '\[\[ -t 0 && -t 1 \]\]' "$work/omarchy.packages")"
 
 # No host rewrites URLs: a rewrite to SSH made every fetch need an unlocked key (brew update, LazyVim).
 for host in $hosts; do
@@ -168,6 +176,7 @@ check "arch requirement check suggests pacman for gitleaks" 1 "$(grep -c 'sudo p
 # Omarchy installs packages only through its own command.
 check "omarchy requirement check suggests omarchy pkg add for gitleaks" 1 "$(grep -c 'omarchy pkg add gitleaks' "$work/omarchy.requirements")"
 check "omarchy requirement check never suggests pacman or sudo" 0 "$(grep -cE 'pacman|sudo' "$work/omarchy.requirements")"
+check "omarchy requirement check reports missing listed packages" 1 "$(grep -c 'Fix: omarchy pkg add \${need' "$work/omarchy.requirements")"
 check "omarchy requirement check never mentions mise-audit" 0 "$(grep -c 'mise-audit' "$work/omarchy.requirements")"
 check "intel requirement check points to the Intel guide" yes "$(grep -q 'docs/INTEL_MACS.md' "$work/intel.requirements" && echo yes || echo no)"
 for host in $hosts; do

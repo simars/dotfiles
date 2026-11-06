@@ -51,3 +51,24 @@ casks = [
     "warp",
     "wave"
 ]
+
+# Omarchy: installed only with Omarchy's own commands (`omarchy pkg add`, `omarchy pkg aur add`), never pacman, apt
+# or downloads. Omarchy already ships the rest of the Mac list (tmux, neovim, herdr, mise, eza, bat, fd, fzf, ...).
+# Runtimes come from `omarchy install dev-env <lang>`, not from here.
+[omarchy]
+pacman = [
+    "age",
+    "bitwarden-cli",
+    "duf",
+    "dust",
+    "fx",
+    "gitleaks",
+    "httpie",
+    "shellcheck",
+    "vim",
+    "wget",
+    "zsh"
+]
+aur = [
+    "lunarvim-git"
+]
