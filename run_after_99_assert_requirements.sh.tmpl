@@ -86,6 +86,21 @@ if command -v mise &> /dev/null; then
 {{- if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
     # Omarchy installs and configures mise itself, and this repository leaves its ~/.config/mise alone.
     echo "OK:   mise ${mise_v:-of unknown version} ($mise_bin) is Omarchy's; its version is not checked here"
+{{- if .omarchy_mise_project_settings }}
+    # Option B: ~/.config/mise/conf.d/50-shared.toml asks mise to follow .python-version and .ruby-version. The same
+    # setting in ~/.config/mise/config.toml (or a newer Omarchy file) replaces ours instead of merging with it;
+    # `omarchy install dev-env ruby` writes ["ruby"] there, which silently drops python. Read from / so that no
+    # project config takes part.
+    # Compared as a set: `mise settings add` appends, so ["ruby", "python"] is as good. "node" is a finding too.
+    want_idiomatic='["python", "ruby"]'
+    have_idiomatic="$(cd / && mise settings get idiomatic_version_file_enable_tools 2> /dev/null)"
+    if [[ "$(tr -d '[]" ' <<< "$have_idiomatic" | tr ',' '\n' | sort | xargs)" == "python ruby" ]]; then
+        echo "OK:   mise follows .python-version and .ruby-version (option B)"
+    else
+        setters="$(grep -ls '^[[:space:]]*idiomatic_version_file_enable_tools' "$HOME/.config/mise/config.toml" /etc/mise/conf.d/*.toml 2> /dev/null | tr '\n' ' ')"
+        report warn "mise's idiomatic_version_file_enable_tools is ${have_idiomatic:-unset}, not $want_idiomatic, so projects' version files are not all followed (set in: ${setters:-unknown}). Fix: mise settings add idiomatic_version_file_enable_tools python (and ruby), or remove the line from that file"
+    fi
+{{- end }}
 {{- else }}
     case "$(readlink -f "$mise_bin" 2> /dev/null || echo "$mise_bin")" in
         */Cellar/*) mise_fix="brew upgrade mise" ;;

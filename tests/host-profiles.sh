@@ -128,17 +128,23 @@ for host in darwin intel arch ubuntu; do
     check "$host manages default-python-packages" yes "$(manages "$host" .config/mise/default-python-packages)"
     check "$host mise config skips deprecated default_packages_file" 0 "$(render "$host" dot_config/mise/config.toml.tmpl | grep -c default_packages_file)"
 done
-# mise on Omarchy: option A (.chezmoidata/omarchy.toml, the default) renders the shared settings empty, so chezmoi
-# deletes any earlier copy; option B deploys them. Neither carries tools, default_packages_file or set_gobin.
-check "omarchy mise defaults to option A" false "$(chezmoi execute-template '{{ .omarchy_mise_project_settings }}')"
-check "omarchy option A renders no mise settings" "" "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | tr -d '[:space:]')"
+# mise on Omarchy: option B (.chezmoidata/omarchy.toml, the default since 2026-11-06) deploys the shared settings
+# without node; option A renders them empty, so chezmoi deletes any earlier copy. Neither carries tools,
+# default_packages_file or set_gobin.
+check "omarchy mise defaults to option B" true "$(chezmoi execute-template '{{ .omarchy_mise_project_settings }}')"
+omarchy_a='{"chezmoi":{"os":"linux","osRelease":{"id":"omarchy","idLike":"arch"}},"omarchy_mise_project_settings":false}'
+check "omarchy option A renders no mise settings" "" "$(chezmoi --override-data "$omarchy_a" execute-template < dot_config/mise/conf.d/50-shared.toml.tmpl | tr -d '[:space:]')"
 omarchy_b='{"chezmoi":{"os":"linux","osRelease":{"id":"omarchy","idLike":"arch"}},"omarchy_mise_project_settings":true}'
 chezmoi --override-data "$omarchy_b" execute-template < dot_config/mise/conf.d/50-shared.toml.tmpl > "$work/omarchy-b.mise"
-check "omarchy option B keeps version files and uv venvs" 2 "$(grep -cE '^idiomatic_version_file_enable_tools = \["node", "python", "ruby"\]$|^uv_venv_auto = true$' "$work/omarchy-b.mise")"
+check "omarchy option B follows python and ruby version files and uv venvs" 2 "$(grep -cE '^idiomatic_version_file_enable_tools = \["python", "ruby"\]$|^uv_venv_auto = true$' "$work/omarchy-b.mise")"
+# Omarchy's npm-based agent CLIs run on the node mise picks for the folder, so a project's .nvmrc must not reach them.
+check "omarchy option B never follows node version files" 0 "$(grep -c '"node"' "$work/omarchy-b.mise")"
+check "omarchy option B installs prebuilt Rubies only" 1 "$(grep -cE '^compile = false$' "$work/omarchy-b.mise")"
 check "omarchy option B mise settings carry no tools" 0 "$(grep -cE '^\[tools\]|^(node|python|go) *=' "$work/omarchy-b.mise")"
 check "omarchy option B skips the deprecated default_packages_file" 0 "$(grep -c default_packages_file "$work/omarchy-b.mise")"
 check "omarchy option B leaves GOBIN to mise (bash has no ~/go/bin)" 0 "$(grep -cE 'settings\.go|set_gobin' "$work/omarchy-b.mise")"
 for host in darwin intel arch ubuntu; do
+    check "$host mise config follows node, python and ruby version files" 1 "$(render "$host" dot_config/mise/config.toml.tmpl | grep -c '^idiomatic_version_file_enable_tools = \["node", "python", "ruby"\]$')"
     check "$host mise config keeps set_gobin = false" 1 "$(render "$host" dot_config/mise/config.toml.tmpl | grep -c '^set_gobin = false$')"
 done
 
@@ -192,6 +198,11 @@ check "arch requirement check suggests pacman for gitleaks" 1 "$(grep -c 'sudo p
 check "omarchy requirement check suggests omarchy pkg add for gitleaks" 1 "$(grep -c 'omarchy pkg add gitleaks' "$work/omarchy.requirements")"
 check "omarchy requirement check never suggests pacman or sudo" 0 "$(grep -cE 'pacman|sudo' "$work/omarchy.requirements")"
 check "omarchy requirement check reports missing listed packages" 1 "$(grep -c 'lists packages that are not installed. Fix: omarchy pkg add ' "$work/omarchy.requirements")"
+check "omarchy requirement check warns when another file overrides the version-file setting" 1 "$(grep -c 'not $want_idiomatic, so projects' "$work/omarchy.requirements")"
+check "omarchy option A requirement check skips that warning" 0 "$(chezmoi --override-data "$omarchy_a" execute-template < "$requirements" | grep -c want_idiomatic)"
+for host in darwin intel arch ubuntu; do
+    check "$host requirement check has no Omarchy version-file check" 0 "$(grep -c want_idiomatic "$work/$host.requirements")"
+done
 check "omarchy requirement check never mentions mise-audit" 0 "$(grep -c 'mise-audit' "$work/omarchy.requirements")"
 check "intel requirement check points to the Intel guide" yes "$(grep -q 'docs/INTEL_MACS.md' "$work/intel.requirements" && echo yes || echo no)"
 for host in $hosts; do

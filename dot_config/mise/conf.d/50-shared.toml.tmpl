@@ -3,8 +3,16 @@
 {{- if .omarchy_mise_project_settings -}}
 # Managed by chezmoi on Omarchy (option B in .chezmoidata/omarchy.toml). Omarchy owns ~/.config/mise/config.toml
 # (its migrations and `omarchy install dev-env` write it) and ships its tools in /etc/mise/conf.d, so the settings
-# shared with the other hosts live here. No tools: Omarchy's node = latest must win, and runtimes come from
-# `omarchy install dev-env`.
+# shared with the other hosts live here. No tools: Omarchy's node = latest must win, and global runtimes come from
+# `omarchy install dev-env go|python|node`. Not `dev-env ruby`: projects bring their Ruby and Rails (bin/rails).
+# A setting in config.toml replaces the same setting here: `omarchy install dev-env ruby` writes
+# idiomatic_version_file_enable_tools = ["ruby"] there, which drops python. The requirement check after each
+# `chezmoi apply` warns when that happens.
 [settings]
 {{ template "mise-shared-settings.toml" . }}
+
+[settings.ruby]
+# Prebuilt Rubies only, as `omarchy install dev-env ruby` would set: a pinned Ruby with no prebuilt build fails at
+# once instead of compiling. Compile on purpose: MISE_RUBY_COMPILE=true mise install ruby@<version>
+compile = false
 {{- end }}

@@ -4,7 +4,15 @@
 # .nvmrc and .node-version. Without this, mise ignores them and the system runtime answers silently.
 # Go is left out: mise would read `go 1.17` in go.mod as a pin for that old release, while Go itself already
 # builds older modules on the newest toolchain. Pin Go per project in .tool-versions or mise.toml instead.
+{{- if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+# Omarchy leaves out node: its npm-based agent CLIs (/etc/mise/conf.d/omarchy-tools.toml) run, and auto-update, on
+# the `node` mise picks for the current folder, so a project's .nvmrc must not reach them. Pin a Node project with
+# `mise use --env local node@<version>` instead. Omarchy's own Python scripts use /usr/bin/python3, and nothing of
+# Omarchy's runs on mise's Ruby, so those two are safe to follow.
+idiomatic_version_file_enable_tools = ["python", "ruby"]
+{{- else }}
 idiomatic_version_file_enable_tools = ["node", "python", "ruby"]
+{{- end }}
 
 [settings.python]
 uv_venv_auto = true
