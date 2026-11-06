@@ -8,8 +8,12 @@ idiomatic_version_file_enable_tools = ["node", "python", "ruby"]
 
 [settings.python]
 uv_venv_auto = true
+{{- /* Not on Omarchy: bash there never puts ~/go/bin on PATH. mise's default (GOBIN = the current Go's bin
+       directory, already on PATH) stays, and Go tools meant to last go in with `mise use -g go:<module>`. */}}
+{{- if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 
 [settings.go]
 # Leave GOBIN unset, so `go install` writes to ~/go/bin (on PATH via ~/.zprofile) instead of the Go version's
 # own bin directory, which `go = "latest"` replaces on every Go upgrade.
 set_gobin = false
+{{- end }}

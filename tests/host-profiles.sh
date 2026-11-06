@@ -130,6 +130,11 @@ for host in darwin intel arch ubuntu; do
 done
 check "omarchy mise settings carry no tools" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE '^\[tools\]|^(node|python|go) *=')"
 check "omarchy mise settings skip the deprecated default_packages_file" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -c default_packages_file)"
+check "omarchy mise settings leave GOBIN to mise (bash has no ~/go/bin)" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE 'settings\.go|set_gobin')"
+check "omarchy mise settings keep version files and uv venvs" 2 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE '^idiomatic_version_file_enable_tools = \["node", "python", "ruby"\]$|^uv_venv_auto = true$')"
+for host in darwin intel arch ubuntu; do
+    check "$host mise config keeps set_gobin = false" 1 "$(render "$host" dot_config/mise/config.toml.tmpl | grep -c '^set_gobin = false$')"
+done
 
 # tmux and Herdr are one shared config everywhere, Omarchy included. Herdr keeps Omarchy's chrome only there.
 for host in $hosts; do
