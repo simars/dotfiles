@@ -36,7 +36,7 @@ hosts="darwin intel omarchy arch ubuntu debian"
 
 # Targets Omarchy ships and updates itself (plus herdr's existing config there, and the script that runs
 # `mise install`). They must be managed everywhere else, so the Omarchy rule cannot leak.
-omarchy_owned=".config/nvim/init.lua .config/alacritty/alacritty.toml
+omarchy_owned=".config/nvim/init.lua .config/nvim/lua/config/options.lua .config/alacritty/alacritty.toml
 .config/starship.toml .config/mise/config.toml 90_sync_runtimes.sh .local/bin/mise-audit"
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/host-profiles.XXXXXX")"
@@ -98,6 +98,17 @@ done
 # No host rewrites URLs: a rewrite to SSH made every fetch need an unlocked key (brew update, LazyVim).
 for host in $hosts; do
     check "$host ~/.gitconfig rewrites no URLs" 0 "$(render "$host" dot_gitconfig.tmpl | grep -ciE 'insteadof')"
+done
+
+# Leak guard: on Omarchy chezmoi writes exactly one Neovim file; every other host gets the whole LazyVim tree.
+check "omarchy manages only shared.lua under .config/nvim" ".config/nvim/lua/plugins/shared.lua" \
+    "$(chezmoi --override-data "$(host_data omarchy)" managed --include=files | grep -E '^\.config/nvim/' | xargs)"
+for host in darwin intel arch ubuntu; do
+    for target in .config/nvim/init.lua .config/nvim/lua/config/options.lua .config/nvim/lua/plugins/shared.lua \
+        .config/nvim/lua/plugins/theme.lua .config/nvim/lazy-lock.json .config/nvim/.neoconf.json; do
+        check "$host manages $target" yes "$(manages "$host" "$target")"
+    done
+    check "$host gets no Omarchy-only Neovim file" "" "$(grep -E 'remote_clipboard|omarchy-theme-hotreload|all-themes' "$work/$host.managed")"
 done
 
 # Leak guard: on Omarchy chezmoi writes exactly these under ~/.config/mise, and nothing else.

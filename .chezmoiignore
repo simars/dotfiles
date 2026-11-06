@@ -26,8 +26,15 @@ CLAUDE.md
 .config/mise/conf.d/**
 {{ end }}
 {{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
-.config/nvim
-.config/nvim/**
+# Neovim: Omarchy's tree (from the omarchy-nvim package) stays as it is. File patterns, not the directory, so the
+# negation below works (gitignore-style negation cannot undo an ignored parent directory): Omarchy gets only
+# lua/plugins/shared.lua. tests/host-profiles.sh asserts that nothing else under .config/nvim leaks through.
+.config/nvim/**/*.lua
+.config/nvim/*.lua
+.config/nvim/*.json
+.config/nvim/.*.json
+.config/nvim/*.toml
+!.config/nvim/lua/plugins/shared.lua
 .config/alacritty
 .config/alacritty/**
 .config/starship.toml

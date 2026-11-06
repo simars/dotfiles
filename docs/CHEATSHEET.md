@@ -229,8 +229,23 @@ Projects choose their runtime; nothing global changes outside them.
 | `v <file>` | Open in `$VISUAL`, or `$EDITOR` when `VISUAL` is unset (Omarchy sets only `EDITOR`) | `v notes.md` |
 | `echo $EDITOR $VISUAL` | See which editor was picked | Prints `nvim nvim` where Neovim is installed, `vim vim` otherwise |
 
+### Neovim (LazyVim, the same as Omarchy's)
+Every machine runs Omarchy's LazyVim setup. On Omarchy it is Omarchy's own (`omarchy-nvim`); chezmoi adds only `~/.config/nvim/lua/plugins/shared.lua`. Elsewhere chezmoi deploys a copy of it without the Omarchy-only parts (theme switcher, Wayland clipboard helper, the 19 extra theme plugins). `lazy-lock.json` and `lazyvim.json` are seeded once and then belong to Neovim (`:Lazy restore` installs the pinned commits). Needs `lazygit` and `tree-sitter-cli`.
+
+| Key or setting | What it does | Notes |
+| :--- | :--- | :--- |
+| `<leader>` | Space | |
+| `<leader>ff` / `<leader>fb` | Find files / buffers | snacks picker (was Telescope on the Mac) |
+| `<leader>sg` or `<leader>/` | Live grep | Was `<leader>fg` on the Mac |
+| `<leader>fg` | Git files | LazyVim's default |
+| `<leader>gg` | lazygit | |
+| `<leader>e` | File tree (neo-tree) | |
+| Indent 2, relative numbers off, format on save off | Omarchy's settings | `:lua vim.g.autoformat = true` turns formatting on for the session |
+| Theme | `tokyonight-night` | `lua/plugins/theme.lua`; Omarchy follows its own theme switcher |
+| Treesitter | LazyVim's parsers plus `go`, `gomod`, `gowork`, `gosum` | Built on first launch (`shared.lua`) |
+
 ### Line Endings (Vim, Neovim, LunarVim)
-`~/.vim/plugin/line-endings.vim`, which all three editors load, flags files that are not LF. Opening one prints `notes.txt: CRLF line endings; :Lf saves it with LF`, and the status line shows `[CRLF]` or `[mixed]` (in LunarVim's lualine, `CRLF` or `mixed`) until the file is saved with LF. Mixed means some lines end in CRLF and others in LF: Vim shows those lines with `^M`, and `:set ff?` still says `unix`. `~/.config/lvim/config.lua` is managed by chezmoi for this; change it with `chezmoi edit`.
+`~/.vim/plugin/line-endings.vim`, which all three editors load, flags files that are not LF. Opening one prints `notes.txt: CRLF line endings; :Lf saves it with LF`, and the status line shows `[CRLF]` or `[mixed]` (in LunarVim's lualine, `CRLF` or `mixed`) until the file is saved with LF. Mixed means some lines end in CRLF and others in LF: Vim shows those lines with `^M`, and `:set ff?` still says `unix`. `~/.config/lvim/config.lua` is managed by chezmoi for this; change it with `chezmoi edit`. In Neovim, `lua/plugins/shared.lua` sources the script and puts the label first in lualine's right side.
 
 | Command | Purpose | Example |
 | :--- | :--- | :--- |
