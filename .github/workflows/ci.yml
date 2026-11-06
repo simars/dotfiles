@@ -48,7 +48,9 @@ jobs:
           # GitHub retired macos-13, whose jobs then queued until the run was cancelled. The Intel Macs run macOS 26.
           - os: macos-26-intel
             arch: x86_64
-          - os: macos-14
+          # GitHub retired macos-14 too ("The configuration 'macos-14-arm64-us-default' is not supported"), and its
+          # jobs were cancelled before they started. Apple silicon Macs run macOS 26.
+          - os: macos-26
             arch: arm64
     runs-on: ${{ matrix.os }}
     env:
