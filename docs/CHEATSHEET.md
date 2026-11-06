@@ -209,6 +209,9 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `mise-audit` | Find Missing Project Pins | List the runtime pins under `$HOME` that mise has not installed (also run, as a warning, after every `chezmoi apply`):<br>`mise-audit` |
 | `mise-audit --install` | Install Missing Project Pins | Run `mise install` in every project with a missing pin, then report what still failed:<br>`mise-audit --install` |
 
+### mise on Omarchy
+Omarchy ships its tools (node `latest`, the agent CLIs, `uv`) in `/etc/mise/conf.d/` and owns `~/.config/mise/config.toml`. chezmoi leaves both alone and deploys only `~/.config/mise/conf.d/50-shared.toml`: the shared settings (version files for node, python and ruby, `uv_venv_auto`, `go.set_gobin = false`), no tools. `python.default_packages_file` is left out there because mise 2026.11 deprecates it and warns on every call. `mise-audit` is not deployed on Omarchy. Add runtimes with `omarchy install dev-env go` (or `python`, `ruby`, ...), never by pinning them in chezmoi.
+
 ### Project Runtimes
 Projects choose their runtime; nothing global changes outside them.
 

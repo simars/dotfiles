@@ -7,20 +7,7 @@ node = "22"
 
 [settings]
 experimental = true
-# Read the version files projects already carry: .ruby-version and Gemfile `ruby` lines, .python-version,
-# .nvmrc and .node-version. Without this, mise ignores them and the system runtime answers silently.
-# Go is left out: mise would read `go 1.17` in go.mod as a pin for that old release, while Go itself already
-# builds older modules on the newest toolchain. Pin Go per project in .tool-versions or mise.toml instead.
-idiomatic_version_file_enable_tools = ["node", "python", "ruby"]
-
-[settings.python]
-uv_venv_auto = true
-default_packages_file = "~/.config/mise/default-python-packages"
-
-[settings.go]
-# Leave GOBIN unset, so `go install` writes to ~/go/bin (on PATH via ~/.zprofile) instead of the Go version's
-# own bin directory, which `go = "latest"` replaces on every Go upgrade.
-set_gobin = false
+{{ template "mise-shared-settings.toml" . }}
 {{- if eq .chezmoi.os "darwin" }}
 
 [settings.ruby]

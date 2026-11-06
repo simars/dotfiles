@@ -100,6 +100,16 @@ for host in $hosts; do
     check "$host ~/.gitconfig rewrites no URLs" 0 "$(render "$host" dot_gitconfig.tmpl | grep -ciE 'insteadof')"
 done
 
+# Leak guard: on Omarchy chezmoi writes exactly these under ~/.config/mise, and nothing else.
+check "omarchy manages only the shared mise settings" ".config/mise .config/mise/conf.d .config/mise/conf.d/50-shared.toml" \
+    "$(grep -E '^\.config/mise(/|$)' "$work/omarchy.managed" | sort | xargs)"
+for host in darwin intel arch ubuntu; do
+    check "$host does not manage mise conf.d" no "$(manages "$host" .config/mise/conf.d/50-shared.toml)"
+    check "$host manages default-python-packages" yes "$(manages "$host" .config/mise/default-python-packages)"
+done
+check "omarchy mise settings carry no tools" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE '^\[tools\]|^(node|python|go) *=')"
+check "omarchy mise settings skip the deprecated default_packages_file" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -c default_packages_file)"
+
 # git's editor: VS Code on macOS; none on Omarchy, so git follows $EDITOR (Omarchy's launcher); nvim elsewhere.
 check "darwin ~/.gitconfig editor" "editor = code --wait" "$(render darwin dot_gitconfig.tmpl | grep -E '^\s*editor' | xargs)"
 check "omarchy ~/.gitconfig sets no editor" 0 "$(render omarchy dot_gitconfig.tmpl | grep -c 'editor =')"

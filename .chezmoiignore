@@ -20,6 +20,11 @@ CLAUDE.md
 # Omarchy (/etc/os-release ID=omarchy) ships and updates its own Neovim, tmux, Alacritty, Starship and mise configs,
 # and herdr there keeps a config this repository never wrote. Leave them all alone. 90_sync_runtimes.sh runs
 # `mise install` for the mise config skipped here.
+{{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+# Elsewhere ~/.config/mise/config.toml carries the shared settings itself.
+.config/mise/conf.d
+.config/mise/conf.d/**
+{{ end }}
 {{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 .config/nvim
 .config/nvim/**
@@ -28,8 +33,10 @@ CLAUDE.md
 .config/alacritty
 .config/alacritty/**
 .config/starship.toml
-.config/mise
-.config/mise/**
+# mise: Omarchy owns config.toml (migrations and `omarchy install dev-env` write it) and ships its tools in
+# /etc/mise/conf.d. Exact files only, so conf.d/50-shared.toml (the shared settings) still deploys.
+.config/mise/config.toml
+.config/mise/default-python-packages
 .config/herdr
 .config/herdr/**
 90_sync_runtimes.sh

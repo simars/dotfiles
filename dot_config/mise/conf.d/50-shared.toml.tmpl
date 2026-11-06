@@ -1,0 +1,6 @@
+# Managed by chezmoi on Omarchy. Omarchy owns ~/.config/mise/config.toml (its migrations and
+# `omarchy install dev-env` write it) and ships its tools in /etc/mise/conf.d, so the settings shared
+# with the other hosts live here. No tools: Omarchy's node = latest must win, and runtimes come from
+# `omarchy install dev-env`.
+[settings]
+{{ template "mise-shared-settings.toml" . }}
