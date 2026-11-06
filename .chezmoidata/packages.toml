@@ -56,9 +56,10 @@ casks = [
 # or downloads. Omarchy already ships the rest of the Mac list (tmux, neovim, herdr, mise, eza, bat, fd, fzf, ...).
 # Runtimes come from `omarchy install dev-env <lang>`, not from here.
 [omarchy]
+# bitwarden-cli is left out: Arch's package needs nodejs-lts-jod (Node 22), which conflicts with Omarchy's nodejs,
+# and pacman then cancels the whole install.
 pacman = [
     "age",
-    "bitwarden-cli",
     "duf",
     "dust",
     "fx",

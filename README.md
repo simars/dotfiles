@@ -42,7 +42,7 @@ sh -c "$(curl -fsLS https://get.chezmoi.io)" -- init --apply git@github.com:sima
 ## Secret Providers (1Password, Bitwarden & Age)
 * **1Password:** `1password-cli` is installed by Homebrew on Apple silicon Macs. Retrieve secrets with:
   `{{ onepasswordRead "op://vault/item/field" }}` or `{{ (onepassword "Item" "Vault").password }}`
-* **Bitwarden:** `bitwarden-cli` is auto-installed. Unlock with `bw login` / `export BW_SESSION="$(bw unlock --raw)"` and retrieve secrets with:
+* **Bitwarden:** `bitwarden-cli` is auto-installed on Apple silicon Macs (not on Omarchy: its Arch package conflicts with Omarchy's Node). Unlock with `bw login` / `export BW_SESSION="$(bw unlock --raw)"` and retrieve secrets with:
   `{{ (bitwarden "item" "ItemName").notes }}` or `{{ (bitwardenFields "item" "ItemName").fieldName.value }}`
 * **Hybrid Age:** Encrypt standalone secret files directly using `chezmoi add --encrypt ~/.ssh/id_work`. Unlocks with `~/.ssh/id_rsa` or `key.txt`. Uses the external `age` binary (`useBuiltin = false`) to natively support `ssh-rsa` and `ssh-ed25519` key formats.
 

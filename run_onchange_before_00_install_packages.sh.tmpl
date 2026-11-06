@@ -81,8 +81,10 @@ install_missing() { # install_missing "pkg add" | "pkg aur add", then the packag
         echo "==> Omarchy packages ($subcommand): all installed."
     elif [[ -t 0 && -t 1 ]]; then
         echo "==> Installing with omarchy $subcommand: ${need[*]}"
+        # AUR builds run whatever `python` is first on PATH. After `omarchy install dev-env python` that is mise's,
+        # which has no setuptools, so neovim-remote (for lunarvim-git) fails to build; use the system one.
         # shellcheck disable=SC2086
-        if ! omarchy $subcommand "${need[@]}"; then
+        if ! PATH="/usr/bin:$PATH" omarchy $subcommand "${need[@]}"; then
             echo "WARNING: omarchy $subcommand failed. Run it yourself: omarchy $subcommand ${need[*]}"
         fi
     else
