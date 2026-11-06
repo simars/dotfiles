@@ -141,6 +141,8 @@ for line in 'window_title = "{hostname}: {workspace}"' 'panel_bg = "reset"' 'sur
     check "omarchy herdr has $line" 1 "$(grep -cxF -- "$line" "$work/omarchy.herdr")"
 done
 check "darwin herdr has no Omarchy chrome" 0 "$(grep -cE 'window_title|panel_bg|^\[theme' "$work/darwin.herdr")"
+# Omarchy's [ui] holds exactly its stock [ui] settings (order, comments and blank lines aside).
+check "omarchy herdr [ui] is Omarchy's stock [ui]" "" "$(diff <(sed -n '/^\[ui\]/,$p' docs/omarchy-stock/herdr.toml | grep -vE '^(#|$)' | sort) <(sed -n '/^\[ui\]/,$p' "$work/omarchy.herdr" | grep -vE '^(#|$)' | sort))"
 check "darwin herdr keeps gaps" 1 "$(grep -cxF 'pane_gaps = true' "$work/darwin.herdr")"
 # The stock-drift report runs on Omarchy only and never fails.
 drift=run_after_95_omarchy_stock_drift.sh.tmpl

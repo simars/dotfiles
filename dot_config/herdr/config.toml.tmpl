@@ -93,10 +93,8 @@ command = '"${HERDR_BIN_PATH:-herdr}" pane move "$HERDR_ACTIVE_PANE_ID" --new-ta
 description = "break pane into new tab"
 
 [ui]
-tab_bar_position = "top"
 # set -g mouse on
 mouse_capture = true
-copy_on_select = true
 {{- if $omarchy }}
 accent = "blue"
 
@@ -121,6 +119,8 @@ tab_bar_right = [{ type = "zoom" }, { type = "hostname" }]
 # and it resolves on the server so remote sessions name the remote host.
 window_title = "{hostname}: {workspace}"
 {{- else }}
+tab_bar_position = "top"
+copy_on_select = true
 pane_outer_borders = true
 pane_gaps = true
 {{- end }}

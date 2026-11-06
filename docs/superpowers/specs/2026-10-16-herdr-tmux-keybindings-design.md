@@ -109,7 +109,7 @@ The Herdr and tmux configs are now shared with Omarchy instead of being left alo
   panes; `%`, `v`, `alt+shift+enter` place them side by side.
 * **Chrome stays per platform:** Omarchy keeps its stock theme (`terminal`, `panel_bg = "reset"`,
   `surface_dim = "black"`), no gaps or frame, no scrollbars, `confirm_close = false`, its tab bar and
-  `window_title = "{hostname}: {workspace}"` (Hyprland's group bar). macOS keeps gaps and outer borders.
+  `window_title = "{hostname}: {workspace}"` (Hyprland's group bar); its `[ui]` is exactly the stock one. macOS keeps gaps, outer borders, `tab_bar_position = "top"` and `copy_on_select`.
 * Omarchy's keybinding menus (Super+Alt+K, Super+Ctrl+K) read the live files, so they list these keys.
   The tmux menu shows `prefix -` with a blank key name (its parser splits key names on `-`); its description says
   `(prefix -)`.
