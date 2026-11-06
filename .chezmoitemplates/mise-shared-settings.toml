@@ -8,11 +8,6 @@ idiomatic_version_file_enable_tools = ["node", "python", "ruby"]
 
 [settings.python]
 uv_venv_auto = true
-{{- /* Not on Omarchy: mise 2026.11 deprecates this setting and then warns on every mise call, Omarchy's own
-       wrappers and shims included. */}}
-{{- if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
-default_packages_file = "~/.config/mise/default-python-packages"
-{{- end }}
 
 [settings.go]
 # Leave GOBIN unset, so `go install` writes to ~/go/bin (on PATH via ~/.zprofile) instead of the Go version's

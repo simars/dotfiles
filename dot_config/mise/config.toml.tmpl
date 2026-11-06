@@ -1,6 +1,6 @@
 [tools]
 go = "latest"
-python = "3.12"
+python = { version = "3.12", postinstall = "test -f ~/.config/mise/default-python-packages && $MISE_TOOL_INSTALL_PATH/bin/python -m pip install -r ~/.config/mise/default-python-packages || true" }
 node = "22"
 # No global ruby on purpose: outside a project, `ruby` stays the system /usr/bin/ruby that macOS tooling
 # expects. Projects get theirs from .ruby-version, a Gemfile `ruby` line or .tool-versions (see below).

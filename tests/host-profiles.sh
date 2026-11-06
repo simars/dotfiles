@@ -126,6 +126,7 @@ check "omarchy manages only the shared mise settings" ".config/mise .config/mise
 for host in darwin intel arch ubuntu; do
     check "$host does not manage mise conf.d" no "$(manages "$host" .config/mise/conf.d/50-shared.toml)"
     check "$host manages default-python-packages" yes "$(manages "$host" .config/mise/default-python-packages)"
+    check "$host mise config skips deprecated default_packages_file" 0 "$(render "$host" dot_config/mise/config.toml.tmpl | grep -c default_packages_file)"
 done
 check "omarchy mise settings carry no tools" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE '^\[tools\]|^(node|python|go) *=')"
 check "omarchy mise settings skip the deprecated default_packages_file" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -c default_packages_file)"
