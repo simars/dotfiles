@@ -78,6 +78,33 @@ cheatsheet() {
 }
 
 # ==============================================================================
+# 1Password-aware command runner
+# ==============================================================================
+# Runs a command under `op run` when ./.env exists, so op:// references in it
+# resolve. An OP_TARGET_ENVIRONMENT=<name> line in .env selects the 1Password
+# Environment. Without a .env the command runs untouched.
+# The flags live in an array: zsh does not word-split an unquoted $var, so a
+# plain string would reach `op` as one argument there.
+with-op() {
+  if [ ! -f .env ]; then
+    "$@"
+    return
+  fi
+
+  local target
+  local -a env_flag=()
+  target=$(grep -E "^OP_TARGET_ENVIRONMENT=" .env | cut -d'=' -f2 | tr -d "\"'")
+  if [ -n "$target" ]; then
+    env_flag=(--environment "$target")
+  fi
+
+  op run "${env_flag[@]}" --env-file=.env -- "$@"
+}
+
+alias cld="with-op claude"
+alias csr="with-op cursor ."
+
+# ==============================================================================
 # Local User Overrides (~/.aliases.local)
 # ==============================================================================
 if [[ -f "$HOME/.aliases.local" ]]; then
