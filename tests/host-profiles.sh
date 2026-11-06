@@ -36,8 +36,8 @@ hosts="darwin intel omarchy arch ubuntu debian"
 
 # Targets Omarchy ships and updates itself (plus herdr's existing config there, and the script that runs
 # `mise install`). They must be managed everywhere else, so the Omarchy rule cannot leak.
-omarchy_owned=".config/nvim/init.lua .config/tmux/tmux.conf .config/alacritty/alacritty.toml
-.config/starship.toml .config/mise/config.toml .config/herdr/config.toml 90_sync_runtimes.sh .local/bin/mise-audit"
+omarchy_owned=".config/nvim/init.lua .config/alacritty/alacritty.toml
+.config/starship.toml .config/mise/config.toml 90_sync_runtimes.sh .local/bin/mise-audit"
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/host-profiles.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
@@ -109,6 +109,28 @@ for host in darwin intel arch ubuntu; do
 done
 check "omarchy mise settings carry no tools" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -cE '^\[tools\]|^(node|python|go) *=')"
 check "omarchy mise settings skip the deprecated default_packages_file" 0 "$(render omarchy dot_config/mise/conf.d/50-shared.toml.tmpl | grep -c default_packages_file)"
+
+# tmux and Herdr are one shared config everywhere, Omarchy included. Herdr keeps Omarchy's chrome only there.
+for host in $hosts; do
+    check "$host manages tmux.conf" yes "$(manages "$host" .config/tmux/tmux.conf)"
+    check "$host manages herdr config" yes "$(manages "$host" .config/herdr/config.toml)"
+    check "$host does not manage ~/.tmux.conf" no "$(manages "$host" .tmux.conf)"
+done
+render omarchy dot_config/herdr/config.toml.tmpl > "$work/omarchy.herdr"
+render darwin dot_config/herdr/config.toml.tmpl > "$work/darwin.herdr"
+for line in 'window_title = "{hostname}: {workspace}"' 'panel_bg = "reset"' 'surface_dim = "black"' 'prefix = "ctrl+b"'; do
+    check "omarchy herdr has $line" 1 "$(grep -cxF -- "$line" "$work/omarchy.herdr")"
+done
+check "darwin herdr has no Omarchy chrome" 0 "$(grep -cE 'window_title|panel_bg|^\[theme' "$work/darwin.herdr")"
+check "darwin herdr keeps gaps" 1 "$(grep -cxF 'pane_gaps = true' "$work/darwin.herdr")"
+# The stock-drift report runs on Omarchy only and never fails.
+drift=run_after_95_omarchy_stock_drift.sh.tmpl
+for host in $hosts; do
+    expected=0
+    [[ "$host" == omarchy ]] && expected=1
+    check "$host stock-drift report present" "$expected" "$(render "$host" "$drift" | grep -c '^check_stock tmux')"
+done
+check "omarchy stock-drift report is valid bash" "" "$(render omarchy "$drift" | bash -n 2>&1)"
 
 # git's editor: VS Code on macOS; none on Omarchy, so git follows $EDITOR (Omarchy's launcher); nvim elsewhere.
 check "darwin ~/.gitconfig editor" "editor = code --wait" "$(render darwin dot_gitconfig.tmpl | grep -E '^\s*editor' | xargs)"

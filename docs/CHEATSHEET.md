@@ -189,7 +189,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `tests/host-profiles.sh --base main` | Check All Host Kinds | From the source directory: checks what macOS, Omarchy, Arch, Ubuntu and Debian hosts get (CI runs it on every push), and notes scripts that would re-run on existing hosts. |
 
 * **What chezmoi touches:** single files, written as real files (no symlinks). It never deletes or replaces anything it does not manage, so the rest of `~/.config` stays as it is. It does set the permissions of the directories it manages (`~/.vim` is `0700`).
-* **Linux:** no system packages are installed; Omarchy and other distributions bring their own. On Omarchy, its own Neovim, tmux, Alacritty, Starship, mise and herdr configs are left alone.
+* **Linux:** no system packages are installed; Omarchy and other distributions bring their own. On Omarchy, its own Neovim, Alacritty, Starship and mise configs are left alone; tmux and Herdr use the shared configs.
 
 ---
 
@@ -276,6 +276,30 @@ Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh dif
 | `tm` | Attach to, or create, one fixed session called `main` | Alias for `tmux new-session -A -s main` (in `~/.aliases`, so bash has it too) |
 | `Ctrl-b d` | Detach and leave the session running | `tmux ls` lists sessions, `tat` re-attaches |
 | `Ctrl-b !` | Break the current pane out into its own window | Press `Ctrl-b`, release, then `Shift-1`. herdr binds the same keys to move the pane into a new tab |
+
+### tmux and Herdr Keys (macOS and Omarchy)
+One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space` (Omarchy's old prefix). Press the prefix, release, then the key. `Alt` chords need Option-as-Meta in a Mac terminal. On Omarchy, Super+Alt+K and Super+Ctrl+K list every key.
+
+| Key | tmux | Herdr |
+| :--- | :--- | :--- |
+| `h` `j` `k` `l` | Focus pane left, down, up, right | Same |
+| `"` `-` (or `Alt-Enter`) | Split, new pane below | Same |
+| `%` `v` (or `Alt-Shift-Enter`) | Split, new pane to the right | Same |
+| `x` (or `Alt-Esc`) | Kill pane, no prompt | Close pane |
+| `z` / `;` / `o` | Zoom / last pane / next pane | Same |
+| `!` | Break pane into a new window | Move pane into a new tab |
+| `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab |
+| `1`..`9` (or `Alt-1`..`9`), `n` `p` (or `Alt-Right` `Alt-Left`) | Go to window | Go to tab |
+| `R` `C` `K` `P` `N` | Rename / new / kill / previous / next session | `Shift-r` (or `$`) `Shift-c` `Shift-k` `Shift-p` `Shift-n` for workspaces |
+| `s` | (tmux default: choose session) | Workspace picker |
+| `r` or `q` | Reload config | Same |
+| `[` | Copy mode (`v` select, `y` copy) | Copy mode; `e` edits the scrollback |
+| `?` | Key list (Omarchy's menu on Omarchy) | Help |
+| `d` | Detach | Same |
+| `Ctrl-Alt-arrows` / `Ctrl-Alt-Shift-arrows` | Focus / resize pane, no prefix | Same |
+| `b`, `Shift-o`, `Shift-m`, `Shift-s` | | Sidebar, notification target, rename pane, settings |
+
+`omarchy refresh tmux` (or `herdr`) puts Omarchy's stock file back; `chezmoi apply ~/.config/tmux/tmux.conf` (or `~/.config/herdr/config.toml`) restores the shared one.
 
 ---
 

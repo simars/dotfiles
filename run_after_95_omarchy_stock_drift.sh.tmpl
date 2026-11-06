@@ -1,0 +1,32 @@
+{{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" -}}
+#!/usr/bin/env bash
+# Omarchy only. chezmoi owns ~/.config/tmux/tmux.conf and ~/.config/herdr/config.toml here, merged from Omarchy's
+# stock files. When an Omarchy update changes a stock file, say so and show the change, so it can be merged into the
+# shared config (docs/omarchy-stock/README.md in the chezmoi source). Informational: never fails the apply.
+set -u
+
+check_stock() { # check_stock NAME STOCK_FILE SNAPSHOT_FILE
+    if [[ ! -f "$2" ]]; then
+        echo "NOTE: Omarchy's stock $1 config ($2) is gone; the shared config may need review."
+    elif cmp -s "$3" "$2"; then
+        echo "OK:   Omarchy's stock $1 config is unchanged since the shared config was merged"
+    else
+        echo "NOTE: Omarchy's stock $1 config changed since the shared config was merged. Merge what is wanted, then update docs/omarchy-stock/:"
+        diff -u --label "snapshot" --label "$2" "$3" "$2" | sed 's/^/      /'
+    fi
+}
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+
+cat > "$work/tmux.conf" <<'OMARCHY_STOCK_TMUX'
+{{ include "docs/omarchy-stock/tmux.conf" | trimSuffix "\n" }}
+OMARCHY_STOCK_TMUX
+cat > "$work/herdr.toml" <<'OMARCHY_STOCK_HERDR'
+{{ include "docs/omarchy-stock/herdr.toml" | trimSuffix "\n" }}
+OMARCHY_STOCK_HERDR
+
+check_stock tmux /usr/share/omarchy/config/tmux/tmux.conf "$work/tmux.conf"
+check_stock herdr /usr/share/omarchy/config/herdr/config.toml "$work/herdr.toml"
+exit 0
+{{ end -}}

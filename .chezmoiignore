@@ -28,8 +28,6 @@ CLAUDE.md
 {{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 .config/nvim
 .config/nvim/**
-.config/tmux
-.config/tmux/**
 .config/alacritty
 .config/alacritty/**
 .config/starship.toml
@@ -37,8 +35,6 @@ CLAUDE.md
 # /etc/mise/conf.d. Exact files only, so conf.d/50-shared.toml (the shared settings) still deploys.
 .config/mise/config.toml
 .config/mise/default-python-packages
-.config/herdr
-.config/herdr/**
 90_sync_runtimes.sh
 # mise-audit is not wanted on Omarchy.
 .local/bin/mise-audit

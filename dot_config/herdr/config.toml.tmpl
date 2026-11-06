@@ -1,0 +1,126 @@
+# Herdr, shared by macOS and Omarchy (chezmoi: dot_config/herdr/config.toml.tmpl).
+# Keys mirror ~/.config/tmux/tmux.conf: tmux session -> herdr workspace, window -> tab, pane -> pane.
+# Herdr takes one prefix: ctrl+b on every machine (tmux also has ctrl+space as its second prefix).
+# Look and feel stays per platform: Omarchy keeps its stock chrome (/usr/share/omarchy/config/herdr/config.toml,
+# omarchy 4.5.0); macOS keeps gaps and outer borders. `omarchy refresh herdr` restores Omarchy's stock file;
+# `chezmoi apply ~/.config/herdr/config.toml` restores this one. Validate with `herdr config check`.
+{{- $omarchy := eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+
+onboarding = false
+{{- if $omarchy }}
+
+[theme]
+# tmux ran on the terminal's own palette (bg=default, fg=default, ANSI blue accents)
+name = "terminal"
+
+[theme.custom]
+# The tab bar sits on the terminal's own background, like tmux's bg=default, so
+# it turns see-through with the rest of the terminal under Glassy windows. With
+# no panel_bg the active tab's text falls back to surface_dim, so that is black
+# for dark text on the accent - same colors as status-left's "#[fg=black,bg=blue]"
+panel_bg = "reset"
+surface_dim = "black"
+{{- end }}
+
+[terminal]
+# Matches -c "#{pane_current_path}" on every split, window, and session
+new_cwd = "follow"
+
+[keys]
+prefix = "ctrl+b"
+
+# Config and help
+reload_config = ["prefix+r", "prefix+q"]
+help = "prefix+?"
+detach = "prefix+d"
+settings = "prefix+shift+s"
+
+# Copy mode and scrollback
+copy_mode = "prefix+["
+edit_scrollback = "prefix+e"
+
+# Panes: " - alt+enter stack panes (tmux split -v); % v alt+shift+enter put them side by side (split -h)
+split_horizontal = ["prefix+\"", "prefix+minus", "alt+enter"]
+split_vertical = ["prefix+%", "prefix+v", "alt+shift+enter"]
+close_pane = ["prefix+x", "alt+esc"]
+zoom = "prefix+z"
+last_pane = "prefix+;"
+cycle_pane_next = "prefix+o"
+
+focus_pane_left = ["prefix+h", "ctrl+alt+left"]
+focus_pane_down = ["prefix+j", "ctrl+alt+down"]
+focus_pane_up = ["prefix+k", "ctrl+alt+up"]
+focus_pane_right = ["prefix+l", "ctrl+alt+right"]
+
+resize_mode = ["prefix+ctrl+left", "prefix+ctrl+down", "prefix+ctrl+up", "prefix+ctrl+right"]
+
+# Like resize-pane on C-M-S-arrows
+resize_pane_left = "ctrl+alt+shift+left"
+resize_pane_down = "ctrl+alt+shift+down"
+resize_pane_up = "ctrl+alt+shift+up"
+resize_pane_right = "ctrl+alt+shift+right"
+
+# No tmux equivalent
+rename_pane = "prefix+shift+m"
+open_notification_target = "prefix+shift+o"
+toggle_sidebar = "prefix+b"
+
+# Windows -> tabs
+new_tab = "prefix+c"
+rename_tab = "prefix+,"
+close_tab = "prefix+&"
+switch_tab = ["prefix+1..9", "alt+1..9"]
+previous_tab = ["prefix+p", "alt+left"]
+next_tab = ["prefix+n", "alt+right"]
+
+# Like swap-window -t -1/+1 on M-S-Left/Right
+move_tab_previous = "alt+shift+left"
+move_tab_next = "alt+shift+right"
+
+# Sessions -> workspaces
+workspace_picker = "prefix+s"
+new_workspace = "prefix+shift+c"
+rename_workspace = ["prefix+shift+r", "prefix+$"]
+close_workspace = "prefix+shift+k"
+previous_workspace = ["prefix+shift+p", "alt+up"]
+next_workspace = ["prefix+shift+n", "alt+down"]
+
+# Break pane into new tab (tmux `prefix + !`)
+[[keys.command]]
+key = "prefix+!"
+type = "shell"
+command = '"${HERDR_BIN_PATH:-herdr}" pane move "$HERDR_ACTIVE_PANE_ID" --new-tab --focus'
+description = "break pane into new tab"
+
+[ui]
+tab_bar_position = "top"
+# set -g mouse on
+mouse_capture = true
+copy_on_select = true
+{{- if $omarchy }}
+accent = "blue"
+
+# tmux drew single-line dividers between adjacent panes and no outer frame
+pane_gaps = false
+pane_outer_borders = false
+
+# tmux had no scrollbar column beside its panes
+pane_scrollbars = false
+
+# kill-window and kill-session never asked
+confirm_close = false
+
+# automatic-rename gave windows a name without prompting
+prompt_new_tab_name = false
+
+# status-right had the zoom flag followed by #h
+tab_bar_right = [{ type = "zoom" }, { type = "hostname" }]
+
+# set -g set-titles on / set -g set-titles-string '#h:#W', where tmux's #W was
+# the basename of the pane cwd. This is what Hyprland shows in the group bar,
+# and it resolves on the server so remote sessions name the remote host.
+window_title = "{hostname}: {workspace}"
+{{- else }}
+pane_outer_borders = true
+pane_gaps = true
+{{- end }}

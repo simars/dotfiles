@@ -89,3 +89,28 @@ pane_gaps = true
    Reload the live server state via `herdr server reload-config`.
 4. **Verification**:
    Perform split, navigation, tab, and session picker tests against running session.
+
+---
+
+## Update 2026-11-05: one config on macOS and Omarchy
+
+The Herdr and tmux configs are now shared with Omarchy instead of being left alone there
+(`dot_config/herdr/config.toml.tmpl`, `dot_config/tmux/tmux.conf`). They were merged from Omarchy's stock files
+(snapshots in `docs/omarchy-stock/`) and the keys above. Decisions:
+
+* **Prefix:** Herdr `ctrl+b` everywhere. tmux `C-b` with `C-Space` as `prefix2` everywhere (Omarchy's prefix was
+  `C-Space` with `C-b` second).
+* **h/j/k/l focus panes** on both. Omarchy's `prefix h` split and `prefix k` close-tab/kill-window moved to `"`, `-`,
+  `alt+enter` and `&`. `prefix r` reloads (also `q`, Omarchy's); rename tab/window is `,`.
+* **Herdr re-homes:** rename workspace `shift+r` and `$`; open notification target `shift+o` (rename pane moved to
+  `shift+m`); workspace picker `s` (settings moved to `shift+s`); `[` is copy mode as in tmux and edit scrollback
+  moved to `e`; sidebar `b`.
+* **Splits are native actions** now (`prefix+minus` and `prefix+v` were shell commands): `"`, `-`, `alt+enter` stack
+  panes; `%`, `v`, `alt+shift+enter` place them side by side.
+* **Chrome stays per platform:** Omarchy keeps its stock theme (`terminal`, `panel_bg = "reset"`,
+  `surface_dim = "black"`), no gaps or frame, no scrollbars, `confirm_close = false`, its tab bar and
+  `window_title = "{hostname}: {workspace}"` (Hyprland's group bar). macOS keeps gaps and outer borders.
+* Omarchy's keybinding menus (Super+Alt+K, Super+Ctrl+K) read the live files, so they list these keys.
+  The tmux menu shows `prefix -` with a blank key name (its parser splits key names on `-`); its description says
+  `(prefix -)`.
+* `run_after_95_omarchy_stock_drift.sh` reports when an Omarchy update changes either stock file.
