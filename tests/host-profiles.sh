@@ -178,7 +178,7 @@ check "arch requirement check suggests pacman for gitleaks" 1 "$(grep -c 'sudo p
 # Omarchy installs packages only through its own command.
 check "omarchy requirement check suggests omarchy pkg add for gitleaks" 1 "$(grep -c 'omarchy pkg add gitleaks' "$work/omarchy.requirements")"
 check "omarchy requirement check never suggests pacman or sudo" 0 "$(grep -cE 'pacman|sudo' "$work/omarchy.requirements")"
-check "omarchy requirement check reports missing listed packages" 1 "$(grep -c 'Fix: omarchy pkg add \${need' "$work/omarchy.requirements")"
+check "omarchy requirement check reports missing listed packages" 1 "$(grep -c 'lists packages that are not installed. Fix: omarchy pkg add ' "$work/omarchy.requirements")"
 check "omarchy requirement check never mentions mise-audit" 0 "$(grep -c 'mise-audit' "$work/omarchy.requirements")"
 check "intel requirement check points to the Intel guide" yes "$(grep -q 'docs/INTEL_MACS.md' "$work/intel.requirements" && echo yes || echo no)"
 for host in $hosts; do
