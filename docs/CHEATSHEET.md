@@ -28,11 +28,11 @@ In `~/.aliases`, modern aliases (`ll`, `lt`, `ltree`, `preview`, `fp`, `dfh`, `d
 All aliases are for interactive shells. When `~/.zshrc` is sourced by a shell that is not interactive, as Claude Code does to build its tool shell, it ends by removing every alias, including those from `~/.aliases.local`, `~/.zshrc.local` and the env files it sources. Commands then run as typed, and a helper function named like an alias (`g`, `config`) can be defined. `config` still works there as `~/.local/bin/config`.
 
 ### 1Password-Aware Runner (`with-op`, `cld`, `csr`)
-`with-op <command...>` runs a command under `op run --env-file=.env` when the current directory has a `.env`, so `op://` references in it resolve; with no `.env` it runs the command untouched. A line `OP_TARGET_ENVIRONMENT=<name>` in `.env` adds `--environment <name>`. It is a function (bash and zsh), so it also works where aliases are stripped.
+`with-op <command...>` runs a command under `op run` when the current directory has a `.op-env` or a `.env`; with neither it runs the command untouched. `.op-env` lists 1Password Environment IDs (not names), one per line with `#` comments allowed, and each becomes `--environment <id>`; when two define the same variable the last one wins. `.env` is passed as `--env-file=.env`, so `op://` references in it resolve, and a legacy `OP_TARGET_ENVIRONMENT=<id>` line in it adds one more Environment. Only the current directory is checked, not its parents. It is a function (bash and zsh), so it also works where aliases are stripped.
 
 | Command | Expands to | Use |
 | :--- | :--- | :--- |
-| `with-op <cmd>` | `op run [--environment X] --env-file=.env -- <cmd>` | Any command that needs the project's 1Password secrets. |
+| `with-op <cmd>` | `op run [--environment <id>]... [--env-file=.env] -- <cmd>` | Any command that needs the project's 1Password secrets. |
 | `cld` | `with-op claude` | Claude Code with the project's secrets. Interactive shells only (alias). |
 | `csr` | `with-op cursor .` | Cursor on the current directory with the project's secrets. Interactive shells only (alias). |
 

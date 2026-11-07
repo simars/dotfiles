@@ -99,25 +99,35 @@ cheatsheet() {
 # ==============================================================================
 # 1Password-aware command runner
 # ==============================================================================
-# Runs a command under `op run` when ./.env exists, so op:// references in it
-# resolve. An OP_TARGET_ENVIRONMENT=<name> line in .env selects the 1Password
-# Environment. Without a .env the command runs untouched.
+# Runs a command under `op run` when ./.op-env or ./.env exists.
+# ./.op-env lists 1Password Environment IDs, one per line (# comments allowed);
+# each becomes an --environment flag, and the last one wins on name clashes.
+# ./.env is passed as --env-file so op:// references in it resolve, and a
+# legacy OP_TARGET_ENVIRONMENT=<id> line in it adds one more Environment.
+# With neither file the command runs untouched.
 # The flags live in an array: zsh does not word-split an unquoted $var, so a
 # plain string would reach `op` as one argument there.
 with-op() {
-  if [ ! -f .env ]; then
+  local -a flags=()
+  local line
+  if [ -f .op-env ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      line=${line%%#*}
+      line=$(printf '%s' "$line" | tr -d " \t\"'")
+      [ -n "$line" ] && flags+=(--environment "$line")
+    done < .op-env
+  fi
+  if [ -f .env ]; then
+    line=$(grep -E "^OP_TARGET_ENVIRONMENT=" .env | cut -d'=' -f2 | tr -d "\"'")
+    [ -n "$line" ] && flags+=(--environment "$line")
+    flags+=(--env-file=.env)
+  fi
+  if [ ${#flags[@]} -eq 0 ]; then
     "$@"
     return
   fi
 
-  local target
-  local -a env_flag=()
-  target=$(grep -E "^OP_TARGET_ENVIRONMENT=" .env | cut -d'=' -f2 | tr -d "\"'")
-  if [ -n "$target" ]; then
-    env_flag=(--environment "$target")
-  fi
-
-  op run "${env_flag[@]}" --env-file=.env -- "$@"
+  op run "${flags[@]}" -- "$@"
 }
 
 alias cld="with-op claude"
