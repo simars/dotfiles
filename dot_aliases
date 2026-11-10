@@ -127,7 +127,10 @@ with-op() {
     return
   fi
 
-  op run "${flags[@]}" -- "$@"
+  # --no-masking: with secrets loaded, op run pipes stdout/stderr through a
+  # masking filter, so interactive TUIs (claude, cursor) see no TTY and claude
+  # falls into --print mode.
+  op run --no-masking "${flags[@]}" -- "$@"
 }
 
 alias cld="with-op claude"
