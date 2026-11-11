@@ -33,6 +33,23 @@ Host simar-works
     IdentityFile ~/.ssh/id_rsa
     ForwardAgent yes
 
+# simar-works' disk-unlock screen while it boots (dropbear in its initramfs, port 2222; guide:
+# ~/guides/omarchy/remote-disk-unlock there). root's shell there is only the passphrase prompt. Its own host key
+# alias, so it never clashes with simar-works' sshd, and no agent forwarding. -lan skips the router.
+Host simar-works-unlock simar-works-unlock-lan
+    User root
+    Port 2222
+    IdentityFile ~/.ssh/id_rsa
+    HostKeyAlias simar-works-unlock
+    ForwardAgent no
+    RequestTTY yes
+
+Host simar-works-unlock
+    HostName simars.ddns.net
+
+Host simar-works-unlock-lan
+    HostName 192.168.68.146
+
 Host github.com
     HostName ssh.github.com
     Port 443

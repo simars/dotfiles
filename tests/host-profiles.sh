@@ -189,6 +189,12 @@ for host in $hosts; do
     check "$host ~/.ssh/config never forwards the agent to every host or GitHub" 0 \
         "$(awk '/^Host /{h=$2} /ForwardAgent yes/ && (h=="*" || h=="github.com" || h ~ /internal/)' "$work/$host.ssh_config" | wc -l | tr -d ' ')"
 done
+# simar-works' disk-unlock screen: root on port 2222, its own host key alias, never the agent.
+for host in $hosts; do
+    unlock="$(awk '/^Host /{h=$0} h=="Host simar-works-unlock simar-works-unlock-lan"' "$work/$host.ssh_config")"
+    check "$host unlock entry connects as root on 2222 with its own host key and no agent" 4 \
+        "$(grep -cE '^    (User root|Port 2222|HostKeyAlias simar-works-unlock|ForwardAgent no)$' <<< "$unlock")"
+done
 check "omarchy ~/.ssh/config has no work stanza" 0 "$(render omarchy private_dot_ssh/private_config.tmpl | grep -c 'internal')"
 
 # The requirement check suggests fixes from the host's own package manager, and leaves Omarchy's mise alone.
