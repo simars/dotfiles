@@ -204,6 +204,13 @@ for host in darwin intel arch ubuntu; do
     check "$host requirement check has no Omarchy version-file check" 0 "$(grep -c want_idiomatic "$work/$host.requirements")"
 done
 check "omarchy requirement check never mentions mise-audit" 0 "$(grep -c 'mise-audit' "$work/omarchy.requirements")"
+# ssh-key-remember: deployed everywhere, checked (warn only) after every apply; the old Mac-only run_once enrolment is gone.
+for host in $hosts; do
+    check "$host manages ssh-key-remember" yes "$(manages "$host" .local/bin/ssh-key-remember)"
+    check "$host requirement check warns when the SSH passphrase is not saved" 1 "$(grep -c 'Fix: ssh-key-remember' "$work/$host.requirements")"
+    check "$host has no run_once keychain enrolment" no "$(manages "$host" 10_ssh_keychain.sh)"
+done
+check "ssh-key-remember is valid bash" "" "$(bash -n dot_local/bin/executable_ssh-key-remember 2>&1)"
 check "intel requirement check points to the Intel guide" yes "$(grep -q 'docs/INTEL_MACS.md' "$work/intel.requirements" && echo yes || echo no)"
 for host in $hosts; do
     expected=1

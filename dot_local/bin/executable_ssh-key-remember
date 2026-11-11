@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+#
+# Save an SSH key's passphrase in this machine's keyring, once, so the SSH agent unlocks the key by itself after
+# every login and reboot instead of asking.
+#   Linux (GNOME keyring's gcr-ssh-agent, as on Omarchy): stores the "Unlock password for" entry the agent looks up.
+#   macOS: ssh-add --apple-use-keychain; UseKeychain in ~/.ssh/config and --apple-load-keychain in ~/.zprofile
+#   read it back.
+#
+# Usage: ssh-key-remember [--check] [--force] [KEY]     KEY defaults to ~/.ssh/id_rsa
+#   --check   Report only, never prompt. Exit 0 saved (or the key has no passphrase), 1 not saved, 2 cannot tell.
+#   --force   Save again although a passphrase is saved (after changing it).
+#
+# Run it on the machine itself, in a terminal: only you should type the passphrase, and macOS's Keychain is locked
+# to SSH sessions. The requirement check after `chezmoi apply` runs --check and warns when it is not saved.
+# Runs under bash 3.2, the macOS /bin/bash.
+
+set -u
+
+mode=save
+force=0
+key=""
+for arg in "$@"; do
+    case "$arg" in
+        --check) mode=check ;;
+        --force) force=1 ;;
+        -h | --help)
+            sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0
+            ;;
+        -*)
+            echo "ssh-key-remember: unknown option $arg (see --help)" >&2
+            exit 64
+            ;;
+        *) key="$arg" ;;
+    esac
+done
+key="${key:-$HOME/.ssh/id_rsa}"
+case "$key" in /*) ;; *) key="$PWD/$key" ;; esac
+
+say() { echo "ssh-key-remember: $*"; }
+
+if [[ ! -f "$key" ]]; then
+    say "no key at $key"
+    exit 2
+fi
+
+# A key without a passphrase has nothing to save.
+if ssh-keygen -y -P "" -f "$key" > /dev/null 2>&1; then
+    say "$key has no passphrase, nothing to save"
+    exit 0
+fi
+
+# saved: 0 saved, 1 not saved, 2 cannot tell (prints the reason for 2).
+saved() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        # Over SSH the login Keychain is locked, and a locked Keychain answers 44 (not found) for every item, so
+        # make sure it can be read before trusting a 44.
+        if ! security show-keychain-info "$HOME/Library/Keychains/login.keychain-db" > /dev/null 2>&1; then
+            say "cannot read the login Keychain from this session (locked, as it is over SSH)"
+            return 2
+        fi
+        security find-generic-password -l "SSH: $key" > /dev/null 2>&1
+        case $? in
+            0) return 0 ;;
+            44) return 1 ;; # errSecItemNotFound
+            *)
+                say "cannot read the login Keychain from this session (locked, as it is over SSH)"
+                return 2
+                ;;
+        esac
+    fi
+    if ! command -v secret-tool > /dev/null 2>&1; then
+        say "secret-tool is not installed (libsecret)"
+        return 2
+    fi
+    if ! systemctl --user cat gcr-ssh-agent.service > /dev/null 2>&1; then
+        say "this machine does not run GNOME keyring's SSH agent (gcr-ssh-agent), which is what reads the saved passphrase"
+        return 2
+    fi
+    # Count matching items only; the secret line never leaves this pipe.
+    [[ "$(secret-tool search --all unique "ssh-store:$key" 2> /dev/null | grep -c '^\[')" -gt 0 ]]
+}
+
+saved
+state=$?
+if [[ "$mode" == check ]]; then
+    case $state in
+        0) say "passphrase for $key is saved" ;;
+        1) say "passphrase for $key is not saved; run ssh-key-remember" ;;
+    esac
+    exit "$state"
+fi
+
+if [[ $state -eq 0 && $force -eq 0 ]]; then
+    say "passphrase for $key is already saved (--force saves it again)"
+    exit 0
+fi
+if [[ $state -eq 2 ]]; then
+    say "run it in a terminal on this machine's own desktop"
+    exit 2
+fi
+if [[ ! -t 0 ]]; then
+    say "needs a terminal to read the passphrase"
+    exit 2
+fi
+
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
+        say "no SSH agent in this session; run it in Terminal on the Mac itself"
+        exit 2
+    fi
+    # Prompts, checks the passphrase, loads the key and stores the passphrase in the login Keychain.
+    ssh-add --apple-use-keychain "$key" || exit 1
+    say "saved in the login Keychain"
+    exit 0
+fi
+
+IFS= read -rsp "Passphrase for $key: " pass
+echo
+# Check it before saving: ssh-keygen reads it from a throwaway askpass helper, so it never appears in a process's
+# arguments. One attempt only, unlike ssh-add, which would retry a wrong passphrase forever.
+helper="$(mktemp "${TMPDIR:-/tmp}/ssh-key-remember.XXXXXX")"
+trap 'rm -f "$helper"' EXIT
+printf '#!/bin/sh\nprintf "%%s\\n" "$SSH_KEY_REMEMBER_PASS"\n' > "$helper"
+chmod 700 "$helper"
+if ! SSH_KEY_REMEMBER_PASS="$pass" SSH_ASKPASS="$helper" SSH_ASKPASS_REQUIRE=force DISPLAY="${DISPLAY:-:0}" \
+    ssh-keygen -y -f "$key" < /dev/null > /dev/null 2>&1; then
+    unset pass
+    say "wrong passphrase, nothing saved"
+    exit 1
+fi
+if printf '%s' "$pass" | secret-tool store --label="Unlock password for: $(basename "$key")" \
+    xdg:schema org.freedesktop.Secret.Generic unique "ssh-store:$key"; then
+    unset pass
+    say "saved in the login keyring; the SSH agent unlocks $key by itself from now on"
+else
+    unset pass
+    say "the keyring refused to store it"
+    exit 1
+fi

@@ -140,21 +140,8 @@ Chezmoi solves this end-to-end:
        ssh-add --apple-load-keychain 2>/dev/null || true
    fi
    ```
-3. **One-Time Keychain Registration Hook (`run_once_after_10_ssh_keychain.sh.tmpl`):**
-   Chezmoi can run an interactive hook once:
-   ```bash
-   {{ if eq .chezmoi.os "darwin" -}}
-   #!/usr/bin/env bash
-   SSH_KEY="$HOME/.ssh/id_rsa"
-   if [[ -f "$SSH_KEY" ]] && [[ -t 0 ]]; then
-       if ! ssh-add -l 2>/dev/null | grep -q "$(ssh-keygen -lf "$SSH_KEY" | awk '{print $2}')"; then
-           echo "==> Enrolling SSH key into macOS Keychain..."
-           ssh-add --apple-use-keychain "$SSH_KEY" 2>/dev/null || true
-       fi
-   fi
-   {{ end -}}
-   ```
-   Once enrolled, headless sessions on that machine have full GitHub access without needing `-A`.
+3. **Saving the passphrase: `ssh-key-remember` (`dot_local/bin/executable_ssh-key-remember`), on demand.**
+   A run_once hook (`run_once_after_10_ssh_keychain.sh.tmpl`) used to enrol the key when `chezmoi apply` had a terminal. It was removed: an apply without one (over SSH, `chezmoi update`, an agent) still recorded it as run, so it never ran again, and it hid `ssh-add`'s errors. `ssh-key-remember` now saves the passphrase on demand on every host (Keychain on macOS, GNOME keyring's `gcr-ssh-agent` entry on Omarchy), and the requirement check warns after each apply while it is not saved. It does not give headless SSH sessions on a Mac GitHub access: the login Keychain stays locked to them.
 
 ---
 
@@ -209,7 +196,7 @@ The interactive jump command `zi` relies on both `zoxide` and `fzf`. If either i
 |---|---|---|
 | **CLT Outdated / Missing** | ✅ Detection & Prompt | `xcode-select -p` check in pre-package hook; fallback warnings |
 | **Homebrew Cleanup** | ✅ Automated Hook & Alias | `brew autoremove && brew cleanup -s` in package installer hook |
-| **Keychain Passphrase** | ✅ SSH Config + Shell Startup | `UseKeychain yes` in `~/.ssh/config` + `ssh-add --apple-load-keychain` in `.zprofile` |
+| **Keychain Passphrase** | ✅ SSH Config + Shell Startup + on-demand save | `UseKeychain yes` in `~/.ssh/config` + `ssh-add --apple-load-keychain` in `.zprofile`; `ssh-key-remember` saves it (Keychain, or the GNOME keyring on Omarchy) and the requirement check warns until it is |
 | **`zi` & `zoxide` Availability** | ✅ Package Registry + Fallback | Added to `packages.toml` + fallback binary curl installer |
 | **Intel Source Builds** | ✅ Bottle-only guard | `brew_bundle_bottled_only` in the package script (installed or fully bottled closure only) + `--no-upgrade`; `HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK` no longer exists |
 | **Git 2.54+ for the secret-scan hook** | ✅ Assert + Intel build | `run_after_99_assert_requirements` (fails on Apple silicon, warns for `/usr/bin/git` on Intel) + a pinned git built into `~/.local` on Intel |

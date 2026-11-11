@@ -58,6 +58,17 @@ else
     report fail "gitleaks is not installed, so the pre-commit hook skips scanning. Fix: $fix_gitleaks"
 fi
 
+# SSH key passphrase: warn only, never prompt. Saved once per machine with ssh-key-remember, the agent unlocks the key
+# by itself after every login and reboot. "Cannot tell" (a Mac's Keychain is locked over SSH) is not a finding.
+if [[ -f "$HOME/.ssh/id_rsa" ]] && command -v ssh-key-remember &> /dev/null; then
+    ssh_key_out="$(ssh-key-remember --check 2>&1)"
+    case $? in
+        0) echo "OK:   ~/.ssh/id_rsa passphrase is saved (or it has none)" ;;
+        1) report warn "the ~/.ssh/id_rsa passphrase is not saved, so the SSH agent asks for it after every reboot. Fix: ssh-key-remember (in a terminal on this machine)" ;;
+        *) echo "NOTE: ~/.ssh/id_rsa passphrase not checked: ${ssh_key_out#ssh-key-remember: }" ;;
+    esac
+fi
+
 {{- if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 {{- $packages := index . "packages" | default . }}
 

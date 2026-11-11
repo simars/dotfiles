@@ -294,6 +294,16 @@ Defined in `~/.aliases`, so they work in zsh and bash (Omarchy).
 ### SSH Hosts
 `~/.ssh/config` (chezmoi) names the machines by the same aliases everywhere: `ssh mbp-work.local` (work MacBook), `ssh simar-mbp.local`, `ssh macstudio`, `ssh simar-works`. GitHub goes over port 443 (`ssh.github.com`). Omarchy gets no work-network stanza.
 
+### SSH Key Passphrase (`ssh-key-remember`)
+`ssh-key-remember` (`~/.local/bin`, every host) saves the `~/.ssh/id_rsa` passphrase in the machine's own keyring once, so the SSH agent unlocks the key by itself after every login and reboot instead of asking. On Omarchy it stores the entry GNOME keyring's SSH agent (`gcr-ssh-agent`) looks up, after checking the passphrase against the key; on macOS it runs `ssh-add --apple-use-keychain`, and `UseKeychain yes` plus `ssh-add --apple-load-keychain` in `~/.zprofile` read it back. Nothing goes into this repository. Run it in a terminal on the machine itself: macOS's Keychain is locked to SSH sessions. After every `chezmoi apply` the requirement check runs `--check` and warns while the passphrase is not saved.
+
+| Command | Use |
+| :--- | :--- |
+| `ssh-key-remember` | Save the passphrase once on this machine (says so and exits if it is already saved). |
+| `ssh-key-remember --check` | Report only, never prompt: exit 0 saved (or no passphrase), 1 not saved, 2 cannot tell (a Mac over SSH). |
+| `ssh-key-remember --force` | Save it again, after changing the passphrase. |
+| `ssh-key-remember <key>` | Another key than `~/.ssh/id_rsa`. |
+
 ### Claude Code's Shell (macOS)
 Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh differs from it in ways that break those commands: `"$sha:path"` applies the `:a` or `:s` modifier, `"$r[: ]"` is read as an array subscript, and an unquoted `$pair` is not split on spaces. `~/.zprofile` therefore exports `CLAUDE_CODE_SHELL`: Homebrew's bash 5, or Apple's `/bin/bash` 3.2 where Homebrew has none (Intel Macs). Claude Code then sources `~/.bashrc` instead of `~/.zshrc`. That file is deployed by chezmoi and defines no aliases, because an alias also blocks a function of the same name.
 
