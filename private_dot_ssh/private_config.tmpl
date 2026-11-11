@@ -6,25 +6,32 @@ Host *
     UseKeychain yes
 {{- end }}
 
+# Own machines only: forward the agent, so an SSH session there can use this machine's key (a Mac's Keychain is
+# locked to SSH sessions, and Omarchy sets its agent only for the desktop session). Never under Host *: any server's
+# admin could use the key while the session is open.
 Host macstudio
     HostName macstudio
     User Simar
     IdentityFile ~/.ssh/id_rsa
+    ForwardAgent yes
 
 Host mbp-work.local
     HostName simars-macbook-work.local
     User simars
     IdentityFile ~/.ssh/id_rsa
+    ForwardAgent yes
 
 Host simar-mbp.local
     HostName simar-mbp.local
     User simars
     IdentityFile ~/.ssh/id_rsa
+    ForwardAgent yes
 
 Host simar-works
     HostName simars.ddns.net
     User simars
     IdentityFile ~/.ssh/id_rsa
+    ForwardAgent yes
 
 Host github.com
     HostName ssh.github.com

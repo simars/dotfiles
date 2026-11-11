@@ -182,6 +182,13 @@ for host in $hosts; do
     check "$host ~/.ssh/config has the work MacBook" 1 "$(render "$host" private_dot_ssh/private_config.tmpl | grep -c '^Host mbp-work.local$')"
     check "$host ~/.ssh/config has simar-mbp" 1 "$(render "$host" private_dot_ssh/private_config.tmpl | grep -c '^Host simar-mbp.local$')"
 done
+# Agent forwarding goes to the own machines only, never to every host, GitHub or the work stanza.
+for host in $hosts; do
+    render "$host" private_dot_ssh/private_config.tmpl > "$work/$host.ssh_config"
+    check "$host ~/.ssh/config forwards the agent to the four own machines" 4 "$(grep -c '^    ForwardAgent yes$' "$work/$host.ssh_config")"
+    check "$host ~/.ssh/config never forwards the agent to every host or GitHub" 0 \
+        "$(awk '/^Host /{h=$2} /ForwardAgent yes/ && (h=="*" || h=="github.com" || h ~ /internal/)' "$work/$host.ssh_config" | wc -l | tr -d ' ')"
+done
 check "omarchy ~/.ssh/config has no work stanza" 0 "$(render omarchy private_dot_ssh/private_config.tmpl | grep -c 'internal')"
 
 # The requirement check suggests fixes from the host's own package manager, and leaves Omarchy's mise alone.
