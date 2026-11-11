@@ -292,7 +292,27 @@ Defined in `~/.aliases`, so they work in zsh and bash (Omarchy).
 | `dprune` | `docker system prune -a --volumes -f`: removes every stopped container, unused image, network and volume, without asking | `dprune` |
 
 ### SSH Hosts
-`~/.ssh/config` (chezmoi) names the machines by the same aliases everywhere: `ssh mbp-work.local` (work MacBook), `ssh simar-mbp.local`, `ssh macstudio`, `ssh simar-works`. GitHub goes over port 443 (`ssh.github.com`). Omarchy gets no work-network stanza. Those four own machines get `ForwardAgent yes`, so `git pull`, `chezmoi update` and other GitHub access in an SSH session there use the key of the machine you connect from (a Mac's Keychain is locked to SSH sessions, and Omarchy sets its agent only for the desktop session). Never under `Host *`: while a session is open, an admin of the remote machine could use the key. `ssh simar-works-unlock` (from anywhere, through the router's port 2222 forward) or `ssh simar-works-unlock-lan` (at home) reaches simar-works' disk-unlock screen while it boots: type the disk passphrase and the boot continues. It connects as `root` on port 2222 with its own host key alias and no agent; the machine side is set up outside this repository (`~/guides/omarchy/remote-disk-unlock` on simar-works).
+`~/.ssh/config` (chezmoi) names your own machines the same way everywhere: `<machine>[-unlock].<how>`, where the suffix says how the name is reached. The bare name means `.tailnet`. Every path to one machine shares its `User`, key, agent forwarding and one `HostKeyAlias`, so switching paths never asks to trust the machine again. GitHub goes over port 443 (`ssh.github.com`). Omarchy gets no work-network stanza.
+
+| Suffix | Reached through | Works from |
+| :--- | :--- | :--- |
+| `.tailnet` (or no suffix) | Tailscale short name (MagicDNS) | anywhere Tailscale is up |
+| `.local` | Bonjour/Avahi | home network |
+| `.lan` | the address reserved on the home router (`works` only) | home network |
+| `.ddns` | `simars.ddns.net`, through the router's port forwards (`works` only) | anywhere |
+| `.tplink` | `simars.tplinkdns.com`, the same router through TP-Link's DNS (`works` only) | anywhere |
+
+| Machine | Aliases |
+| :--- | :--- |
+| `works` (Omarchy, `simars-works`) | `works`, `works.tailnet`, `works.local`, `works.lan`, `works.ddns`, `works.tplink` |
+| `works-unlock` (its disk-unlock screen at boot) | `works-unlock` (= `.ddns`), `works-unlock.ddns`, `works-unlock.tplink`, `works-unlock.lan` |
+| `mbp-work` (work MacBook) | `mbp-work`, `mbp-work.tailnet`, `mbp-work.local` |
+| `mbp` (`simar-mbp`) | `mbp`, `mbp.tailnet`, `mbp.local` |
+| `macstudio` | `macstudio`, `macstudio.tailnet`, `macstudio.local` |
+
+Those four own machines get `ForwardAgent yes`, so `git pull`, `chezmoi update` and other GitHub access in an SSH session there use the key of the machine you connect from (a Mac's Keychain is locked to SSH sessions, and Omarchy sets its agent only for the desktop session). Never under `Host *`: while a session is open, an admin of the remote machine could use the key.
+
+`ssh works-unlock` (or `.tplink`, or `.lan` at home) reaches works' disk-unlock screen while it boots: type the disk passphrase and the boot continues. It connects as `root` on port 2222 with its own host key alias (`works-unlock`) and no agent. There is no `.tailnet` or `.local` for it: neither Tailscale nor Avahi runs before the disk is unlocked. The machine side is set up outside this repository (`~/guides/omarchy/remote-disk-unlock` on works).
 
 ### SSH Key Passphrase (`ssh-key-remember`)
 `ssh-key-remember` (`~/.local/bin`, every host) saves the `~/.ssh/id_rsa` passphrase in the machine's own keyring once, so the SSH agent unlocks the key by itself after every login and reboot instead of asking. On Omarchy it stores the entry GNOME keyring's SSH agent (`gcr-ssh-agent`) looks up, after checking the passphrase against the key; on macOS it runs `ssh-add --apple-use-keychain`, and `UseKeychain yes` plus `ssh-add --apple-load-keychain` in `~/.zprofile` read it back. Nothing goes into this repository. Run it in a terminal on the machine itself: macOS's Keychain is locked to SSH sessions. After every `chezmoi apply` the requirement check runs `--check` and warns while the passphrase is not saved.

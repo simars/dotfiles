@@ -177,23 +177,42 @@ check "darwin ~/.gitconfig editor" "editor = code --wait" "$(render darwin dot_g
 check "omarchy ~/.gitconfig sets no editor" 0 "$(render omarchy dot_gitconfig.tmpl | grep -c 'editor =')"
 check "ubuntu ~/.gitconfig editor" "editor = nvim" "$(render ubuntu dot_gitconfig.tmpl | grep -E '^\s*editor' | xargs)"
 
-# ssh: every host knows the Macs it reaches; the placeholder work stanza stays off Omarchy.
+# ssh: every host gets the own machines under <machine>[-unlock].<how> (bare name = .tailnet; works-unlock = .ddns).
 for host in $hosts; do
-    check "$host ~/.ssh/config has the work MacBook" 1 "$(render "$host" private_dot_ssh/private_config.tmpl | grep -c '^Host mbp-work.local$')"
-    check "$host ~/.ssh/config has simar-mbp" 1 "$(render "$host" private_dot_ssh/private_config.tmpl | grep -c '^Host simar-mbp.local$')"
+    render "$host" private_dot_ssh/private_config.tmpl > "$work/$host.ssh_config"
+    # ssh -G here may not know macOS's UseKeychain; resolve from a copy without it.
+    cfg="$work/$host.ssh_config.resolve"
+    grep -v 'UseKeychain' "$work/$host.ssh_config" > "$cfg"
+    # Resolve an alias the way ssh does (first value wins), from the rendered file only.
+    for pair in works=simars-works works.tailnet=simars-works works.local=simars-works.local works.lan=192.168.68.146 \
+        works.ddns=simars.ddns.net works.tplink=simars.tplinkdns.com \
+        works-unlock=simars.ddns.net works-unlock.ddns=simars.ddns.net works-unlock.tplink=simars.tplinkdns.com \
+        works-unlock.lan=192.168.68.146 mbp-work=simars-macbook-work mbp-work.tailnet=simars-macbook-work \
+        mbp-work.local=simars-macbook-work.local mbp=simar-mbp mbp.tailnet=simar-mbp mbp.local=simar-mbp.local \
+        macstudio=macstudio macstudio.tailnet=macstudio macstudio.local=macstudio.local; do
+        alias=${pair%%=*}
+        check "$host ssh $alias reaches ${pair#*=}" "${pair#*=}" "$(ssh -G -F "$cfg" "$alias" 2> /dev/null | awk '$1=="hostname"{print $2}')"
+    done
+    # One host key per machine, whichever path; the unlock screen has its own.
+    for pair in works.lan=works works.tplink=works mbp-work.local=mbp-work mbp=mbp macstudio.local=macstudio \
+        works-unlock.tplink=works-unlock; do
+        check "$host ssh ${pair%%=*} checks host key ${pair#*=}" "${pair#*=}" "$(ssh -G -F "$cfg" "${pair%%=*}" 2> /dev/null | awk '$1=="hostkeyalias"{print $2}')"
+    done
+    check "$host ~/.ssh/config has no unlock path that can't exist at boot" 0 "$(grep -cE '^Host .*works-unlock\.(tailnet|local)' "$cfg")"
+    check "$host ~/.ssh/config keeps none of the old simar- names" 0 "$(grep -cE '^Host .*(simar-works|simar-mbp)' "$cfg")"
 done
 # Agent forwarding goes to the own machines only, never to every host, GitHub or the work stanza.
 for host in $hosts; do
-    render "$host" private_dot_ssh/private_config.tmpl > "$work/$host.ssh_config"
     check "$host ~/.ssh/config forwards the agent to the four own machines" 4 "$(grep -c '^    ForwardAgent yes$' "$work/$host.ssh_config")"
     check "$host ~/.ssh/config never forwards the agent to every host or GitHub" 0 \
         "$(awk '/^Host /{h=$2} /ForwardAgent yes/ && (h=="*" || h=="github.com" || h ~ /internal/)' "$work/$host.ssh_config" | wc -l | tr -d ' ')"
 done
-# simar-works' disk-unlock screen: root on port 2222, its own host key alias, never the agent.
+# works' disk-unlock screen: root on port 2222, its own host key alias, never the agent, on every path.
 for host in $hosts; do
-    unlock="$(awk '/^Host /{h=$0} h=="Host simar-works-unlock simar-works-unlock-lan"' "$work/$host.ssh_config")"
-    check "$host unlock entry connects as root on 2222 with its own host key and no agent" 4 \
-        "$(grep -cE '^    (User root|Port 2222|HostKeyAlias simar-works-unlock|ForwardAgent no)$' <<< "$unlock")"
+    for alias in works-unlock works-unlock.ddns works-unlock.tplink works-unlock.lan; do
+        check "$host $alias connects as root on 2222 with no agent and a tty" "root 2222 no true" \
+            "$(ssh -G -F "$work/$host.ssh_config.resolve" "$alias" 2> /dev/null | awk '$1=="user"{u=$2} $1=="port"{p=$2} $1=="forwardagent"{f=$2} $1=="requesttty"{t=$2} END{print u, p, f, t}')"
+    done
 done
 check "omarchy ~/.ssh/config has no work stanza" 0 "$(render omarchy private_dot_ssh/private_config.tmpl | grep -c 'internal')"
 

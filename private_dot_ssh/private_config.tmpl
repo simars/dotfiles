@@ -6,49 +6,93 @@ Host *
     UseKeychain yes
 {{- end }}
 
-# Own machines only: forward the agent, so an SSH session there can use this machine's key (a Mac's Keychain is
-# locked to SSH sessions, and Omarchy sets its agent only for the desktop session). Never under Host *: any server's
-# admin could use the key while the session is open.
-Host macstudio
-    HostName macstudio
-    User Simar
-    IdentityFile ~/.ssh/id_rsa
-    ForwardAgent yes
-
-Host mbp-work.local
-    HostName simars-macbook-work.local
+# Own machines. Alias convention: <machine>[-unlock].<how>, where the suffix says how the name is reached:
+#   .tailnet  Tailscale short name (MagicDNS); works anywhere Tailscale is up. The bare name means .tailnet.
+#   .local    Bonjour/Avahi on the home network.
+#   .lan      the address reserved on the home router (works only).
+#   .ddns     simars.ddns.net, through the router's port forwards (works only).
+#   .tplink   simars.tplinkdns.com, the same router through TP-Link's DNS (works only).
+# Each machine's first block holds what every path shares, and one HostKeyAlias, so SSH checks the same host key
+# whichever path is used. Forward the agent to own machines only, so an SSH session there can use this machine's
+# key (a Mac's Keychain is locked to SSH sessions, and Omarchy sets its agent only for the desktop session). Never
+# under Host *: any server's admin could use the key while the session is open.
+Host works works.tailnet works.local works.lan works.ddns works.tplink
     User simars
     IdentityFile ~/.ssh/id_rsa
+    HostKeyAlias works
     ForwardAgent yes
 
-Host simar-mbp.local
-    HostName simar-mbp.local
-    User simars
-    IdentityFile ~/.ssh/id_rsa
-    ForwardAgent yes
+Host works works.tailnet
+    HostName simars-works
 
-Host simar-works
+Host works.local
+    HostName simars-works.local
+
+Host works.lan
+    HostName 192.168.68.146
+
+Host works.ddns
     HostName simars.ddns.net
-    User simars
-    IdentityFile ~/.ssh/id_rsa
-    ForwardAgent yes
 
-# simar-works' disk-unlock screen while it boots (dropbear in its initramfs, port 2222; guide:
+Host works.tplink
+    HostName simars.tplinkdns.com
+
+# works' disk-unlock screen while it boots (dropbear in its initramfs, port 2222; guide:
 # ~/guides/omarchy/remote-disk-unlock there). root's shell there is only the passphrase prompt. Its own host key
-# alias, so it never clashes with simar-works' sshd, and no agent forwarding. -lan skips the router.
-Host simar-works-unlock simar-works-unlock-lan
+# alias, so it never clashes with works' sshd, and no agent forwarding. No .tailnet or .local: neither Tailscale nor
+# Avahi runs before the disk is unlocked. The bare name means .ddns.
+Host works-unlock works-unlock.ddns works-unlock.tplink works-unlock.lan
     User root
     Port 2222
     IdentityFile ~/.ssh/id_rsa
-    HostKeyAlias simar-works-unlock
+    HostKeyAlias works-unlock
     ForwardAgent no
     RequestTTY yes
 
-Host simar-works-unlock
+Host works-unlock works-unlock.ddns
     HostName simars.ddns.net
 
-Host simar-works-unlock-lan
+Host works-unlock.tplink
+    HostName simars.tplinkdns.com
+
+Host works-unlock.lan
     HostName 192.168.68.146
+
+Host mbp-work mbp-work.tailnet mbp-work.local
+    User simars
+    IdentityFile ~/.ssh/id_rsa
+    HostKeyAlias mbp-work
+    ForwardAgent yes
+
+Host mbp-work mbp-work.tailnet
+    HostName simars-macbook-work
+
+Host mbp-work.local
+    HostName simars-macbook-work.local
+
+Host mbp mbp.tailnet mbp.local
+    User simars
+    IdentityFile ~/.ssh/id_rsa
+    HostKeyAlias mbp
+    ForwardAgent yes
+
+Host mbp mbp.tailnet
+    HostName simar-mbp
+
+Host mbp.local
+    HostName simar-mbp.local
+
+Host macstudio macstudio.tailnet macstudio.local
+    User Simar
+    IdentityFile ~/.ssh/id_rsa
+    HostKeyAlias macstudio
+    ForwardAgent yes
+
+Host macstudio macstudio.tailnet
+    HostName macstudio
+
+Host macstudio.local
+    HostName macstudio.local
 
 Host github.com
     HostName ssh.github.com
