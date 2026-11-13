@@ -177,6 +177,26 @@ check "darwin ~/.gitconfig editor" "editor = code --wait" "$(render darwin dot_g
 check "omarchy ~/.gitconfig sets no editor" 0 "$(render omarchy dot_gitconfig.tmpl | grep -c 'editor =')"
 check "ubuntu ~/.gitconfig editor" "editor = nvim" "$(render ubuntu dot_gitconfig.tmpl | grep -E '^\s*editor' | xargs)"
 
+# zsh on Omarchy: interactive shells load Omarchy's defaults first (the omarchy-zsh package's options, then Omarchy's
+# own envs, aliases and helpers), so everything after them, ~/.aliases included, still wins. Panes and nested shells
+# follow zsh; Claude Code keeps bash. No other host gets any of it.
+render omarchy dot_zshrc.tmpl > "$work/omarchy.zshrc"
+check "omarchy ~/.zshrc loads omarchy-zsh options in interactive shells only" 1 \
+    "$(grep -c '^if \[\[ -o interactive && -r /usr/share/omarchy-zsh/shell/zoptions ' "$work/omarchy.zshrc")"
+check "omarchy ~/.zshrc loads Omarchy's aliases" 1 "$(grep -c 'source "$OMARCHY_PATH/default/bash/aliases"' "$work/omarchy.zshrc")"
+check "omarchy ~/.zshrc runs ssh and the drive helpers in bash" 3 "$(grep -cE '^ +(ssh|iso2sd|format-drive)\(\) \{ _omarchy_bash ' "$work/omarchy.zshrc")"
+check "omarchy ~/.zshrc sets SHELL to zsh" 1 "$(grep -c '^ *export SHELL=/usr/bin/zsh$' "$work/omarchy.zshrc")"
+check "omarchy ~/.zshrc keeps Claude Code on bash" 1 "$(grep -c '^ *export CLAUDE_CODE_SHELL=/usr/bin/bash$' "$work/omarchy.zshrc")"
+omarchy_block=$(grep -n 'omarchy-zsh/shell/zoptions ' "$work/omarchy.zshrc" | head -1 | cut -d: -f1)
+aliases_line=$(grep -n 'source "$HOME/.aliases"' "$work/omarchy.zshrc" | head -1 | cut -d: -f1)
+check "omarchy ~/.zshrc loads Omarchy's defaults before ~/.aliases" yes "$([[ ${omarchy_block:-0} -gt 0 && ${omarchy_block:-0} -lt ${aliases_line:-0} ]] && echo yes || echo no)"
+if command -v zsh > /dev/null 2>&1; then
+    check "omarchy ~/.zshrc is valid zsh" "" "$(zsh -n "$work/omarchy.zshrc" 2>&1)"
+fi
+for host in darwin intel arch ubuntu debian; do
+    check "$host ~/.zshrc has no Omarchy zsh block" 0 "$(render "$host" dot_zshrc.tmpl | grep -c 'omarchy')"
+done
+
 # ssh: every host gets the own machines under <machine>[-unlock].<how> (bare name = .tailnet; works-unlock = .ddns).
 for host in $hosts; do
     render "$host" private_dot_ssh/private_config.tmpl > "$work/$host.ssh_config"

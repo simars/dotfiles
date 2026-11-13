@@ -13,6 +13,38 @@ elif [[ -x "/usr/local/bin/brew" ]]; then
     eval "$(/usr/local/bin/brew shellenv)"
 fi
 {{ end -}}
+{{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" -}}
+
+# Omarchy: ~/.bashrc hands an interactive terminal over to zsh (Omarchy's omarchy-zsh design; the login shell stays
+# bash). Interactive shells load what Omarchy's ~/.bashrc loads, in zsh form: the omarchy-zsh package's zsh options,
+# then Omarchy's own current envs, aliases and helpers (omarchy-zsh ships older copies of the same shared files).
+# Everything after this block still runs and wins: history sizes, tool init, ~/.aliases, ~/.zshrc.local.
+if [[ -o interactive && -r /usr/share/omarchy-zsh/shell/zoptions && -r /usr/share/omarchy/default/bash/env-bootstrap ]]; then
+    source /usr/share/omarchy/default/bash/env-bootstrap
+    source /usr/share/omarchy-zsh/shell/zoptions
+    source "$OMARCHY_PATH/default/bash/envs"
+    source "$OMARCHY_PATH/default/bash/aliases"
+    for _omarchy_fn in "$OMARCHY_PATH"/default/bash/fns/*; do
+        case "${_omarchy_fn:t}" in
+            ssh-reconnect | drives) ;;
+            *) source "$_omarchy_fn" ;;
+        esac
+    done
+    unset _omarchy_fn
+    # These two need bash itself (zsh misreads ${letters:i:1} in ssh's reconnect check, and `read -p` in
+    # format-drive), so they run there.
+    _omarchy_bash() { bash -c 'source "$1"; shift; "$@"' omarchy "$OMARCHY_PATH/default/bash/fns/$1" "${@:2}"; }
+    ssh() { _omarchy_bash ssh-reconnect ssh "$@"; }
+    iso2sd() { _omarchy_bash drives iso2sd "$@"; }
+    format-drive() { _omarchy_bash drives format-drive "$@"; }
+    if command -v try &> /dev/null; then
+        try() { unfunction try; eval "$(SHELL=/usr/bin/zsh command try init ~/Work/tries)"; try "$@"; }
+    fi
+    # Programs started from here (tmux, herdr, nvim's terminal) open zsh; Claude Code keeps bash, as on the Macs.
+    export SHELL=/usr/bin/zsh
+    export CLAUDE_CODE_SHELL=/usr/bin/bash
+fi
+{{ end -}}
 
 # Default editor: the first of nvim, vim and vi on PATH; a value already in the environment wins.
 # This must run before ~/.aliases is sourced, because `alias e="$EDITOR"` expands when it is defined.
