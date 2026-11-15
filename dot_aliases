@@ -15,6 +15,11 @@ alias b="bundle"
 alias migrate="bin/rails db:migrate db:rollback && bin/rails db:migrate db:test:prepare"
 alias s="rspec"
 
+# Parent directories (Omarchy's names; it defines them first, so keep its own where they exist)
+alias .. > /dev/null 2>&1 || alias ..='cd ..'
+alias ... > /dev/null 2>&1 || alias ...='cd ../..'
+alias .... > /dev/null 2>&1 || alias ....='cd ../../..'
+
 # Path Inspection
 alias path='echo $PATH | tr -s ":" "\n"'
 
@@ -26,8 +31,8 @@ alias path='echo $PATH | tr -s ":" "\n"'
 # eza: Modern directory listing with git status & icons
 if command -v eza &> /dev/null; then
     alias ll="eza -la --icons --git"
-    # Omarchy defines its own lt (with --long --git); keep that one where it exists.
-    alias lt > /dev/null 2>&1 || alias lt="eza --tree --level=2 --icons"
+    # The same as Omarchy's lt; Omarchy defines it first, so keep its own where it exists.
+    alias lt > /dev/null 2>&1 || alias lt="eza --tree --level=2 --long --icons --git"
     alias ltree="eza --tree --icons"
 fi
 

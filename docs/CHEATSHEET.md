@@ -12,7 +12,8 @@ The workstation environment provides modern Rust and Go command-line utilities c
 | :--- | :--- | :--- | :--- |
 | **Dynamic Preview** | `fp` | `fzf` + `bat` | Fuzzy find files with real-time syntax-highlighted preview:<br>`fp` |
 | **Directory List** | `ll` | `eza` (or `ls`) | Detailed list with file icons and git status:<br>`ll` (falls back to `ls -lah` if `eza` absent) |
-| **Directory Tree (Depth 2)** | `lt` | `eza --tree` | Tree view limited to 2 directory levels:<br>`lt` (on Omarchy, Omarchy's own `lt` is kept: it adds `--long --git`) |
+| **Directory Tree (Depth 2)** | `lt` | `eza --tree` | Tree view limited to 2 directory levels, long listing with git status (`--long --git`), the same as Omarchy's:<br>`lt` (on Omarchy, Omarchy's own `lt` is kept) |
+| **Parent Directories** | `..` `...` `....` | `cd ..` | Up one, two or three levels (Omarchy's names; its own are kept there) |
 | **Directory Tree (Full)** | `ltree` | `eza --tree` | Recursive directory tree visualization with icons:<br>`ltree [path]` |
 | **Syntax Pager** | `preview <file>` | `bat` | View file with line numbers, syntax highlighting, and Git gutter:<br>`preview config.json` |
 | **JSON Explorer (Interactive)** | `fx <file.json>` | `fx` | Interactive TUI for navigating, folding, and querying JSON:<br>`fx package.json` or `curl ... \| fx` |
