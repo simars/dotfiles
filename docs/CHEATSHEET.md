@@ -11,6 +11,7 @@ The workstation environment provides modern Rust and Go command-line utilities c
 | Category | Command / Alias | Target Tool | Purpose & Usage Example |
 | :--- | :--- | :--- | :--- |
 | **Dynamic Preview** | `fp` | `fzf` + `bat` | Fuzzy find files with real-time syntax-highlighted preview:<br>`fp` |
+| **Plain Listing** | `ls` | `ls --color=auto` | The system's own `ls` on every host, in colour on a terminal. Only colour is added, so its flags (`ls -ltr`, `ls -S`) and piped output stay standard. On Omarchy this replaces Omarchy's eza `ls` (Omarchy's `lsa` follows); on macOS `userland gnu` makes it `gls --color=auto`. `\ls` skips the alias. |
 | **Directory List** | `ll` | `eza` (or `ls`) | Detailed list with file icons and git status:<br>`ll` (falls back to `ls -lah` if `eza` absent) |
 | **Directory Tree (Depth 2)** | `lt` | `eza --tree` | Tree view limited to 2 directory levels, long listing with git status (`--long --git`), the same as Omarchy's:<br>`lt` (on Omarchy, Omarchy's own `lt` is kept) |
 | **Parent Directories** | `..` `...` `....` | `cd ..` | Up one, two or three levels (Omarchy's names; its own are kept there) |

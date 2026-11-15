@@ -222,6 +222,8 @@ check "omarchy ~/.zshrc sets vi keys after Omarchy's emacs default" yes \
     "$([[ ${omarchy_block:-0} -gt 0 && ${omarchy_block:-0} -lt $(grep -n '^ *bindkey -v$' "$work/omarchy.zshrc" | cut -d: -f1) ]] && echo yes || echo no)"
 check "darwin packages include the zsh plugins" 2 "$(grep -cE '^brew "zsh-(autosuggestions|syntax-highlighting)"$' <(render darwin run_onchange_before_00_install_packages.sh.tmpl))"
 check "omarchy packages include zsh-autosuggestions" 1 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -c '"zsh-autosuggestions"')"
+# ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
+check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do
     check "$host requirement check is valid bash" "" "$(render "$host" run_after_99_assert_requirements.sh.tmpl | bash -n 2>&1)"
 done

@@ -3,6 +3,15 @@
 # ==============================================================================
 
 # Core Unix helpers
+# ls is the system's own ls on every host, in colour when the output is a terminal (only colour: flags, sort order and
+# piped output stay standard, so `ls -ltr` and pasted commands work). On Omarchy this replaces its eza `ls` on purpose;
+# eza stays under ll, lt and ltree. On macOS, `userland gnu` later turns this into `gls --color=auto`. Checked first,
+# because Apple's ls before macOS 13 has no --color.
+if command ls --color=auto -d / > /dev/null 2>&1; then
+    alias ls='ls --color=auto'
+else
+    unalias ls 2> /dev/null
+fi
 alias ll="ls -lah"
 alias ln="ln -v"
 alias mkdir="mkdir -p"
