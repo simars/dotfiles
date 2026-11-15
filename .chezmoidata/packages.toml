@@ -23,6 +23,7 @@ formulae = [
     "gnu-sed",
     "gnu-tar",
     "grep",
+    "gum",
     "herdr",
     "httpie",
     "iproute2mac",

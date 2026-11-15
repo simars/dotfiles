@@ -22,6 +22,14 @@ fi
 if [[ -o interactive && -r /usr/share/omarchy-zsh/shell/zoptions && -r /usr/share/omarchy/default/bash/env-bootstrap ]]; then
     source /usr/share/omarchy/default/bash/env-bootstrap
     source /usr/share/omarchy-zsh/shell/zoptions
+    # Variable completion ($VAR<Tab>, export <Tab>) as on every other host: zoptions turns it off. Ctrl+Alt+V still works.
+    unfunction _parameters 2> /dev/null && autoload -Uz _parameters
+    # Omarchy's Ctrl+Alt+F file search, kept under its own name: fzf's setup (below) redefines fzf-file-widget for Ctrl-T.
+    if (( $+functions[fzf-file-widget] )); then
+        functions[fzf-find-files-widget]=$functions[fzf-file-widget]
+        zle -N fzf-find-files-widget
+        bindkey -M emacs '^[^F' fzf-find-files-widget
+    fi
     source "$OMARCHY_PATH/default/bash/envs"
     source "$OMARCHY_PATH/default/bash/aliases"
     for _omarchy_fn in "$OMARCHY_PATH"/default/bash/fns/*; do
@@ -43,6 +51,17 @@ if [[ -o interactive && -r /usr/share/omarchy-zsh/shell/zoptions && -r /usr/shar
     # Programs started from here (tmux, herdr, nvim's terminal) open zsh; Claude Code keeps bash, as on the Macs.
     export SHELL=/usr/bin/zsh
     export CLAUDE_CODE_SHELL=/usr/bin/bash
+fi
+{{ else -}}
+
+# Without Omarchy: Omarchy's portable helpers and keys, generated from its own files by chezmoi (cx, t, h, ff, sff, ga,
+# gd, fip, tdl, hdl, Ctrl+Alt+F/L/V and the rest; the file lists what is left out), and man pages through bat.
+if [[ -o interactive && -r "$HOME/.config/zsh/shared-helpers.zsh" ]]; then
+    source "$HOME/.config/zsh/shared-helpers.zsh"
+fi
+if [[ -o interactive ]] && (( $+commands[bat] )); then
+    export MANROFFOPT="-c"
+    export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 fi
 {{ end -}}
 
@@ -134,9 +153,9 @@ if [[ -o interactive ]]; then
     done
     bindkey -M viins '^[[Z' reverse-menu-complete
     bindkey -M menuselect '^[[Z' reverse-menu-complete
-    # Omarchy's fzf keys (Ctrl+Alt+F files, Ctrl+Alt+L git log, Ctrl+Alt+V variables), where its settings define them.
+    # Omarchy's fzf keys (Ctrl+Alt+F files, Ctrl+Alt+L git log, Ctrl+Alt+V variables), where they are defined.
     if (( $+widgets[fzf-git-log-widget] )); then
-        bindkey -M viins '^[^F' fzf-file-widget
+        bindkey -M viins '^[^F' fzf-find-files-widget
         bindkey -M viins '^[^L' fzf-git-log-widget
         bindkey -M viins '^[^V' fzf-variables-widget
     fi

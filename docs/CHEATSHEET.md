@@ -117,6 +117,29 @@ On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, 
 
 * **Plugins:** `zsh-autosuggestions` and `zsh-syntax-highlighting` come from the system package: `packages.toml` (Homebrew on Apple silicon; `zsh-autosuggestions` via `omarchy pkg add` on Omarchy, whose zsh already brings syntax highlighting). An old oh-my-zsh clone of autosuggestions still works as a fallback. Without a package, zsh runs without it, and the requirement check after `chezmoi apply` prints a `WARN` with the fix.
 * **Omarchy:** its zsh options pick emacs keys; `~/.zshrc` switches to vi afterwards and binds the arrows, Shift-Tab and Omarchy's `Ctrl + Alt + F/L/V` fzf keys again in vi mode.
+* **`$VAR<Tab>`** completes variable names on every host (Omarchy's zsh turns this off; `~/.zshrc` turns it back on). `Ctrl + Alt + V` also picks a variable with fzf.
+
+### Omarchy's Helpers on Every Host
+On the Macs (and any host without Omarchy) `~/.zshrc` loads `~/.config/zsh/shared-helpers.zsh`, which chezmoi generates from snapshots of Omarchy's own files (`docs/omarchy-stock/shell/`), so the same helpers and keys work as on Omarchy. Interactive zsh only.
+
+| Command / key | What it does |
+| :--- | :--- |
+| `Ctrl + Alt + F` | fzf over files (with `fd`); a token ending in `/` searches that folder. Pastes the pick. |
+| `Ctrl + Alt + L` | fzf over `git log`; pastes the chosen commit hashes. |
+| `Ctrl + Alt + V` | fzf over shell variables; pastes the name. |
+| `cx` / `c` / `cy` | Claude Code (auto permission mode) / opencode / codex |
+| `t` / `h` | `tmux attach` or a new `Work` session / `herdr` |
+| `tdl c [cx]`, `tdlm c`, `tds`, `tsl 4 <cmd>` | tmux layouts: editor, AI and terminal panes; one such window per subfolder; editor, diff watch, terminal and opencode; the same command in N panes |
+| `hdl`, `hdlm`, `hds`, `hsl` | the same layouts in herdr |
+| `ic`, `ix`, `icx` | `tdl c`, `tdl cx`, `tdl c cx` |
+| `ff`, `eff`, `sff host:/path/` | fzf with bat preview; edit the pick; scp the pick (newest files first) |
+| `n [path]` | nvim (`.` when no path) |
+| `ga <branch>` / `gd` | new git worktree beside the repo and `cd` into it / remove the current worktree and branch (asks via `gum`) |
+| `fip host port...`, `dip port...`, `lip` | forward local ports over SSH / stop them / list them (on macOS `lip` shows only PIDs) |
+| `gcm`, `gcam`, `gcad` | `git commit -m`, `-a -m`, `-a --amend` |
+| `d`, `mup`, `decompress f.tar.gz` | docker; `mise up` without the release-age wait; untar |
+
+Not taken over: Linux-only helpers (`a`, `rsw`/`lsw`/`dsw`, `iso2sd`, `format-drive`, `open`), and the open choices in `docs/ZSH_UNIFICATION.md` (`cd` as zoxide, `r` as rails, `compress`, reconnecting `ssh`, the prompt). The Mac terminals must send Option as Meta (iTerm2: Profiles > Keys > Left Option key: Esc+) for the `Ctrl + Alt` keys, as for fzf's `Alt + C`. Man pages go through `bat` on every host. `gum` is in `packages.toml` for `gd`.
 
 ### zoxide (`z`) Directory Jumping
 `zoxide` tracks the directories you visit most frequently and jumps to them instantly using fuzzy matching:

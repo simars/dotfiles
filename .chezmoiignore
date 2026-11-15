@@ -46,4 +46,6 @@ CLAUDE.md
 90_sync_runtimes.sh
 # mise-audit is not wanted on Omarchy.
 .local/bin/mise-audit
+# Omarchy's helpers for hosts without Omarchy: Omarchy's ~/.zshrc block loads its live files instead.
+.config/zsh/shared-helpers.zsh
 {{ end }}

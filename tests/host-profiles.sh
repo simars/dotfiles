@@ -168,7 +168,7 @@ drift=run_after_95_omarchy_stock_drift.sh.tmpl
 for host in $hosts; do
     expected=0
     [[ "$host" == omarchy ]] && expected=1
-    check "$host stock-drift report present" "$expected" "$(render "$host" "$drift" | grep -c '^check_stock tmux')"
+    check "$host stock-drift report present" "$expected" "$(render "$host" "$drift" | grep -c '^check_stock "tmux config"')"
 done
 check "omarchy stock-drift report is valid bash" "" "$(render omarchy "$drift" | bash -n 2>&1)"
 
@@ -222,6 +222,25 @@ check "omarchy ~/.zshrc sets vi keys after Omarchy's emacs default" yes \
     "$([[ ${omarchy_block:-0} -gt 0 && ${omarchy_block:-0} -lt $(grep -n '^ *bindkey -v$' "$work/omarchy.zshrc" | cut -d: -f1) ]] && echo yes || echo no)"
 check "darwin packages include the zsh plugins" 2 "$(grep -cE '^brew "zsh-(autosuggestions|syntax-highlighting)"$' <(render darwin run_onchange_before_00_install_packages.sh.tmpl))"
 check "omarchy packages include zsh-autosuggestions" 1 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -c '"zsh-autosuggestions"')"
+# Omarchy's helpers on hosts without Omarchy: generated from the snapshots, deployed and sourced everywhere but Omarchy,
+# with what is not taken over removed, and Omarchy's Ctrl+Alt+F widget renamed so fzf's Ctrl-T one cannot replace it.
+check "omarchy does not get shared-helpers.zsh" no "$(manages omarchy .config/zsh/shared-helpers.zsh)"
+for host in darwin intel arch ubuntu; do
+    check "$host gets shared-helpers.zsh" yes "$(manages "$host" .config/zsh/shared-helpers.zsh)"
+    check "$host ~/.zshrc sources shared-helpers.zsh" 1 "$(grep -c 'source "$HOME/.config/zsh/shared-helpers.zsh"' "$work/$host.zshrc")"
+done
+render darwin dot_config/zsh/shared-helpers.zsh.tmpl > "$work/helpers.zsh"
+check "shared helpers define tdl, hdl, fip, ga and sff" 5 "$(grep -cE '^(tdl|hdl|fip|ga|sff)\(\) \{' "$work/helpers.zsh")"
+check "shared helpers drop open, zd, compress, a, cd and r" 2 "$(grep -cE '^(unalias a cd r|unfunction zd open compress) 2> /dev/null$' "$work/helpers.zsh")"
+check "shared helpers rename the Ctrl+Alt+F widget" "0 1" "$(grep -c 'fzf-file-widget()' "$work/helpers.zsh") $(grep -c "^  bindkey '\^\[\^F' fzf-find-files-widget" "$work/helpers.zsh")"
+check "shared helpers' sff prefers GNU find" 1 "$(grep -cF 'file=$(${commands[gfind]:-find} . -type f' "$work/helpers.zsh")"
+if command -v zsh > /dev/null 2>&1; then
+    check "shared helpers are valid zsh" "" "$(zsh -n "$work/helpers.zsh" 2>&1)"
+fi
+check "omarchy ~/.zshrc turns variable completion back on" 1 "$(grep -c 'unfunction _parameters 2> /dev/null && autoload -Uz _parameters' "$work/omarchy.zshrc")"
+check "omarchy ~/.zshrc keeps Omarchy's Ctrl+Alt+F widget" 1 "$(grep -c 'functions\[fzf-find-files-widget\]=\$functions\[fzf-file-widget\]' "$work/omarchy.zshrc")"
+check "omarchy stock-drift report covers the shell snapshots" 1 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c '^check_stock "zsh options (fzf keys)"')"
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do

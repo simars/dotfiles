@@ -1,17 +1,18 @@
 {{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" -}}
 #!/usr/bin/env bash
 # Omarchy only. chezmoi owns ~/.config/tmux/tmux.conf and ~/.config/herdr/config.toml here, merged from Omarchy's
-# stock files. When an Omarchy update changes a stock file, say so and show the change, so it can be merged into the
-# shared config (docs/omarchy-stock/README.md in the chezmoi source). Informational: never fails the apply.
+# stock files, and gives hosts without Omarchy copies of Omarchy's shell helpers (~/.config/zsh/shared-helpers.zsh).
+# When an Omarchy update changes one of those stock files, say so and show the change, so it can be merged or the
+# snapshot refreshed (docs/omarchy-stock/README.md in the chezmoi source). Informational: never fails the apply.
 set -u
 
 check_stock() { # check_stock NAME STOCK_FILE SNAPSHOT_FILE
     if [[ ! -f "$2" ]]; then
-        echo "NOTE: Omarchy's stock $1 config ($2) is gone; the shared config may need review."
+        echo "NOTE: Omarchy's stock $1 ($2) is gone; what was taken from it may need review."
     elif cmp -s "$3" "$2"; then
-        echo "OK:   Omarchy's stock $1 config is unchanged since the shared config was merged"
+        echo "OK:   Omarchy's stock $1 is unchanged since it was last taken over"
     else
-        echo "NOTE: Omarchy's stock $1 config changed since the shared config was merged. Merge what is wanted, then update docs/omarchy-stock/:"
+        echo "NOTE: Omarchy's stock $1 changed since it was last taken over. Merge what is wanted, then update docs/omarchy-stock/:"
         diff -u --label "snapshot" --label "$2" "$3" "$2" | sed 's/^/      /'
     fi
 }
@@ -26,7 +27,21 @@ cat > "$work/herdr.toml" <<'OMARCHY_STOCK_HERDR'
 {{ include "docs/omarchy-stock/herdr.toml" | trimSuffix "\n" }}
 OMARCHY_STOCK_HERDR
 
-check_stock tmux /usr/share/omarchy/config/tmux/tmux.conf "$work/tmux.conf"
-check_stock herdr /usr/share/omarchy/config/herdr/config.toml "$work/herdr.toml"
+check_stock "tmux config" /usr/share/omarchy/config/tmux/tmux.conf "$work/tmux.conf"
+check_stock "herdr config" /usr/share/omarchy/config/herdr/config.toml "$work/herdr.toml"
+
+# Omarchy's shell helpers, copied for hosts without Omarchy (dot_config/zsh/shared-helpers.zsh.tmpl).
+mkdir -p "$work/shell"
+{{- range list "aliases" "compression" "herdr" "ssh-port-forwarding" "tmux" "worktrees" "zoptions" }}
+cat > "$work/shell/{{ . }}" <<'OMARCHY_STOCK_SHELL'
+{{ include (printf "docs/omarchy-stock/shell/%s" .) | trimSuffix "\n" }}
+OMARCHY_STOCK_SHELL
+{{- end }}
+for name in aliases compression herdr ssh-port-forwarding tmux worktrees; do
+    stock="/usr/share/omarchy/default/bash/fns/$name"
+    [[ "$name" == aliases ]] && stock="/usr/share/omarchy/default/bash/aliases"
+    check_stock "shell $name" "$stock" "$work/shell/$name"
+done
+check_stock "zsh options (fzf keys)" /usr/share/omarchy-zsh/shell/zoptions "$work/shell/zoptions"
 exit 0
 {{ end -}}
