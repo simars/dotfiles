@@ -99,10 +99,66 @@ unsetopt NOMATCH
 # 5. Zsh Completions
 autoload -Uz compinit && compinit -C
 
-# 6. Shell Integrations (fzf, zoxide, autosuggestions)
-if [ -f "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
-    source "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=60'
+# 5a. Line Editor: the same on every host. These are the settings of Omarchy's own zsh, with vi keys instead of its emacs
+# ones; on Omarchy, where its zsh options already set them above, repeating them changes nothing.
+if [[ -o interactive ]]; then
+    setopt HIST_IGNORE_SPACE HIST_REDUCE_BLANKS HIST_VERIFY # a command typed with a leading space stays out of history
+    setopt COMPLETE_IN_WORD ALWAYS_TO_END AUTO_LIST LIST_AMBIGUOUS AUTO_MENU
+    unsetopt MENU_COMPLETE BASH_AUTO_LIST BEEP
+    setopt AUTO_CD CHASE_LINKS EXTENDED_GLOB INTERACTIVE_COMMENTS COMBINING_CHARS
+    setopt NO_HASH_CMDS NO_HASH_DIRS # new commands (mise shims) are found without `rehash`
+
+    # Tab: a highlighted menu, case-insensitive, matching inside words, coloured like ls.
+    zmodload zsh/complist
+    zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|=* l:|=*'
+    zstyle ':completion:*' menu select
+    if [[ -z "${LS_COLORS:-}" ]]; then
+        if (( $+commands[dircolors] )); then
+            eval "$(dircolors -b)"
+        elif (( $+commands[gdircolors] )); then
+            eval "$(gdircolors -b)"
+        fi
+    fi
+    zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+    zstyle ':completion:*' list-prompt ''
+    zstyle ':completion:*' select-prompt ''
+    zstyle ':completion:*' match-hidden-files off
+
+    # vi keys: Esc for normal mode. Set explicitly, because zsh otherwise picks vi or emacs from $EDITOR. This switches
+    # the main keymap to vi insert, so what was bound in the emacs keymap before (Omarchy's keys) is bound again here,
+    # in insert and normal mode: Up/Down search history for what is already typed, Shift-Tab steps back in the menu.
+    bindkey -v
+    for _keymap in viins vicmd; do
+        for _key in '^[[A' '^[OA'; do bindkey -M "$_keymap" "$_key" history-search-backward; done
+        for _key in '^[[B' '^[OB'; do bindkey -M "$_keymap" "$_key" history-search-forward; done
+    done
+    bindkey -M viins '^[[Z' reverse-menu-complete
+    bindkey -M menuselect '^[[Z' reverse-menu-complete
+    # Omarchy's fzf keys (Ctrl+Alt+F files, Ctrl+Alt+L git log, Ctrl+Alt+V variables), where its settings define them.
+    if (( $+widgets[fzf-git-log-widget] )); then
+        bindkey -M viins '^[^F' fzf-file-widget
+        bindkey -M viins '^[^L' fzf-git-log-widget
+        bindkey -M viins '^[^V' fzf-variables-widget
+    fi
+    unset _keymap _key
+fi
+
+# 6. Shell Integrations (autosuggestions, fzf, zoxide)
+# History suggestions as you type (zsh-autosuggestions; → accepts): the system package (Homebrew, Arch, Debian and
+# Ubuntu), else an old oh-my-zsh clone. The requirement check after `chezmoi apply` warns when none is installed.
+if [[ -o interactive ]]; then
+    for _plugin in \
+        "${HOMEBREW_PREFIX:-/opt/homebrew}/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+        /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh \
+        /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+        "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"; do
+        if [[ -r "$_plugin" ]]; then
+            source "$_plugin"
+            ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=60'
+            break
+        fi
+    done
+    unset _plugin
 fi
 
 if command -v fzf &> /dev/null; then
@@ -207,6 +263,21 @@ if [[ -o interactive ]]; then
     userland "${MACOS_USERLAND:-gnu}"
 fi
 {{- end }}
+
+# 9a. Syntax highlighting as you type (zsh-syntax-highlighting). Last, after ~/.zshrc.local, so it sees every widget
+# defined before it. Skipped where it is already loaded (Omarchy's zsh options load it).
+if [[ -o interactive && -z "${ZSH_HIGHLIGHT_VERSION:-}" ]]; then
+    for _plugin in \
+        "${HOMEBREW_PREFIX:-/opt/homebrew}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" \
+        /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+        /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh; do
+        if [[ -r "$_plugin" ]]; then
+            source "$_plugin"
+            break
+        fi
+    done
+    unset _plugin
+fi
 
 # 10. Aliases are for interactive shells. Claude Code sources this file in a non-interactive shell and replays every
 # alias into each command it runs, where an alias also blocks a function of the same name (`g() { ...; }` fails to

@@ -197,6 +197,39 @@ for host in darwin intel arch ubuntu debian; do
     check "$host ~/.zshrc has no Omarchy zsh block" 0 "$(render "$host" dot_zshrc.tmpl | grep -c 'omarchy')"
 done
 
+# zsh feels the same on every host: vi keys set explicitly (after Omarchy's emacs default), Up/Down search history by
+# prefix in vi mode, history suggestions from the system package, and syntax highlighting last unless already loaded.
+for host in $hosts; do
+    render "$host" dot_zshrc.tmpl > "$work/$host.zshrc"
+    check "$host ~/.zshrc sets vi keys" 1 "$(grep -c '^ *bindkey -v$' "$work/$host.zshrc")"
+    check "$host ~/.zshrc searches history by prefix in vi mode" 1 \
+        "$(grep -c 'bindkey -M "$_keymap" "$_key" history-search-backward' "$work/$host.zshrc")"
+    check "$host ~/.zshrc finds packaged zsh-autosuggestions" 1 \
+        "$(grep -c '^ */usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh \\$' "$work/$host.zshrc")"
+    check "$host ~/.zshrc loads syntax highlighting only once" 1 \
+        "$(grep -c 'ZSH_HIGHLIGHT_VERSION:-}" ]]; then$' "$work/$host.zshrc")"
+    keys=$(grep -n '^ *bindkey -v$' "$work/$host.zshrc" | head -1 | cut -d: -f1)
+    fzf=$(grep -n 'fzf --zsh' "$work/$host.zshrc" | head -1 | cut -d: -f1)
+    highlight=$(grep -n 'ZSH_HIGHLIGHT_VERSION:-}' "$work/$host.zshrc" | head -1 | cut -d: -f1)
+    local_rc=$(grep -n 'source "$HOME/.zshrc.local"' "$work/$host.zshrc" | head -1 | cut -d: -f1)
+    check "$host ~/.zshrc sets vi keys before fzf binds its keys" yes "$([[ ${keys:-0} -gt 0 && ${keys:-0} -lt ${fzf:-0} ]] && echo yes || echo no)"
+    check "$host ~/.zshrc loads syntax highlighting after ~/.zshrc.local" yes "$([[ ${highlight:-0} -gt ${local_rc:-0} && ${local_rc:-0} -gt 0 ]] && echo yes || echo no)"
+    if command -v zsh > /dev/null 2>&1; then
+        check "$host ~/.zshrc is valid zsh" "" "$(zsh -n "$work/$host.zshrc" 2>&1)"
+    fi
+done
+check "omarchy ~/.zshrc sets vi keys after Omarchy's emacs default" yes \
+    "$([[ ${omarchy_block:-0} -gt 0 && ${omarchy_block:-0} -lt $(grep -n '^ *bindkey -v$' "$work/omarchy.zshrc" | cut -d: -f1) ]] && echo yes || echo no)"
+check "darwin packages include the zsh plugins" 2 "$(grep -cE '^brew "zsh-(autosuggestions|syntax-highlighting)"$' <(render darwin run_onchange_before_00_install_packages.sh.tmpl))"
+check "omarchy packages include zsh-autosuggestions" 1 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -c '"zsh-autosuggestions"')"
+for host in $hosts; do
+    check "$host requirement check is valid bash" "" "$(render "$host" run_after_99_assert_requirements.sh.tmpl | bash -n 2>&1)"
+done
+check "omarchy requirement check leaves the zsh plugins to the package check" 0 \
+    "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'for zsh_plugin in')"
+check "darwin requirement check warns about missing zsh plugins" 1 \
+    "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'for zsh_plugin in zsh-autosuggestions zsh-syntax-highlighting')"
+
 # ssh: every host gets the own machines under <machine>[-unlock].<how> (bare name = .tailnet; works-unlock = .ddns).
 for host in $hosts; do
     render "$host" private_dot_ssh/private_config.tmpl > "$work/$host.ssh_config"

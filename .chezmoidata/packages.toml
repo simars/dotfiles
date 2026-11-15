@@ -42,7 +42,9 @@ formulae = [
     "watch",
     "wget",
     "zoxide",
-    "zsh"
+    "zsh",
+    "zsh-autosuggestions",
+    "zsh-syntax-highlighting"
 ]
 casks = [
     "1password-cli",
@@ -68,7 +70,8 @@ pacman = [
     "shellcheck",
     "vim",
     "wget",
-    "zsh"
+    "zsh",
+    "zsh-autosuggestions"
 ]
 aur = [
     "lunarvim-git"

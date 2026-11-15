@@ -88,6 +88,37 @@ need="$(missing_packages{{ range $packages.omarchy.aur }} {{ . | quote }}{{ end 
 [[ -z "$need" ]] || report warn "packages.toml lists AUR packages that are not installed. Fix: omarchy pkg aur add ${need% }"
 {{- end }}
 
+{{- if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+{{- /* Omarchy: the packages.toml check above already covers zsh-autosuggestions, and Omarchy's zsh brings
+       zsh-syntax-highlighting. */}}
+
+# zsh plugins that ~/.zshrc loads when present: suggestions from history as you type, and syntax highlighting.
+# Without them zsh works, but silently without either. Warn only.
+{{- if and (eq .chezmoi.os "darwin") (eq .chezmoi.arch "arm64") }}
+fix_zsh_plugin="brew install @"
+{{- else if eq .chezmoi.os "darwin" }}
+fix_zsh_plugin="brew install @ if docs/INTEL_MACS.md (section 2's check) in the chezmoi source reports it as pour"
+{{- else }}
+fix_zsh_plugin="install @ with the system package manager (Arch: sudo pacman -S @; Debian and Ubuntu: sudo apt install @)"
+{{- end }}
+for zsh_plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+    found=""
+    for dir in /opt/homebrew/share /usr/local/share /usr/share/zsh/plugins /usr/share; do
+        if [[ -r "$dir/$zsh_plugin/$zsh_plugin.zsh" ]]; then
+            found="$dir/$zsh_plugin"
+            break
+        fi
+    done
+    if [[ -n "$found" ]]; then
+        echo "OK:   $zsh_plugin ($found)"
+    elif [[ "$zsh_plugin" == zsh-autosuggestions && -r "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+        report warn "zsh-autosuggestions comes only from an old oh-my-zsh clone (~/.oh-my-zsh/custom/plugins). Fix: ${fix_zsh_plugin//@/$zsh_plugin}"
+    else
+        report warn "$zsh_plugin is not installed, so zsh runs without it. Fix: ${fix_zsh_plugin//@/$zsh_plugin}"
+    fi
+done
+{{- end }}
+
 # mise: warn only. An old mise or an uninstalled project pin is not a secret-scanning gap, and a stale pin
 # in some side repo must not fail the apply.
 MISE_MIN="{{ .requirements.mise.min }}"
