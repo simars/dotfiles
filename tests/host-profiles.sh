@@ -315,6 +315,12 @@ check "setup-guides lists the guides" 'guides=("zsh" "terminals-clipboard" "wave
 check "omarchy requirement check reports guides with setup-guides apply" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'Fix: setup-guides apply')"
 check "omarchy packages include omarchy-zsh" 1 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -c '"omarchy-zsh"')"
 
+# iTerm2 shell integration: macOS ~/.zshrc only, loaded from the app, only in iTerm2 and not in SSH sessions.
+check "darwin ~/.zshrc loads iTerm2 shell integration only in iTerm2" 1 "$(grep -c 'TERM_PROGRAM:-}" == iTerm.app || "${LC_TERMINAL:-}" == iTerm2 ) && -z "${SSH_CONNECTION:-}"' "$work/darwin.zshrc")"
+for host in omarchy arch ubuntu; do
+    check "$host ~/.zshrc has no iTerm2 shell integration" 0 "$(grep -c 'iterm2_shell_integration' "$work/$host.zshrc")"
+done
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do

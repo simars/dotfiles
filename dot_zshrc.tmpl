@@ -288,6 +288,18 @@ userland() {
 if [[ -o interactive ]]; then
     userland "${MACOS_USERLAND:-gnu}"
 fi
+
+# 9b. iTerm2 shell integration, in iTerm2 only (also inside tmux there): prompt marks (Cmd+Shift+Up/Down), select or
+# copy one command's output, command status and duration, alerts when a long command ends, recent directories, and
+# iTerm2's utilities on PATH (imgcat, it2dl, it2ul, it2copy, cc-status, ...). Loaded from the app itself, so it
+# updates with iTerm2. Wave, Warp, Terminal and SSH sessions are left alone.
+_iterm2_resources=/Applications/iTerm.app/Contents/Resources
+if [[ -o interactive && ( "${TERM_PROGRAM:-}" == iTerm.app || "${LC_TERMINAL:-}" == iTerm2 ) && -z "${SSH_CONNECTION:-}" \
+    && -r "$_iterm2_resources/iterm2_shell_integration.zsh" ]]; then
+    source "$_iterm2_resources/iterm2_shell_integration.zsh"
+    [[ -d "$_iterm2_resources/utilities" ]] && path+=("$_iterm2_resources/utilities")
+fi
+unset _iterm2_resources
 {{- end }}
 
 # 9a. Syntax highlighting as you type (zsh-syntax-highlighting). Last, after ~/.zshrc.local, so it sees every widget

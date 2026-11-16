@@ -142,6 +142,19 @@ On the Macs (and any host without Omarchy) `~/.zshrc` loads `~/.config/zsh/share
 
 Not taken over: Linux-only helpers (`a`, `rsw`/`lsw`/`dsw`, `iso2sd`, `format-drive`, `open`), and the open choices in `docs/ZSH_UNIFICATION.md` (`cd` as zoxide, `r` as rails, `compress`, reconnecting `ssh`, the prompt). The `Ctrl + Alt` keys (and fzf's `Alt + C`) need the terminal to send Option as Alt; see "Option as Alt in the Mac Terminals" below. Man pages go through `bat` on every host. `gum` is in `packages.toml` for `gd`.
 
+### iTerm2 Shell Integration and Claude Code (macOS)
+`~/.zshrc` loads iTerm2's shell integration from the app itself, only in iTerm2 (inside tmux there too; not in Wave, Warp or SSH sessions):
+
+| Key / command | What it does |
+| :--- | :--- |
+| `Cmd + Shift + Up` / `Down` | Jump to the previous / next prompt |
+| `Cmd + Shift + A` | Select the output of the last command (then `Cmd + C`) |
+| Edit > Marks and Annotations > Alert on next mark | Notify when the running command ends |
+| Toolbelt (`Cmd + Shift + B`) | Recent directories, command history, captured output |
+| `imgcat f.png`, `it2dl f`, `it2ul`, `it2copy`, `cc-status` | iTerm2's utilities, on `PATH` in iTerm2 only: show an image, download / upload over SSH, copy to the clipboard, Claude Code status |
+
+**Claude Code integration** (iTerm2 3.7, set up once from the menu **iTerm2 > Install Claude Code Integration**): shows each tab's Claude Code state (working, waiting for you, idle) in iTerm2's Session Status and tab indicators, through a hook it adds to `~/.claude/settings.json`. ai-tooling's settings merge keeps that hook (it merges your live settings first and owns no `hooks` key). Undo: **iTerm2 > Uninstall Claude Code Integration**. iTerm2's separate **AI Chat** needs its own model provider and API key and is not set up.
+
 ### Option as Alt in the Mac Terminals
 A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to act as Meta; otherwise Option types special characters (`ƒ`, `©`, `ü`). chezmoi sets **left Option = Alt, right Option = special characters** (macOS only):
 
