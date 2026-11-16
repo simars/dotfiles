@@ -107,6 +107,7 @@ On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, 
 | Key / setting | What it does |
 | :--- | :--- |
 | `Esc` | vi normal mode (`i`, `a`, `A` back to typing). Set with `bindkey -v` in `~/.zshrc`, so it no longer depends on `$EDITOR`. |
+| `Alt + Left` / `Alt + Right` | Back / forward one word (left Option on the Macs). Inside tmux and herdr these switch windows / tabs instead. |
 | `Up` / `Down` | Previous / next command that **starts with what is already typed** (empty line: every command). Insert and normal mode. |
 | `→` or `End` | Accept the grey suggestion from history (`zsh-autosuggestions`). |
 | `Tab` / `Shift + Tab` | Highlighted completion menu, forward / back. Case-insensitive, matches inside words, coloured like `ls`. `**<Tab>` opens fzf. |
@@ -407,7 +408,7 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 | `Alt-arrows` (after the prefix) | Resize pane (tmux default) | Same |
 | `"` `-` (or `Alt-Enter`) | Split, new pane below | Same |
 | `%` `v` (or `Alt-Shift-Enter`) | Split, new pane to the right | Same |
-| `x` (or `Alt-Esc`) | Kill pane, no prompt | Close pane |
+| `x` / `Alt-Esc` | Kill pane, no prompt / asks first | Close pane / not bound (Herdr cannot ask for one key only) |
 | `z` / `;` / `o` | Zoom / last pane / next pane | Same |
 | `!` | Break pane into a new window | Move pane into a new tab |
 | `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab |

@@ -42,7 +42,9 @@ edit_scrollback = "prefix+e"
 # Panes: " - alt+enter stack panes (tmux split -v); % v alt+shift+enter put them side by side (split -h)
 split_horizontal = ["prefix+\"", "prefix+minus", "alt+enter"]
 split_vertical = ["prefix+%", "prefix+v", "alt+shift+enter"]
-close_pane = ["prefix+x", "alt+esc"]
+# No alt+esc (Omarchy has it): with Option as Alt on the Macs it closed panes by accident, and Herdr cannot ask for
+# one key only (confirm_close covers every close).
+close_pane = ["prefix+x"]
 zoom = "prefix+z"
 last_pane = "prefix+;"
 cycle_pane_next = "prefix+o"

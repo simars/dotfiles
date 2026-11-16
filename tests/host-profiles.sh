@@ -259,6 +259,11 @@ if command -v jq > /dev/null 2>&1; then
     check "Wave: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash dot_config/waveterm/modify_settings.json)"
 fi
 
+# Alt-Esc must not close a pane without asking (left Option is Alt on the Macs); Alt+Left/Right jump words in zsh.
+check "tmux Alt-Esc asks before killing the pane" 1 "$(grep -c '^bind -N "Kill pane (asks first)" -n M-Escape confirm-before ' dot_config/tmux/tmux.conf)"
+check "herdr closes panes only with prefix x" 'close_pane = ["prefix+x"]' "$(grep '^close_pane' dot_config/herdr/config.toml.tmpl)"
+check "darwin ~/.zshrc binds Alt+Left to backward-word" 1 "$(grep -cF "for _key in '^[[1;3D' '^[^[[D'; do bindkey -M \"\$_keymap\" \"\$_key\" backward-word" "$work/darwin.zshrc")"
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do
