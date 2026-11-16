@@ -15,3 +15,29 @@
 #   Try without a commit: put `omarchy_mise_project_settings = true` under [data] in ~/.config/chezmoi/chezmoi.toml
 #   (that wins over this file until `chezmoi init` rewrites the config), then `chezmoi apply ~/.config/mise`.
 omarchy_mise_project_settings = true
+
+# Omarchy setup beyond packages, done by run_onchange_after_91_omarchy_setup.sh and reported by the requirement check
+# after every apply (cheatsheet: "Omarchy Setup").
+#
+# omarchy_dev_env: runtimes from `omarchy install dev-env <lang>` (Omarchy's mise config). Needs sudo, so it runs only
+#   when `chezmoi apply` runs in a terminal; otherwise the command is printed. Never ruby (AGENTS.md 4.2).
+omarchy_dev_env = ["python", "go"]
+# omarchy_guides: guides in ~/guides/omarchy (from the private ~/.cfg) that every Omarchy machine gets. Not applied by
+#   chezmoi: the requirement check reports the ones not active, and `setup-guides apply` applies them.
+omarchy_guides = ["zsh", "terminals-clipboard", "wave-keys"]
+
+# omarchy_plugins: shell plugins, added with `omarchy plugin add <url>` at their latest version and placed in the bar's
+#   right section. Their settings (monitor names, tablet mapping) stay per machine and are not managed. `replaces`
+#   names an Omarchy plugin to turn off. Update later with `omarchy plugin update`.
+[[omarchy_plugins]]
+id = "monitor-layout"
+url = "https://github.com/kris-1/omarchy-monitor-layout.git"
+replaces = "omarchy.monitor"
+
+[[omarchy_plugins]]
+id = "io.github.alxcrt.drawing-tablet"
+url = "https://github.com/alxcrt/omarchy-drawing-tablet.git"
+
+[[omarchy_plugins]]
+id = "lgse.sandman"
+url = "https://github.com/lgse/sandman.git"

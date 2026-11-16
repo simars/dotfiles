@@ -29,6 +29,8 @@ Library/**
 {{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 .config/foot
 .config/foot/**
+# setup-guides: Omarchy's guides (~/guides/omarchy), Omarchy only.
+.local/bin/setup-guides
 {{ end }}
 # Off Omarchy, ~/.config/mise/config.toml carries the shared mise settings itself.
 {{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}

@@ -1,0 +1,56 @@
+{{ if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" -}}
+#!/usr/bin/env bash
+# Omarchy only: the setup listed in .chezmoidata/omarchy.toml beyond packages. Runs again whenever that list changes;
+# the requirement check after every apply keeps reporting what is still missing, with the command that fixes it.
+#   dev-env runtimes: `omarchy install dev-env <lang>` needs sudo, so only from a terminal; otherwise printed.
+#   shell plugins: `omarchy plugin add <url>` (latest version) when missing, enabled in the bar's right section.
+#   guides: never applied here; `setup-guides` shows them and `setup-guides apply` applies them.
+# omarchy.toml hash: {{ include ".chezmoidata/omarchy.toml" | sha256sum }}
+set -uo pipefail
+
+if [[ "${CHEZMOI_CI:-false}" == "true" ]]; then
+    echo "==> CI environment detected: skipping Omarchy setup."
+    exit 0
+fi
+command -v omarchy > /dev/null || exit 0
+
+# dev-env runtimes Omarchy's mise config already has are left alone.
+missing_dev_env=()
+for lang in {{ range .omarchy_dev_env }}{{ . | quote }} {{ end }}; do
+    mise ls --global "$lang" 2> /dev/null | grep -q . || missing_dev_env+=("$lang")
+done
+if [[ ${#missing_dev_env[@]} -eq 0 ]]; then
+    echo "==> Omarchy dev-env: all installed."
+elif [[ -t 0 && -t 1 ]]; then
+    for lang in "${missing_dev_env[@]}"; do
+        echo "==> omarchy install dev-env $lang"
+        omarchy install dev-env "$lang" || echo "WARNING: omarchy install dev-env $lang failed. Run it yourself."
+    done
+else
+    cmds="$(printf 'omarchy install dev-env %s && ' "${missing_dev_env[@]}")"
+    echo "==> Not a terminal, so no dev-env is installed. Run: ${cmds% && }"
+fi
+
+# Shell plugins: add the missing ones (no sudo needed), enable them, turn off what they replace.
+installed_plugins="$(omarchy plugin list --json 2> /dev/null | jq -r '.[] | "\(.id) \(if .enabled then "enabled" else "disabled" end)"' 2> /dev/null)"
+plugin_state() { awk -v id="$1" '$1 == id { print $2 }' <<< "$installed_plugins"; }
+{{- range .omarchy_plugins }}
+state="$(plugin_state {{ .id | quote }})"
+if [[ -z "$state" ]]; then
+    echo "==> Adding shell plugin {{ .id }} ({{ .url }})"
+    if omarchy plugin add {{ .url | quote }} --yes; then
+        omarchy plugin enable {{ .id | quote }} --section right || echo "WARNING: could not enable {{ .id }}. Run: omarchy plugin enable {{ .id }} --section right"
+    else
+        echo "WARNING: could not add {{ .id }}. Run: omarchy plugin add {{ .url }} --enable"
+    fi
+elif [[ "$state" != enabled ]]; then
+    omarchy plugin enable {{ .id | quote }} --section right || echo "WARNING: could not enable {{ .id }}."
+else
+    echo "==> Shell plugin {{ .id }}: installed and enabled."
+fi
+{{- if hasKey . "replaces" }}
+[[ "$(plugin_state {{ .replaces | quote }})" != enabled ]] || omarchy plugin disable {{ .replaces | quote }} || true
+{{- end }}
+{{- end }}
+exit 0
+{{ end -}}

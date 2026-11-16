@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# setup-guides: the guides every Omarchy machine gets (.chezmoidata/omarchy.toml, omarchy_guides), from ~/guides/omarchy
+# in the private ~/.cfg repository. chezmoi never applies them itself; the requirement check after `chezmoi apply`
+# reports the ones not active.
+#   setup-guides          show each guide's verdict (its status.sh)
+#   setup-guides apply    run apply.sh of each guide that is not active, then show the verdicts again
+set -uo pipefail
+
+guides=({{ range .omarchy_guides }}{{ . | quote }} {{ end }})
+root="$HOME/guides/omarchy"
+
+if [[ ! -d "$root" ]]; then
+    echo "~/guides/omarchy is missing: the guides come from the private ~/.cfg repository. Clone it first:" >&2
+    echo "  git clone --bare git@github.com:simars/.cfg.git ~/.cfg && git --git-dir=\$HOME/.cfg --work-tree=\$HOME checkout && git --git-dir=\$HOME/.cfg config status.showUntrackedFiles no" >&2
+    echo "then run: setup-guides apply" >&2
+    exit 1
+fi
+
+verdict() { # verdict GUIDE: its status.sh VERDICT line, or why there is none
+    local dir="$root/$1"
+    [[ -x "$dir/status.sh" ]] || { echo "VERDICT: MISSING ($dir/status.sh not found)"; return; }
+    "$dir/status.sh" 2> /dev/null | grep -m1 '^VERDICT' || echo "VERDICT: UNKNOWN (status.sh printed no verdict)"
+}
+active() { [[ "$(verdict "$1")" == "VERDICT: ACTIVE"* ]]; }
+
+show() {
+    local guide rc=0
+    for guide in "${guides[@]}"; do
+        printf '  %-22s %s\n' "$guide" "$(verdict "$guide")"
+        active "$guide" || rc=1
+    done
+    return "$rc"
+}
+
+case "${1:-status}" in
+    status)
+        show
+        ;;
+    apply)
+        for guide in "${guides[@]}"; do
+            active "$guide" && continue
+            echo "==> $guide: ./apply.sh"
+            (cd "$root/$guide" && ./apply.sh) || echo "    $guide: apply.sh failed; see $root/$guide/README.md"
+        done
+        echo
+        show
+        ;;
+    *)
+        echo "usage: setup-guides [status|apply]" >&2
+        exit 2
+        ;;
+esac

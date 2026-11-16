@@ -86,6 +86,33 @@ need="$(missing_packages{{ range $packages.omarchy.pacman }} {{ . | quote }}{{ e
 [[ -z "$need" ]] || report warn "packages.toml lists packages that are not installed. Fix: omarchy pkg add ${need% }"
 need="$(missing_packages{{ range $packages.omarchy.aur }} {{ . | quote }}{{ end }})"
 [[ -z "$need" ]] || report warn "packages.toml lists AUR packages that are not installed. Fix: omarchy pkg aur add ${need% }"
+
+# Omarchy setup beyond packages (.chezmoidata/omarchy.toml): dev-env runtimes, shell plugins, guides. Warn only.
+need=""
+for lang in{{ range .omarchy_dev_env }} {{ . | quote }}{{ end }}; do
+    mise ls --global "$lang" 2> /dev/null | grep -q . || need+="$lang "
+done
+if [[ -z "$need" ]]; then
+    echo "OK:   Omarchy dev-env runtimes:{{ range .omarchy_dev_env }} {{ . }}{{ end }}"
+else
+    report warn "Omarchy dev-env runtimes missing: ${need% }. Fix: $(for l in $need; do printf 'omarchy install dev-env %s && ' "$l"; done | sed 's/ && $//')"
+fi
+plugins_json="$(omarchy plugin list --json 2> /dev/null)"
+{{- range .omarchy_plugins }}
+case "$(jq -r --arg id {{ .id | quote }} '.[] | select(.id == $id) | .enabled' <<< "$plugins_json" 2> /dev/null)" in
+    true) echo "OK:   shell plugin {{ .id }}" ;;
+    false) report warn "shell plugin {{ .id }} is installed but turned off. Fix: omarchy plugin enable {{ .id }} --section right" ;;
+    *) report warn "shell plugin {{ .id }} is not installed. Fix: omarchy plugin add {{ .url }} --enable" ;;
+esac
+{{- end }}
+if [[ -x "$HOME/.local/bin/setup-guides" ]]; then
+    if guides_out="$("$HOME/.local/bin/setup-guides" 2>&1)"; then
+        echo "OK:   Omarchy guides active:{{ range .omarchy_guides }} {{ . }}{{ end }}"
+    else
+        while IFS= read -r line; do echo "      $line"; done <<< "$guides_out"
+        report warn "Omarchy guides above are not active. Fix: setup-guides apply"
+    fi
+fi
 {{- end }}
 
 {{- if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}

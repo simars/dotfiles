@@ -295,6 +295,26 @@ if command -v zsh > /dev/null 2>&1; then
     check "Wave pane commands parse in zsh" "" "$(zsh -n dot_aliases 2>&1)"
 fi
 
+# Omarchy setup beyond packages (.chezmoidata/omarchy.toml): dev-env runtimes and shell plugins by a run_onchange
+# script, guides only reported (setup-guides). Nothing of it on other hosts.
+render omarchy run_onchange_after_91_omarchy_setup.sh.tmpl > "$work/omarchy.setup"
+check "omarchy setup script is valid bash" "" "$(bash -n "$work/omarchy.setup" 2>&1)"
+check "omarchy setup adds the three shell plugins" 3 "$(grep -cE '^    if omarchy plugin add "https://github.com/[^"]+" --yes; then$' "$work/omarchy.setup")"
+check "omarchy setup turns off Omarchy's display widget for monitor-layout" 1 "$(grep -c 'omarchy plugin disable "omarchy.monitor"' "$work/omarchy.setup")"
+check "omarchy setup installs dev-env only from a terminal" 1 "$(grep -c '^elif \[\[ -t 0 && -t 1 \]\]; then$' "$work/omarchy.setup")"
+check "omarchy setup never applies guides" 0 "$(grep -cE 'apply\.sh' "$work/omarchy.setup")"
+for host in darwin intel arch ubuntu; do
+    check "$host gets no Omarchy setup script" "" "$(render "$host" run_onchange_after_91_omarchy_setup.sh.tmpl | tr -d '[:space:]')"
+    check "$host gets no setup-guides" no "$(manages "$host" .local/bin/setup-guides)"
+    check "$host requirement check has no Omarchy setup" 0 "$(render "$host" run_after_99_assert_requirements.sh.tmpl | grep -c 'setup-guides')"
+done
+check "omarchy gets setup-guides" yes "$(manages omarchy .local/bin/setup-guides)"
+render omarchy dot_local/bin/executable_setup-guides.tmpl > "$work/setup-guides"
+check "setup-guides is valid bash" "" "$(bash -n "$work/setup-guides" 2>&1)"
+check "setup-guides lists the guides" 'guides=("zsh" "terminals-clipboard" "wave-keys" )' "$(grep '^guides=' "$work/setup-guides")"
+check "omarchy requirement check reports guides with setup-guides apply" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'Fix: setup-guides apply')"
+check "omarchy packages include omarchy-zsh" 1 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -c '"omarchy-zsh"')"
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do
