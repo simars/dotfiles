@@ -139,7 +139,16 @@ On the Macs (and any host without Omarchy) `~/.zshrc` loads `~/.config/zsh/share
 | `gcm`, `gcam`, `gcad` | `git commit -m`, `-a -m`, `-a --amend` |
 | `d`, `mup`, `decompress f.tar.gz` | docker; `mise up` without the release-age wait; untar |
 
-Not taken over: Linux-only helpers (`a`, `rsw`/`lsw`/`dsw`, `iso2sd`, `format-drive`, `open`), and the open choices in `docs/ZSH_UNIFICATION.md` (`cd` as zoxide, `r` as rails, `compress`, reconnecting `ssh`, the prompt). The Mac terminals must send Option as Meta (iTerm2: Profiles > Keys > Left Option key: Esc+) for the `Ctrl + Alt` keys, as for fzf's `Alt + C`. Man pages go through `bat` on every host. `gum` is in `packages.toml` for `gd`.
+Not taken over: Linux-only helpers (`a`, `rsw`/`lsw`/`dsw`, `iso2sd`, `format-drive`, `open`), and the open choices in `docs/ZSH_UNIFICATION.md` (`cd` as zoxide, `r` as rails, `compress`, reconnecting `ssh`, the prompt). The `Ctrl + Alt` keys (and fzf's `Alt + C`) need the terminal to send Option as Alt; see "Option as Alt in the Mac Terminals" below. Man pages go through `bat` on every host. `gum` is in `packages.toml` for `gd`.
+
+### Option as Alt in the Mac Terminals
+A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to act as Meta; otherwise Option types special characters (`ƒ`, `©`, `ü`). chezmoi sets **left Option = Alt, right Option = special characters** (macOS only):
+
+| Terminal | How chezmoi sets it |
+| :--- | :--- |
+| iTerm2 | Dynamic profile "Default (Left Option as Alt)" (`~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json`): your "Default" profile with left Option `Esc+`, right Option `Normal`. Make it the default once: Settings > Profiles, select it, Other Actions > Set as Default. Change looks in "Default"; this profile follows it. |
+| Warp | `~/.warp/settings.toml`: `[terminal.input.extra_meta_keys]` `left_alt = true`, `right_alt = false`. Only these two keys are set; everything else in the file is Warp's. |
+| Wave | `~/.config/waveterm/settings.json`: `"term:macoptionismeta": true` (Wave has no left/right split: both Option keys act as Alt there). Only this key is set. |
 
 ### zoxide (`z`) Directory Jumping
 `zoxide` tracks the directories you visit most frequently and jumps to them instantly using fuzzy matching:

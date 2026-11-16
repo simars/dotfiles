@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# chezmoi modify script for Warp's ~/.warp/settings.toml: Warp writes this file itself, so only one setting is set here
+# and everything else is passed through. Left Option acts as Meta (Alt), which the zsh Alt keys need; right Option keeps
+# typing special characters (cheatsheet: "Option as Alt in the Mac terminals").
+set -euo pipefail
+awk '
+function keys() { print "left_alt = true"; print "right_alt = false" }
+/^[[:space:]]*\[[[:space:]]*terminal\.input\.extra_meta_keys[[:space:]]*\][[:space:]]*(#.*)?$/ {
+    print; keys(); in_table = 1; found = 1; next
+}
+/^[[:space:]]*\[/ { in_table = 0 }
+in_table && /^[[:space:]]*(left_alt|right_alt)[[:space:]]*=/ { next }
+{ print }
+END {
+    if (!found) {
+        if (NR > 0) print ""
+        print "[terminal.input.extra_meta_keys]"
+        keys()
+    }
+}'

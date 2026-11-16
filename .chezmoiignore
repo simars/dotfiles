@@ -16,6 +16,13 @@ CLAUDE.md
 # ~/.bashrc alone elsewhere.
 {{ if ne .chezmoi.os "darwin" }}
 .bashrc
+# Mac terminal settings (Option as Alt): iTerm2's dynamic profile, Warp's and Wave's settings files.
+Library
+Library/**
+.warp
+.warp/**
+.config/waveterm
+.config/waveterm/**
 {{ end }}
 # Off Omarchy, ~/.config/mise/config.toml carries the shared mise settings itself.
 {{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
