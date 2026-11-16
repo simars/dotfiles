@@ -152,8 +152,8 @@ if [[ -o interactive ]]; then
         for _key in '^[[B' '^[OB'; do bindkey -M "$_keymap" "$_key" history-search-forward; done
     done
     # Alt+Left/Right (left Option on the Macs) jump by word, in the two forms terminals send. Not Esc b / Esc f: in vi
-    # mode, Esc then b typed quickly must still mean normal mode and back a word. Inside tmux and herdr these keys switch
-    # windows and tabs instead.
+    # mode, Esc then b typed quickly must still mean normal mode and back a word. Without a binding, Esc [1;3D would run
+    # as vi commands and its D deletes to the end of the line. tmux and herdr leave these keys to the shell.
     for _keymap in viins vicmd; do
         for _key in '^[[1;3D' '^[^[[D'; do bindkey -M "$_keymap" "$_key" backward-word; done
         for _key in '^[[1;3C' '^[^[[C'; do bindkey -M "$_keymap" "$_key" forward-word; done

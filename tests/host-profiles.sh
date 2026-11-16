@@ -268,6 +268,10 @@ check "tmux Alt-Esc asks before killing the pane" 1 "$(grep -c '^bind -N "Kill p
 check "tmux asks before every kill binding" "0 4" "$(grep -E '(kill-pane|kill-window|kill-session)$' dot_config/tmux/tmux.conf | grep -vc 'confirm-before') $(grep -cE '^bind .*confirm-before -p "kill-(pane|window|session) ' dot_config/tmux/tmux.conf)"
 check "darwin ~/.zshrc binds Alt+Left to backward-word" 1 "$(grep -cF "for _key in '^[[1;3D' '^[^[[D'; do bindkey -M \"\$_keymap\" \"\$_key\" backward-word" "$work/darwin.zshrc")"
 
+# Alt+Left/Right belong to the shell (word jumps), not to tmux windows or herdr tabs.
+check "tmux unbinds Alt-Left/Right and binds nothing to them" "2 0" "$(grep -cE '^unbind -n M-(Left|Right)$' dot_config/tmux/tmux.conf) $(grep -cE '^bind .* -n M-(Left|Right) ' dot_config/tmux/tmux.conf)"
+check "herdr binds nothing to alt+left/right" 0 "$(grep -vE '^ *#' dot_config/herdr/config.toml.tmpl | grep -cE '"alt\+(left|right)"')"
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do

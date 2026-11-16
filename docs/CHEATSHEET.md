@@ -107,7 +107,7 @@ On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, 
 | Key / setting | What it does |
 | :--- | :--- |
 | `Esc` | vi normal mode (`i`, `a`, `A` back to typing). Set with `bindkey -v` in `~/.zshrc`, so it no longer depends on `$EDITOR`. |
-| `Alt + Left` / `Alt + Right` | Back / forward one word (left Option on the Macs). Inside tmux and herdr these switch windows / tabs instead. |
+| `Alt + Left` / `Alt + Right` | Back / forward one word, staying in typing mode (left Option on the Macs, as in every Mac app). Works inside tmux and herdr too: they leave these keys to the shell. |
 | `Up` / `Down` | Previous / next command that **starts with what is already typed** (empty line: every command). Insert and normal mode. |
 | `→` or `End` | Accept the grey suggestion from history (`zsh-autosuggestions`). |
 | `Tab` / `Shift + Tab` | Highlighted completion menu, forward / back. Case-insensitive, matches inside words, coloured like `ls`. `**<Tab>` opens fzf. |
@@ -412,7 +412,8 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 | `z` / `;` / `o` | Zoom / last pane / next pane | Same |
 | `!` | Break pane into a new window | Move pane into a new tab |
 | `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab (asks first) |
-| `1`..`9` (or `Alt-1`..`9`), `n` `p` (or `Alt-Right` `Alt-Left`) | Go to window | Go to tab |
+| `1`..`9` (or `Alt-1`..`9`), `n` `p` | Go to window | Go to tab |
+| `Alt-Left` / `Alt-Right` | Not bound (Omarchy's stock: previous / next window); passed to the pane, where zsh jumps a word | Same, for tabs |
 | `R` `C` `K` `P` `N` | Rename / new / kill (asks first) / previous / next session | `Shift-r` (or `$`) `Shift-c` `Shift-k` `Shift-p` `Shift-n` for workspaces (closing asks first) |
 | `s` / `w` | Choose session / choose window (tmux defaults) | Workspace picker (both keys) |
 | `q` | Show pane numbers; press one to jump (tmux default) | Goto picker (also `g`); Herdr has no pane numbers |
