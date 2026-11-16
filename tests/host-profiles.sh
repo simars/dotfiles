@@ -256,8 +256,11 @@ for host in arch ubuntu; do check "$host leaves Wave's settings alone" no "$(man
 check "omarchy manages foot's settings" yes "$(manages omarchy .config/foot/foot.ini)"
 for host in darwin arch ubuntu; do check "$host leaves foot's settings alone" no "$(manages "$host" .config/foot/foot.ini)"; done
 for host in $hosts; do check "$host leaves Warp's settings alone" no "$(manages "$host" .warp/settings.toml)"; done
-check "iTerm2 profile: left Option Esc+, right Normal" "2 0" \
-    "$(jq -r '.Profiles[0] | "\(."Option Key Sends") \(."Right Option Key Sends")"' "private_Library/private_Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json")"
+iterm_modify="private_Library/private_Application Support/iTerm2/DynamicProfiles/modify_chezmoi-option-as-alt.json"
+check "iTerm2 profile: left Option Esc+, right Normal, rewritable" "2 0 true" \
+    "$(printf '' | bash "$iterm_modify" | jq -r '.Profiles[0] | "\(."Option Key Sends") \(."Right Option Key Sends") \(.Rewritable)"')"
+check "iTerm2 profile: keeps what iTerm2 wrote into it" '[{"regex":"x"}]' \
+    "$(printf '{"Profiles": [{"Triggers": [{"regex": "x"}], "Option Key Sends": 0}]}' | bash "$iterm_modify" | jq -c '.Profiles[0].Triggers')"
 if command -v jq > /dev/null 2>&1; then
     wave() { render "$1" dot_config/waveterm/modify_settings.json.tmpl > "$work/wave.$1.sh"; printf '%s' "$2" | bash "$work/wave.$1.sh"; }
     check "Wave on macOS: copy on select, split buttons and Option as Alt, rest kept" '{"a":1,"term:copyonselect":true,"app:showsplitbuttons":true,"term:macoptionismeta":true}' "$(wave darwin '{"a": 1}' | jq -c .)"

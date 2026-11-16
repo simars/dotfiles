@@ -153,14 +153,14 @@ Not taken over: Linux-only helpers (`a`, `rsw`/`lsw`/`dsw`, `iso2sd`, `format-dr
 | Toolbelt (`Cmd + Shift + B`) | Recent directories, command history, captured output |
 | `imgcat f.png`, `it2dl f`, `it2ul`, `it2copy`, `cc-status` | iTerm2's utilities, on `PATH` in iTerm2 only: show an image, download / upload over SSH, copy to the clipboard, Claude Code status |
 
-**Claude Code integration** (iTerm2 3.7, set up once from the menu **iTerm2 > Install Claude Code Integration**): shows each tab's Claude Code state (working, waiting for you, idle) in iTerm2's Session Status and tab indicators, through a hook it adds to `~/.claude/settings.json`. ai-tooling's settings merge keeps that hook (it merges your live settings first and owns no `hooks` key). Undo: **iTerm2 > Uninstall Claude Code Integration**. iTerm2's separate **AI Chat** needs its own model provider and API key and is not set up.
+**Claude Code integration** (iTerm2 3.7, set up once per Mac from the menu **iTerm2 > Install Claude Code Integration**; when it asks about the dynamic profile, choose **Mark Rewritable and Install**): shows each tab's Claude Code state (working, waiting for you, idle) in iTerm2's Session Status and tab indicators, through a hook it adds to `~/.claude/settings.json`. ai-tooling's settings merge keeps that hook (it merges your live settings first and owns no `hooks` key). Undo: **iTerm2 > Uninstall Claude Code Integration**. iTerm2's separate **AI Chat** needs its own model provider and API key and is not set up.
 
 ### Option as Alt in the Mac Terminals
 A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to act as Meta; otherwise Option types special characters (`ƒ`, `©`, `ü`). chezmoi sets **left Option = Alt, right Option = special characters** (macOS only):
 
 | Terminal | How chezmoi sets it |
 | :--- | :--- |
-| iTerm2 | Dynamic profile "Default (Left Option as Alt)" (`~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json`): your "Default" profile with left Option `Esc+`, right Option `Normal`. Make it the default once: Settings > Profiles, select it, Other Actions > Set as Default. Change looks in "Default"; this profile follows it. |
+| iTerm2 | Dynamic profile "Default (Left Option as Alt)" (`~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json`): your "Default" profile with left Option `Esc+`, right Option `Normal`. chezmoi sets only those keys and keeps what iTerm2 saves there (the profile is marked rewritable, as the Claude Code integration asked). Make it the default once: Settings > Profiles, select it, Other Actions > Set as Default. Change looks in "Default"; this profile follows it. |
 | Warp | **Not managed by chezmoi:** Warp syncs its settings through your Warp account and overwrote chezmoi's value. Set it once in Warp (Settings > Features > Keys: Left Option is Meta on, Right Option is Meta off); the sync carries it to the other Macs. |
 | Wave | `~/.config/waveterm/settings.json`: `"term:macoptionismeta": true` (Wave has no left/right split: both Option keys act as Alt there). Only this key is set. |
 

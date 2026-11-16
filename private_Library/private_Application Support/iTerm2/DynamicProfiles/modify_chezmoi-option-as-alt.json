@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# chezmoi modify script for iTerm2's dynamic profile "Default (Left Option as Alt)": your "Default" profile with left
+# Option sending Esc+ (Alt, for the zsh Alt keys) and right Option typing special characters. Only these keys are set;
+# anything iTerm2 writes into the profile (it is marked Rewritable, so iTerm2 may save its own changes, as its Claude
+# Code integration did) is kept. Cheatsheet: "Option as Alt in the Mac Terminals".
+set -euo pipefail
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+current="$(cat)"
+[[ -n "${current//[[:space:]]/}" ]] || current='{"Profiles": [{}]}'
+if command -v jq > /dev/null 2>&1 && updated="$(printf '%s\n' "$current" | jq --indent 2 '
+    .Profiles = ((.Profiles // [{}]) | if length == 0 then [{}] else . end)
+    | .Profiles[0] += {
+        "Name": "Default (Left Option as Alt)",
+        "Guid": "chezmoi-left-option-as-alt",
+        "Dynamic Profile Parent Name": "Default",
+        "Option Key Sends": 2,
+        "Right Option Key Sends": 0,
+        "Rewritable": true
+      }' 2> /dev/null)"; then
+    printf '%s\n' "$updated"
+else
+    # No jq, or not JSON: leave the file exactly as it is.
+    printf '%s' "$current"
+fi
