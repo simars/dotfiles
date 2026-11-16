@@ -287,6 +287,14 @@ for host in omarchy arch ubuntu; do
     check "$host gets no iTerm2 clipboard script" "" "$(render "$host" run_after_96_macos_terminal_clipboard.sh.tmpl | tr -d '[:space:]')"
 done
 
+# Wave pane commands: only inside Wave (WAVETERM_BLOCKID set and wsh on PATH), in bash and zsh.
+check "Wave pane commands are not defined outside Wave" "" "$(bash -c 'source dot_aliases; type -t wt wr wsplit wsr wsd 2> /dev/null')"
+check "Wave pane commands are defined inside Wave (bash)" "function function function function function" \
+    "$(PATH="$work/fakebin:$PATH" WAVETERM_BLOCKID=x bash -c 'mkdir -p "$0/fakebin"; printf "#!/bin/sh\n" > "$0/fakebin/wsh"; chmod +x "$0/fakebin/wsh"; source dot_aliases; type -t wt wr wsplit wsr wsd | xargs' "$work")"
+if command -v zsh > /dev/null 2>&1; then
+    check "Wave pane commands parse in zsh" "" "$(zsh -n dot_aliases 2>&1)"
+fi
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do

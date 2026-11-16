@@ -151,6 +151,48 @@ alias cld="with-op claude"
 alias csr="with-op cursor ."
 
 # ==============================================================================
+# Wave Terminal: open panes from the shell (macOS and Omarchy)
+# ==============================================================================
+# Defined only inside Wave, which sets WAVETERM_BLOCKID and puts wsh on PATH. wsh cannot pick a split direction, so
+# wsr / wsd press Wave's own split keys: through Hyprland on Omarchy (Alt+D / Alt+Shift+D, only when Wave is the
+# active window). Elsewhere (macOS, or a Wave session on another machine) they open a pane where Wave chooses and
+# name the key: macOS would need Accessibility permission for Wave to press keys (cheatsheet: "Wave Panes").
+if [[ -n "${WAVETERM_BLOCKID:-}" ]] && command -v wsh &> /dev/null; then
+    wt() { wsh term "$@"; }
+    wr() {
+        if [[ $# -eq 0 ]]; then
+            echo "usage: wr <command> [args...]   (runs it in a new Wave pane)" >&2
+            return 2
+        fi
+        wsh run -- "$@"
+    }
+    wsplit() {
+        local mods key_hint
+        case "${1:-}" in
+            right) mods="ALT" key_hint="Cmd+D (macOS) / Alt+D (Linux)" ;;
+            down) mods="ALT SHIFT" key_hint="Cmd+Shift+D (macOS) / Alt+Shift+D (Linux)" ;;
+            *)
+                echo "usage: wsplit right|down   (or wsr / wsd)" >&2
+                return 2
+                ;;
+        esac
+        if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl &> /dev/null; then
+            hyprctl eval "local w = hl.get_active_window()
+local c = ((w and w.class) or ''):lower()
+if c == 'wave' or c == 'waveterm' then
+  hl.dispatch(hl.dsp.send_key_state({ mods = '$mods', key = 'D', state = 'down' }))
+  hl.timer(function() hl.dispatch(hl.dsp.send_key_state({ mods = '$mods', key = 'D', state = 'up' })) end, { timeout = 50, type = 'oneshot' })
+end" > /dev/null
+        else
+            wsh term
+            echo "Opened a new pane where Wave chose. To split $1: $key_hint" >&2
+        fi
+    }
+    wsr() { wsplit right; }
+    wsd() { wsplit down; }
+fi
+
+# ==============================================================================
 # Local User Overrides (~/.aliases.local)
 # ==============================================================================
 if [[ -f "$HOME/.aliases.local" ]]; then

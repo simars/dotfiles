@@ -8,7 +8,7 @@ set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 current="$(cat)"
 [[ -n "${current//[[:space:]]/}" ]] || current='{}'
-if command -v jq > /dev/null 2>&1 && updated="$(printf '%s\n' "$current" | jq --indent 2 '."term:copyonselect" = true | ."app:showsplitbuttons" = true{{ if eq .chezmoi.os "darwin" }} | ."term:macoptionismeta" = true{{ end }}' 2> /dev/null)"; then
+if command -v jq > /dev/null 2>&1 && updated="$(printf '%s\n' "$current" | jq --indent 2 '."term:copyonselect" = true | ."app:showsplitbuttons" = true | ."app:showsplitbuttons" = true{{ if eq .chezmoi.os "darwin" }} | ."term:macoptionismeta" = true{{ end }}' 2> /dev/null)"; then
     printf '%s\n' "$updated"
 else
     # No jq, or not JSON: leave the file exactly as it is.

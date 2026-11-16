@@ -169,6 +169,20 @@ Wave's keys are fixed in the app: what it calls `Cmd` is `Cmd` on macOS and `Alt
 | New tab / close pane | `Cmd + T` / `Cmd + W` | `Alt + T` / `Alt + W` |
 | Previous / next tab | `Cmd + [` / `Cmd + ]` | `Alt + [` / `Alt + ]` |
 
+### Wave Panes (macOS and Omarchy)
+Wave's own keys use Cmd on macOS where they use Alt on Linux. Wave has no setting to change its keys.
+
+| Do | macOS | Omarchy | Shell, inside Wave (both) |
+| :--- | :--- | :--- | :--- |
+| Split right | `Cmd + D` | `Alt + D`, or `Super + D` (added by `~/guides/omarchy/wave-keys`, Wave windows only) | `wsr` (`wsplit right`) |
+| Split down | `Cmd + Shift + D` | `Alt + Shift + D` (`Super + Shift + D` stays Omarchy's Docker) | `wsd` (`wsplit down`) |
+| New pane in this folder, Wave picks where | | | `wt` |
+| New pane running a command | | | `wr <command> [args...]` |
+| Split with the mouse | split buttons on each pane header (`app:showsplitbuttons`, set by chezmoi) | same | |
+| New tab / close pane | `Cmd + T` / `Cmd + W` | `Alt + T` / `Alt + W` | |
+
+`wsr` and `wsd` press Wave's split keys through Hyprland on Omarchy, only when Wave is the active window. On macOS (and in a Wave session on another machine) they open a pane where Wave chooses and name the key to press instead: pressing keys from a script on macOS would need Accessibility permission for Wave, which would let anything running in Wave control every app. `wt`, `wr`, `wsr`, `wsd` exist only in Wave's shells (`WAVETERM_BLOCKID` set, `wsh` on `PATH`). New panes keep the folder and the connection of the focused pane.
+
 ### zoxide (`z`) Directory Jumping
 `zoxide` tracks the directories you visit most frequently and jumps to them instantly using fuzzy matching:
 
