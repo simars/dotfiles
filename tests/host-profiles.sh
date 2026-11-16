@@ -272,6 +272,13 @@ check "darwin ~/.zshrc binds Alt+Left to backward-word" 1 "$(grep -cF "for _key 
 check "tmux unbinds Alt-Left/Right and binds nothing to them" "2 0" "$(grep -cE '^unbind -n M-(Left|Right)$' dot_config/tmux/tmux.conf) $(grep -cE '^bind .* -n M-(Left|Right) ' dot_config/tmux/tmux.conf)"
 check "herdr binds nothing to alt+left/right" 0 "$(grep -vE '^ *#' dot_config/herdr/config.toml.tmpl | grep -cE '"alt\+(left|right)"')"
 
+# iTerm2 may set the Mac clipboard (OSC 52) for copies in tmux, herdr and Neovim: macOS only.
+check "darwin turns on iTerm2 clipboard access" 1 "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | grep -c '^defaults write com.googlecode.iterm2 AllowClipboardAccess -bool true$')"
+check "darwin iTerm2 clipboard script is valid bash" "" "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | bash -n 2>&1)"
+for host in omarchy arch ubuntu; do
+    check "$host gets no iTerm2 clipboard script" "" "$(render "$host" run_after_96_macos_terminal_clipboard.sh.tmpl | tr -d '[:space:]')"
+done
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do

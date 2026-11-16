@@ -1,0 +1,20 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# macOS only. Let programs in iTerm2 put text on the Mac clipboard (OSC 52), as foot does on Omarchy: copies in tmux,
+# herdr and Neovim, also on a remote host over SSH, then land on the clipboard. Programs can set the clipboard this
+# way, not read it. iTerm2 keeps this as a global setting ("Applications in terminal may access clipboard"), not in a
+# profile, so the dynamic profile cannot carry it. Informational: never fails the apply.
+set -u
+[[ -d /Applications/iTerm.app ]] || exit 0
+if [[ "$(defaults read com.googlecode.iterm2 AllowClipboardAccess 2> /dev/null)" == 1 ]]; then
+    echo "OK:   iTerm2 lets terminal programs set the clipboard"
+    exit 0
+fi
+defaults write com.googlecode.iterm2 AllowClipboardAccess -bool true
+if pgrep -xq iTerm2; then
+    echo "NOTE: iTerm2 may now let terminal programs set the clipboard; quit and reopen iTerm2 for it to take effect (or tick Settings > General > Selection > Applications in terminal may access clipboard)"
+else
+    echo "OK:   iTerm2 now lets terminal programs set the clipboard"
+fi
+exit 0
+{{ end -}}

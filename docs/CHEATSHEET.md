@@ -151,6 +151,15 @@ A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to 
 | Warp | **Not managed by chezmoi:** Warp syncs its settings through your Warp account and overwrote chezmoi's value. Set it once in Warp (Settings > Features > Keys: Left Option is Meta on, Right Option is Meta off); the sync carries it to the other Macs. |
 | Wave | `~/.config/waveterm/settings.json`: `"term:macoptionismeta": true` (Wave has no left/right split: both Option keys act as Alt there). Only this key is set. |
 
+### Copy and Paste (macOS and Omarchy)
+| | Omarchy | macOS |
+| :--- | :--- | :--- |
+| Copy / paste / cut / select all, in every app and terminal | `Super + C` / `V` / `X` / `A` (in a terminal, Omarchy sends `Ctrl + Shift + C` / `V`, so `Ctrl + C` still stops a program) | `Cmd + C` / `V` / `X` / `A` |
+| Clipboard history | `Super + Ctrl + V` | Paste (Setapp) |
+| Copy in tmux (mouse or copy mode), herdr, Neovim, also on a remote host over SSH | lands on the clipboard (foot accepts OSC 52) | lands on the clipboard: Wave allows it by default; chezmoi turns on iTerm2's "Applications in terminal may access clipboard" (global setting; reopen iTerm2 after the first apply) |
+
+Programs in the terminal can **set** the clipboard this way, never read it. Selecting with the mouse copies at once in iTerm2 and in herdr; on Omarchy, outside herdr, press `Super + C`.
+
 ### zoxide (`z`) Directory Jumping
 `zoxide` tracks the directories you visit most frequently and jumps to them instantly using fuzzy matching:
 
