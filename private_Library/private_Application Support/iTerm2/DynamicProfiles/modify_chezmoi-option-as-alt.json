@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # chezmoi modify script for iTerm2's dynamic profile "Default (Left Option as Alt)": your "Default" profile with left
-# Option sending Esc+ (Alt, for the zsh Alt keys) and right Option typing special characters. Only these keys are set;
-# anything iTerm2 writes into the profile (it is marked Rewritable, so iTerm2 may save its own changes, as its Claude
-# Code integration did) is kept. Cheatsheet: "Option as Alt in the Mac Terminals".
+# Option sending Esc+ (Alt, for the zsh Alt keys). Right Option comes from "Default" (Normal: special characters);
+# iTerm2 drops keys equal to the parent when it rewrites the profile, so setting it here would flip back and forth.
+# The profile is Rewritable (iTerm2's Claude Code integration asks for that) and keeps whatever iTerm2 saves into it;
+# the integration's two workgroup triggers are added when missing, so every Mac gets them. Cheatsheet: "Option as Alt
+# in the Mac Terminals".
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 current="$(cat)"
@@ -14,9 +16,15 @@ if command -v jq > /dev/null 2>&1 && updated="$(printf '%s\n' "$current" | jq --
         "Guid": "chezmoi-left-option-as-alt",
         "Dynamic Profile Parent Name": "Default",
         "Option Key Sends": 2,
-        "Right Option Key Sends": 0,
         "Rewritable": true
-      }' 2> /dev/null)"; then
+      }
+    | .Profiles[0] |= del(."Right Option Key Sends")
+    | .Profiles[0].Triggers = ((.Profiles[0].Triggers // []) as $have | $have + ([
+        { "action": "iTermEnterWorkgroupTrigger", "matchType": 113, "parameter": "builtin.claudeCode", "partial": false,
+          "eventParams": { "jobName": "claude" }, "contentregex": "", "regex": "", "disabled": false },
+        { "action": "iTermExitWorkgroupTrigger", "matchType": 114, "parameter": "", "partial": false,
+          "eventParams": { "jobName": "claude", "leaderOnly": true }, "contentregex": "", "regex": "", "disabled": false }
+      ] | map(select(.action as $a | ($have | map(.action) | index($a)) == null))))' 2> /dev/null)"; then
     printf '%s\n' "$updated"
 else
     # No jq, or not JSON: leave the file exactly as it is.
