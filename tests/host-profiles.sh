@@ -160,8 +160,12 @@ for line in 'window_title = "{hostname}: {workspace}"' 'panel_bg = "reset"' 'sur
     check "omarchy herdr has $line" 1 "$(grep -cxF -- "$line" "$work/omarchy.herdr")"
 done
 check "darwin herdr has no Omarchy chrome" 0 "$(grep -cE 'window_title|panel_bg|^\[theme' "$work/darwin.herdr")"
-# Omarchy's [ui] holds exactly its stock [ui] settings (order, comments and blank lines aside).
-check "omarchy herdr [ui] is Omarchy's stock [ui]" "" "$(diff <(sed -n '/^\[ui\]/,$p' docs/omarchy-stock/herdr.toml | grep -vE '^(#|$)' | sort) <(sed -n '/^\[ui\]/,$p' "$work/omarchy.herdr" | grep -vE '^(#|$)' | sort))"
+# Omarchy's [ui] holds exactly its stock [ui] settings (order, comments and blank lines aside), except confirm_close:
+# every host asks before closing (stock false).
+check "omarchy herdr [ui] is Omarchy's stock [ui]" "" "$(diff <(sed -n '/^\[ui\]/,$p' docs/omarchy-stock/herdr.toml | grep -vE '^(#|$|confirm_close)' | sort) <(sed -n '/^\[ui\]/,$p' "$work/omarchy.herdr" | grep -vE '^(#|$|confirm_close)' | sort))"
+for host in darwin omarchy; do
+    check "$host herdr asks before every close" 1 "$(grep -cx 'confirm_close = true' "$work/$host.herdr")"
+done
 check "darwin herdr keeps gaps" 1 "$(grep -cxF 'pane_gaps = true' "$work/darwin.herdr")"
 # The stock-drift report runs on Omarchy only and never fails.
 drift=run_after_95_omarchy_stock_drift.sh.tmpl
@@ -259,9 +263,9 @@ if command -v jq > /dev/null 2>&1; then
     check "Wave: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash dot_config/waveterm/modify_settings.json)"
 fi
 
-# Alt-Esc must not close a pane without asking (left Option is Alt on the Macs); Alt+Left/Right jump words in zsh.
+# Closing a pane, window/tab or session always asks first (left Option is Alt on the Macs); Alt+Left/Right jump words in zsh.
 check "tmux Alt-Esc asks before killing the pane" 1 "$(grep -c '^bind -N "Kill pane (asks first)" -n M-Escape confirm-before ' dot_config/tmux/tmux.conf)"
-check "herdr closes panes only with prefix x" 'close_pane = ["prefix+x"]' "$(grep '^close_pane' dot_config/herdr/config.toml.tmpl)"
+check "tmux asks before every kill binding" "0 4" "$(grep -E '(kill-pane|kill-window|kill-session)$' dot_config/tmux/tmux.conf | grep -vc 'confirm-before') $(grep -cE '^bind .*confirm-before -p "kill-(pane|window|session) ' dot_config/tmux/tmux.conf)"
 check "darwin ~/.zshrc binds Alt+Left to backward-word" 1 "$(grep -cF "for _key in '^[[1;3D' '^[^[[D'; do bindkey -M \"\$_keymap\" \"\$_key\" backward-word" "$work/darwin.zshrc")"
 
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).

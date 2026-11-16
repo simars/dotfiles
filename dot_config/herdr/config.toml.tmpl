@@ -42,9 +42,7 @@ edit_scrollback = "prefix+e"
 # Panes: " - alt+enter stack panes (tmux split -v); % v alt+shift+enter put them side by side (split -h)
 split_horizontal = ["prefix+\"", "prefix+minus", "alt+enter"]
 split_vertical = ["prefix+%", "prefix+v", "alt+shift+enter"]
-# No alt+esc (Omarchy has it): with Option as Alt on the Macs it closed panes by accident, and Herdr cannot ask for
-# one key only (confirm_close covers every close).
-close_pane = ["prefix+x"]
+close_pane = ["prefix+x", "alt+esc"]
 zoom = "prefix+z"
 last_pane = "prefix+;"
 cycle_pane_next = "prefix+o"
@@ -109,6 +107,9 @@ description = "break pane into new tab"
 [ui]
 # set -g mouse on
 mouse_capture = true
+# Every close asks first (pane, tab, workspace), as tmux does, on every host (Omarchy's stock has false): with Option
+# as Alt on the Macs, alt+esc is easy to hit by accident.
+confirm_close = true
 {{- if $omarchy }}
 accent = "blue"
 
@@ -118,9 +119,6 @@ pane_outer_borders = false
 
 # tmux had no scrollbar column beside its panes
 pane_scrollbars = false
-
-# kill-window and kill-session never asked
-confirm_close = false
 
 # automatic-rename gave windows a name without prompting
 prompt_new_tab_name = false

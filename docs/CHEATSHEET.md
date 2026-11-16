@@ -408,12 +408,12 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 | `Alt-arrows` (after the prefix) | Resize pane (tmux default) | Same |
 | `"` `-` (or `Alt-Enter`) | Split, new pane below | Same |
 | `%` `v` (or `Alt-Shift-Enter`) | Split, new pane to the right | Same |
-| `x` / `Alt-Esc` | Kill pane, no prompt / asks first | Close pane / not bound (Herdr cannot ask for one key only) |
+| `x` (or `Alt-Esc`) | Kill pane (asks first) | Close pane (asks first) |
 | `z` / `;` / `o` | Zoom / last pane / next pane | Same |
 | `!` | Break pane into a new window | Move pane into a new tab |
-| `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab |
+| `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab (asks first) |
 | `1`..`9` (or `Alt-1`..`9`), `n` `p` (or `Alt-Right` `Alt-Left`) | Go to window | Go to tab |
-| `R` `C` `K` `P` `N` | Rename / new / kill / previous / next session | `Shift-r` (or `$`) `Shift-c` `Shift-k` `Shift-p` `Shift-n` for workspaces |
+| `R` `C` `K` `P` `N` | Rename / new / kill (asks first) / previous / next session | `Shift-r` (or `$`) `Shift-c` `Shift-k` `Shift-p` `Shift-n` for workspaces (closing asks first) |
 | `s` / `w` | Choose session / choose window (tmux defaults) | Workspace picker (both keys) |
 | `q` | Show pane numbers; press one to jump (tmux default) | Goto picker (also `g`); Herdr has no pane numbers |
 | `r` | Reload config | Same |
