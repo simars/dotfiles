@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # chezmoi modify script for Wave's ~/.config/waveterm/settings.json: Wave writes this file itself, so only one setting
-# are set here and everything else is passed through: selecting text copies it (as in iTerm2, herdr and foot), and on
+# are set here and everything else is passed through: selecting text copies it (as in iTerm2, herdr and foot), each
+# pane header shows split buttons (Wave's split keys are fixed: Cmd+D on macOS, Alt+D on Linux), and on
 # macOS Option acts as Meta (Alt), which the zsh Alt keys need (cheatsheet: "Option as Alt in the Mac terminals"; Wave
 # has no left/right split). Omarchy (Linux) gets the copy setting only; Alt works there anyway.
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 current="$(cat)"
 [[ -n "${current//[[:space:]]/}" ]] || current='{}'
-if command -v jq > /dev/null 2>&1 && updated="$(printf '%s\n' "$current" | jq --indent 2 '."term:copyonselect" = true{{ if eq .chezmoi.os "darwin" }} | ."term:macoptionismeta" = true{{ end }}' 2> /dev/null)"; then
+if command -v jq > /dev/null 2>&1 && updated="$(printf '%s\n' "$current" | jq --indent 2 '."term:copyonselect" = true | ."app:showsplitbuttons" = true{{ if eq .chezmoi.os "darwin" }} | ."term:macoptionismeta" = true{{ end }}' 2> /dev/null)"; then
     printf '%s\n' "$updated"
 else
     # No jq, or not JSON: leave the file exactly as it is.

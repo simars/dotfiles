@@ -160,6 +160,15 @@ A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to 
 
 Programs in the terminal can **set** the clipboard this way, never read it. **Selecting with the mouse copies at once** in every terminal: iTerm2 (its default) and Wave (`term:copyonselect`, set by chezmoi) on macOS; foot (`selection-target=both`, set by chezmoi), Alacritty (`[selection] save_to_clipboard`, set by the Omarchy guide) and Wave on Omarchy; and in herdr and tmux everywhere. foot stays Omarchy's default terminal; Alacritty and Wave (`waveterm-bin`, AUR) are installed beside it, and Wave is tagged as a terminal so `Super + C` / `Super + V` copy and paste there instead of sending `Ctrl + C`.
 
+### Wave Panes and Tabs (macOS and Omarchy)
+Wave's keys are fixed in the app: what it calls `Cmd` is `Cmd` on macOS and `Alt` on Linux. chezmoi also turns on `app:showsplitbuttons`, so every pane header has split buttons for the mouse.
+
+| Action | macOS | Omarchy |
+| :--- | :--- | :--- |
+| Split right / below | `Cmd + D` / `Cmd + Shift + D` | `Alt + D` / `Alt + Shift + D` |
+| New tab / close pane | `Cmd + T` / `Cmd + W` | `Alt + T` / `Alt + W` |
+| Previous / next tab | `Cmd + [` / `Cmd + ]` | `Alt + [` / `Alt + ]` |
+
 ### zoxide (`z`) Directory Jumping
 `zoxide` tracks the directories you visit most frequently and jumps to them instantly using fuzzy matching:
 

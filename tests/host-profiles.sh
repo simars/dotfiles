@@ -260,8 +260,8 @@ check "iTerm2 profile: left Option Esc+, right Normal" "2 0" \
     "$(jq -r '.Profiles[0] | "\(."Option Key Sends") \(."Right Option Key Sends")"' "private_Library/private_Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json")"
 if command -v jq > /dev/null 2>&1; then
     wave() { render "$1" dot_config/waveterm/modify_settings.json.tmpl > "$work/wave.$1.sh"; printf '%s' "$2" | bash "$work/wave.$1.sh"; }
-    check "Wave on macOS: copy on select and Option as Alt, rest kept" '{"a":1,"term:copyonselect":true,"term:macoptionismeta":true}' "$(wave darwin '{"a": 1}' | jq -c .)"
-    check "Wave on Omarchy: copy on select only" '{"a":1,"term:copyonselect":true}' "$(wave omarchy '{"a": 1}' | jq -c .)"
+    check "Wave on macOS: copy on select, split buttons and Option as Alt, rest kept" '{"a":1,"term:copyonselect":true,"app:showsplitbuttons":true,"term:macoptionismeta":true}' "$(wave darwin '{"a": 1}' | jq -c .)"
+    check "Wave on Omarchy: copy on select and split buttons" '{"a":1,"term:copyonselect":true,"app:showsplitbuttons":true}' "$(wave omarchy '{"a": 1}' | jq -c .)"
     check "Wave: leaves a file that is not JSON alone" "not json" "$(wave darwin 'not json')"
 fi
 foot() { printf '%b' "$1" | bash dot_config/foot/modify_foot.ini | paste -sd'|' -; }
