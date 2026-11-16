@@ -63,6 +63,7 @@ casks = [
 # and pacman then cancels the whole install.
 pacman = [
     "age",
+    "alacritty",
     "duf",
     "dust",
     "fx",
@@ -75,5 +76,6 @@ pacman = [
     "zsh-autosuggestions"
 ]
 aur = [
-    "lunarvim-git"
+    "lunarvim-git",
+    "waveterm-bin"
 ]

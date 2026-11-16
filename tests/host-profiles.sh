@@ -99,7 +99,7 @@ for host in intel arch ubuntu debian; do
 done
 # Omarchy installs its listed packages with Omarchy's own commands only, never pacman directly.
 check "omarchy package script installs with omarchy pkg add" 1 "$(grep -c '^install_missing "pkg add" ' "$work/omarchy.packages")"
-check "omarchy package script installs AUR with omarchy pkg aur add" 1 "$(grep -c '^install_missing "pkg aur add" "lunarvim-git"$' "$work/omarchy.packages")"
+check "omarchy package script installs AUR with omarchy pkg aur add" 1 "$(grep -c '^install_missing "pkg aur add" "lunarvim-git" "waveterm-bin"$' "$work/omarchy.packages")"
 check "omarchy package list leaves out bitwarden-cli (Node conflict)" 0 "$(grep -c 'bitwarden' "$work/omarchy.packages")"
 check "omarchy package script never calls pacman or yay" 0 "$(grep -cE 'pacman |yay ' "$work/omarchy.packages")"
 check "omarchy package script installs only from a terminal" 1 "$(grep -c '\[\[ -t 0 && -t 1 \]\]' "$work/omarchy.packages")"
@@ -245,23 +245,31 @@ check "omarchy ~/.zshrc turns variable completion back on" 1 "$(grep -c 'unfunct
 check "omarchy ~/.zshrc keeps Omarchy's Ctrl+Alt+F widget" 1 "$(grep -c 'functions\[fzf-find-files-widget\]=\$functions\[fzf-file-widget\]' "$work/omarchy.zshrc")"
 check "omarchy stock-drift report covers the shell snapshots" 1 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c '^check_stock "zsh options (fzf keys)"')"
 
-# Mac terminals: left Option as Alt (Meta) for the zsh Alt keys. iTerm2 through a dynamic profile, Wave through a modify
-# script that changes only that setting in the file Wave writes itself. Macs only. Warp is left to its own settings sync.
-for target in "Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json" .config/waveterm/settings.json; do
-    check "darwin manages $target" yes "$(manages darwin "$target")"
-    for host in omarchy arch ubuntu; do
-        check "$host leaves $target alone" no "$(manages "$host" "$target")"
-    done
-done
+# Terminal settings set by chezmoi: iTerm2's dynamic profile (left Option as Alt) on macOS; Wave's settings (copy on
+# select, plus Option as Alt on macOS) on macOS and Omarchy; foot's selection-target=both on Omarchy. Modify scripts
+# change only those settings in files the apps (or Omarchy) write themselves. Warp is left to its own settings sync.
+iterm="Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json"
+check "darwin manages the iTerm2 profile" yes "$(manages darwin "$iterm")"
+for host in omarchy arch ubuntu; do check "$host leaves the iTerm2 profile alone" no "$(manages "$host" "$iterm")"; done
+for host in darwin omarchy; do check "$host manages Wave's settings" yes "$(manages "$host" .config/waveterm/settings.json)"; done
+for host in arch ubuntu; do check "$host leaves Wave's settings alone" no "$(manages "$host" .config/waveterm/settings.json)"; done
+check "omarchy manages foot's settings" yes "$(manages omarchy .config/foot/foot.ini)"
+for host in darwin arch ubuntu; do check "$host leaves foot's settings alone" no "$(manages "$host" .config/foot/foot.ini)"; done
+for host in $hosts; do check "$host leaves Warp's settings alone" no "$(manages "$host" .warp/settings.toml)"; done
 check "iTerm2 profile: left Option Esc+, right Normal" "2 0" \
     "$(jq -r '.Profiles[0] | "\(."Option Key Sends") \(."Right Option Key Sends")"' "private_Library/private_Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json")"
-for host in $hosts; do
-    check "$host leaves Warp's settings alone" no "$(manages "$host" .warp/settings.toml)"
-done
 if command -v jq > /dev/null 2>&1; then
-    check "Wave: sets the key and keeps the rest" '{"a":1,"term:macoptionismeta":true}' "$(printf '{"a": 1}' | bash dot_config/waveterm/modify_settings.json | jq -c .)"
-    check "Wave: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash dot_config/waveterm/modify_settings.json)"
+    wave() { render "$1" dot_config/waveterm/modify_settings.json.tmpl > "$work/wave.$1.sh"; printf '%s' "$2" | bash "$work/wave.$1.sh"; }
+    check "Wave on macOS: copy on select and Option as Alt, rest kept" '{"a":1,"term:copyonselect":true,"term:macoptionismeta":true}' "$(wave darwin '{"a": 1}' | jq -c .)"
+    check "Wave on Omarchy: copy on select only" '{"a":1,"term:copyonselect":true}' "$(wave omarchy '{"a": 1}' | jq -c .)"
+    check "Wave: leaves a file that is not JSON alone" "not json" "$(wave darwin 'not json')"
 fi
+foot() { printf '%b' "$1" | bash dot_config/foot/modify_foot.ini | paste -sd'|' -; }
+check "foot: sets selection-target at the end of [main]" "[main]|font=x|selection-target=both|[colors]|bg=1" "$(foot '[main]\nfont=x\n[colors]\nbg=1\n')"
+check "foot: replaces an existing selection-target" "[main]|selection-target=both|font=x" "$(foot '[main]\nselection-target=primary\nfont=x\n')"
+check "foot: settings above the first header are [main]" "font=x|selection-target=both|[colors]|bg=1" "$(foot 'font=x\n[colors]\nbg=1\n')"
+check "foot: second run changes nothing" "$(foot '[main]\nfont=x\n')" "$(printf '[main]\nfont=x\n' | bash dot_config/foot/modify_foot.ini | bash dot_config/foot/modify_foot.ini | paste -sd'|' -)"
+check "omarchy packages include alacritty and waveterm-bin" 2 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -oE '"(alacritty|waveterm-bin)"' | sort -u | wc -l | tr -d ' ')"
 
 # Closing a pane, window/tab or session always asks first (left Option is Alt on the Macs); Alt+Left/Right jump words in zsh.
 check "tmux Alt-Esc asks before killing the pane" 1 "$(grep -c '^bind -N "Kill pane (asks first)" -n M-Escape confirm-before ' dot_config/tmux/tmux.conf)"

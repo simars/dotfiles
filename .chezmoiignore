@@ -16,11 +16,19 @@ CLAUDE.md
 # ~/.bashrc alone elsewhere.
 {{ if ne .chezmoi.os "darwin" }}
 .bashrc
-# Mac terminal settings (Option as Alt): iTerm2's dynamic profile and Wave's settings file.
+# iTerm2's dynamic profile (left Option as Alt) is macOS only.
 Library
 Library/**
+{{ end }}
+# Wave's settings (copy on select; on macOS also Option as Alt): the Macs and Omarchy, where Wave is installed.
+{{ if not (or (eq .chezmoi.os "darwin") (eq (dig "osRelease" "id" "" .chezmoi) "omarchy")) }}
 .config/waveterm
 .config/waveterm/**
+{{ end }}
+# foot's settings (selection-target=both): Omarchy only, whose default terminal it is.
+{{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+.config/foot
+.config/foot/**
 {{ end }}
 # Off Omarchy, ~/.config/mise/config.toml carries the shared mise settings itself.
 {{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
