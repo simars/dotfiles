@@ -50,7 +50,8 @@ echo "==> Pruning orphaned Homebrew dependencies and cleaning cache..."
 brew autoremove || true
 brew cleanup -s || true
 
-if ! command -v lvim &> /dev/null; then
+# lvim lives in ~/.local/bin, which a non-login shell (an apply over SSH) may not have on PATH.
+if ! command -v lvim &> /dev/null && [[ ! -x "$HOME/.local/bin/lvim" ]]; then
     echo "==> Installing LunarVim..."
     bash <(curl -fsSL https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) --yes --no-install-dependencies || true
 fi
