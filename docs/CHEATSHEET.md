@@ -147,7 +147,7 @@ A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to 
 | Terminal | How chezmoi sets it |
 | :--- | :--- |
 | iTerm2 | Dynamic profile "Default (Left Option as Alt)" (`~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json`): your "Default" profile with left Option `Esc+`, right Option `Normal`. Make it the default once: Settings > Profiles, select it, Other Actions > Set as Default. Change looks in "Default"; this profile follows it. |
-| Warp | `~/.warp/settings.toml`: `[terminal.input.extra_meta_keys]` `left_alt = true`, `right_alt = false`. Only these two keys are set; everything else in the file is Warp's. |
+| Warp | **Not managed by chezmoi:** Warp syncs its settings through your Warp account and overwrote chezmoi's value. Set it once in Warp (Settings > Features > Keys: Left Option is Meta on, Right Option is Meta off); the sync carries it to the other Macs. |
 | Wave | `~/.config/waveterm/settings.json`: `"term:macoptionismeta": true` (Wave has no left/right split: both Option keys act as Alt there). Only this key is set. |
 
 ### zoxide (`z`) Directory Jumping

@@ -16,11 +16,9 @@ CLAUDE.md
 # ~/.bashrc alone elsewhere.
 {{ if ne .chezmoi.os "darwin" }}
 .bashrc
-# Mac terminal settings (Option as Alt): iTerm2's dynamic profile, Warp's and Wave's settings files.
+# Mac terminal settings (Option as Alt): iTerm2's dynamic profile and Wave's settings file.
 Library
 Library/**
-.warp
-.warp/**
 .config/waveterm
 .config/waveterm/**
 {{ end }}

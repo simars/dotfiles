@@ -241,9 +241,9 @@ check "omarchy ~/.zshrc turns variable completion back on" 1 "$(grep -c 'unfunct
 check "omarchy ~/.zshrc keeps Omarchy's Ctrl+Alt+F widget" 1 "$(grep -c 'functions\[fzf-find-files-widget\]=\$functions\[fzf-file-widget\]' "$work/omarchy.zshrc")"
 check "omarchy stock-drift report covers the shell snapshots" 1 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c '^check_stock "zsh options (fzf keys)"')"
 
-# Mac terminals: left Option as Alt (Meta) for the zsh Alt keys. iTerm2 through a dynamic profile, Warp and Wave through
-# modify scripts that change only that setting in the files the apps write themselves. Macs only.
-for target in "Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json" .warp/settings.toml .config/waveterm/settings.json; do
+# Mac terminals: left Option as Alt (Meta) for the zsh Alt keys. iTerm2 through a dynamic profile, Wave through a modify
+# script that changes only that setting in the file Wave writes itself. Macs only. Warp is left to its own settings sync.
+for target in "Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json" .config/waveterm/settings.json; do
     check "darwin manages $target" yes "$(manages darwin "$target")"
     for host in omarchy arch ubuntu; do
         check "$host leaves $target alone" no "$(manages "$host" "$target")"
@@ -251,11 +251,9 @@ for target in "Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option
 done
 check "iTerm2 profile: left Option Esc+, right Normal" "2 0" \
     "$(jq -r '.Profiles[0] | "\(."Option Key Sends") \(."Right Option Key Sends")"' "private_Library/private_Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json")"
-warp() { printf '%b' "$1" | bash dot_warp/modify_settings.toml; }
-check "Warp: adds the table to an empty file" "[terminal.input.extra_meta_keys]|left_alt = true|right_alt = false" "$(warp '' | paste -sd'|' -)"
-check "Warp: replaces the keys and keeps the rest" "[a]|x = 1||[terminal.input.extra_meta_keys]|left_alt = true|right_alt = false||[b]|y = 2" \
-    "$(warp '[a]\nx = 1\n\n[terminal.input.extra_meta_keys]\nleft_alt = false\nright_alt = true\n\n[b]\ny = 2\n' | paste -sd'|' -)"
-check "Warp: second run changes nothing" "$(warp '[a]\nx = 1\n' )" "$(warp '[a]\nx = 1\n' | bash dot_warp/modify_settings.toml)"
+for host in $hosts; do
+    check "$host leaves Warp's settings alone" no "$(manages "$host" .warp/settings.toml)"
+done
 if command -v jq > /dev/null 2>&1; then
     check "Wave: sets the key and keeps the rest" '{"a":1,"term:macoptionismeta":true}' "$(printf '{"a": 1}' | bash dot_config/waveterm/modify_settings.json | jq -c .)"
     check "Wave: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash dot_config/waveterm/modify_settings.json)"
