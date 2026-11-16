@@ -156,7 +156,7 @@ alias csr="with-op cursor ."
 # Defined only inside Wave, which sets WAVETERM_BLOCKID and puts wsh on PATH. wsh cannot pick a split direction, so
 # wsr / wsd press Wave's own split keys: through Hyprland on Omarchy (Alt+D / Alt+Shift+D, only when Wave is the
 # active window). Elsewhere (macOS, or a Wave session on another machine) they open a pane where Wave chooses and
-# name the key: macOS would need Accessibility permission for Wave to press keys (cheatsheet: "Wave Panes").
+# name the key: macOS would need Accessibility permission for Wave to press keys (cheatsheet: "Wave Panes and Tabs").
 if [[ -n "${WAVETERM_BLOCKID:-}" ]] && command -v wsh &> /dev/null; then
     wt() { wsh term "$@"; }
     wr() {

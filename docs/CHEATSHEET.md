@@ -161,15 +161,6 @@ A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to 
 Programs in the terminal can **set** the clipboard this way, never read it. **Selecting with the mouse copies at once** in every terminal: iTerm2 (its default) and Wave (`term:copyonselect`, set by chezmoi) on macOS; foot (`selection-target=both`, set by chezmoi), Alacritty (`[selection] save_to_clipboard`, set by the Omarchy guide) and Wave on Omarchy; and in herdr and tmux everywhere. foot stays Omarchy's default terminal; Alacritty and Wave (`waveterm-bin`, AUR) are installed beside it, and Wave is tagged as a terminal so `Super + C` / `Super + V` copy and paste there instead of sending `Ctrl + C`.
 
 ### Wave Panes and Tabs (macOS and Omarchy)
-Wave's keys are fixed in the app: what it calls `Cmd` is `Cmd` on macOS and `Alt` on Linux. chezmoi also turns on `app:showsplitbuttons`, so every pane header has split buttons for the mouse.
-
-| Action | macOS | Omarchy |
-| :--- | :--- | :--- |
-| Split right / below | `Cmd + D` / `Cmd + Shift + D` | `Alt + D` / `Alt + Shift + D` |
-| New tab / close pane | `Cmd + T` / `Cmd + W` | `Alt + T` / `Alt + W` |
-| Previous / next tab | `Cmd + [` / `Cmd + ]` | `Alt + [` / `Alt + ]` |
-
-### Wave Panes (macOS and Omarchy)
 Wave's own keys use Cmd on macOS where they use Alt on Linux. Wave has no setting to change its keys.
 
 | Do | macOS | Omarchy | Shell, inside Wave (both) |
@@ -180,6 +171,7 @@ Wave's own keys use Cmd on macOS where they use Alt on Linux. Wave has no settin
 | New pane running a command | | | `wr <command> [args...]` |
 | Split with the mouse | split buttons on each pane header (`app:showsplitbuttons`, set by chezmoi) | same | |
 | New tab / close pane | `Cmd + T` / `Cmd + W` | `Alt + T` / `Alt + W` | |
+| Previous / next tab | `Cmd + [` / `Cmd + ]` | `Alt + [` / `Alt + ]` | |
 
 `wsr` and `wsd` press Wave's split keys through Hyprland on Omarchy, only when Wave is the active window. On macOS (and in a Wave session on another machine) they open a pane where Wave chooses and name the key to press instead: pressing keys from a script on macOS would need Accessibility permission for Wave, which would let anything running in Wave control every app. `wt`, `wr`, `wsr`, `wsd` exist only in Wave's shells (`WAVETERM_BLOCKID` set, `wsh` on `PATH`). New panes keep the folder and the connection of the focused pane.
 
