@@ -63,4 +63,5 @@ Library/**
 .local/bin/mise-audit
 # Omarchy's helpers for hosts without Omarchy: Omarchy's ~/.zshrc block loads its live files instead.
 .config/zsh/shared-helpers.zsh
+.config/zsh/ssh-reconnect.bash
 {{ end }}

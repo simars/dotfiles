@@ -235,7 +235,17 @@ for host in darwin intel arch ubuntu; do
 done
 render darwin dot_config/zsh/shared-helpers.zsh.tmpl > "$work/helpers.zsh"
 check "shared helpers define tdl, hdl, fip, ga and sff" 5 "$(grep -cE '^(tdl|hdl|fip|ga|sff)\(\) \{' "$work/helpers.zsh")"
-check "shared helpers drop open, zd, compress, a, cd and r" 2 "$(grep -cE '^(unalias a cd r|unfunction zd open compress) 2> /dev/null$' "$work/helpers.zsh")"
+check "shared helpers drop open, zd, a, cd and r, keep compress" 2 "$(grep -cE '^(unalias a cd r|unfunction zd open) 2> /dev/null$' "$work/helpers.zsh")"
+check "shared helpers define Omarchy's compress" 1 "$(grep -c '^compress() {' "$work/helpers.zsh")"
+check "shared helpers run ssh through Omarchy's reconnect wrapper in bash" 1 "$(grep -c 'ssh() { bash -c .source "$1"; shift; ssh "$@". ssh-reconnect "$HOME/.config/zsh/ssh-reconnect.bash" "$@"; }' "$work/helpers.zsh")"
+check "omarchy does not get ssh-reconnect.bash" no "$(manages omarchy .config/zsh/ssh-reconnect.bash)"
+for host in darwin intel arch ubuntu; do
+    check "$host gets ssh-reconnect.bash" yes "$(manages "$host" .config/zsh/ssh-reconnect.bash)"
+done
+check "ssh-reconnect.bash is Omarchy's function, valid bash" "1 " "$(render darwin dot_config/zsh/ssh-reconnect.bash.tmpl | grep -c '^ssh() {') $(render darwin dot_config/zsh/ssh-reconnect.bash.tmpl | bash -n 2>&1)"
+check "omarchy stock-drift report covers ssh-reconnect" 1 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c 'ssh-port-forwarding ssh-reconnect tmux')"
+check "~/.aliases makes cd plain where Omarchy aliased it to zd" "" "$(bash -c 'alias cd=zd; source dot_aliases; alias cd 2>&1 | grep zd')"
+check "tmux opens zsh in new panes" 1 "$(grep -c "^if-shell '\[ -x /usr/bin/zsh \]' 'set -g default-shell /usr/bin/zsh' 'if-shell \"\[ -x /bin/zsh \]\" \"set -g default-shell /bin/zsh\"'$" dot_config/tmux/tmux.conf)"
 check "shared helpers rename the Ctrl+Alt+F widget" "0 1" "$(grep -c 'fzf-file-widget()' "$work/helpers.zsh") $(grep -c "^  bindkey '\^\[\^F' fzf-find-files-widget" "$work/helpers.zsh")"
 check "shared helpers' sff prefers GNU find" 1 "$(grep -cF 'file=$(${commands[gfind]:-find} . -type f' "$work/helpers.zsh")"
 if command -v zsh > /dev/null 2>&1; then

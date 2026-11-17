@@ -138,9 +138,10 @@ On the Macs (and any host without Omarchy) `~/.zshrc` loads `~/.config/zsh/share
 | `ga <branch>` / `gd` | new git worktree beside the repo and `cd` into it / remove the current worktree and branch (asks via `gum`) |
 | `fip host port...`, `dip port...`, `lip` | forward local ports over SSH / stop them / list them (on macOS `lip` shows only PIDs) |
 | `gcm`, `gcam`, `gcad` | `git commit -m`, `-a -m`, `-a --amend` |
-| `d`, `mup`, `decompress f.tar.gz` | docker; `mise up` without the release-age wait; untar |
+| `d`, `mup`, `compress dir`, `decompress f.tar.gz` | docker; `mise up` without the release-age wait; tar.gz a folder (Apple's `/usr/bin/compress` stays for scripts); untar |
+| `ssh host` (typed, interactive) | Omarchy's reconnecting ssh: a session that drops after 30 s or more reconnects until `Ctrl + C`; resets the mouse and screen modes a dead remote tmux left on. Runs in bash, as on Omarchy. Scripts, `ssh -f` and `ssh host cmd` are unchanged |
 
-Not taken over: Linux-only helpers (`a`, `rsw`/`lsw`/`dsw`, `iso2sd`, `format-drive`, `open`), and the open choices in `docs/ZSH_UNIFICATION.md` (`cd` as zoxide, `r` as rails, `compress`, reconnecting `ssh`, the prompt). The `Ctrl + Alt` keys (and fzf's `Alt + C`) need the terminal to send Option as Alt; see "Option as Alt in the Mac Terminals" below. Man pages go through `bat` on every host. `gum` is in `packages.toml` for `gd`.
+Not taken over: Linux-only helpers (`a`, `rsw`/`lsw`/`dsw`, `iso2sd`, `format-drive`, `open`); `cd` stays plain on every host (Omarchy's zoxide `cd` is removed there too; `z` / `zi` jump); `r` stays zsh's repeat-last-command on the Macs (Omarchy keeps `r` = rails); each side keeps its own prompt. Decisions: `docs/ZSH_UNIFICATION.md`. The `Ctrl + Alt` keys (and fzf's `Alt + C`) need the terminal to send Option as Alt; see "Option as Alt in the Mac Terminals" below. Man pages go through `bat` on every host. `gum` is in `packages.toml` for `gd`.
 
 ### iTerm2 Shell Integration and Claude Code (macOS)
 `~/.zshrc` loads iTerm2's shell integration from the app itself, only in iTerm2 (inside tmux there too; not in Wave, Warp or SSH sessions):
@@ -447,7 +448,7 @@ Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh dif
 | `Ctrl-b !` | Break the current pane out into its own window | Press `Ctrl-b`, release, then `Shift-1`. herdr binds the same keys to move the pane into a new tab |
 
 ### tmux and Herdr Keys (macOS and Omarchy)
-One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space` (Omarchy's old prefix). Press the prefix, release, then the key. `Alt` chords need Option-as-Meta in a Mac terminal. On Omarchy, Super+Alt+K and Super+Ctrl+K list every key.
+One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space` (Omarchy's old prefix). Press the prefix, release, then the key. `Alt` chords need Option-as-Meta in a Mac terminal. On Omarchy, Super+Alt+K and Super+Ctrl+K list every key. New panes open zsh in both (tmux `default-shell`, Herdr `default_shell`), whatever shell started the server.
 
 | Key | tmux | Herdr |
 | :--- | :--- | :--- |

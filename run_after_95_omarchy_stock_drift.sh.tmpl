@@ -32,12 +32,12 @@ check_stock "herdr config" /usr/share/omarchy/config/herdr/config.toml "$work/he
 
 # Omarchy's shell helpers, copied for hosts without Omarchy (dot_config/zsh/shared-helpers.zsh.tmpl).
 mkdir -p "$work/shell"
-{{- range list "aliases" "compression" "herdr" "ssh-port-forwarding" "tmux" "worktrees" "zoptions" }}
+{{- range list "aliases" "compression" "herdr" "ssh-port-forwarding" "ssh-reconnect" "tmux" "worktrees" "zoptions" }}
 cat > "$work/shell/{{ . }}" <<'OMARCHY_STOCK_SHELL'
 {{ include (printf "docs/omarchy-stock/shell/%s" .) | trimSuffix "\n" }}
 OMARCHY_STOCK_SHELL
 {{- end }}
-for name in aliases compression herdr ssh-port-forwarding tmux worktrees; do
+for name in aliases compression herdr ssh-port-forwarding ssh-reconnect tmux worktrees; do
     stock="/usr/share/omarchy/default/bash/fns/$name"
     [[ "$name" == aliases ]] && stock="/usr/share/omarchy/default/bash/aliases"
     check_stock "shell $name" "$stock" "$work/shell/$name"

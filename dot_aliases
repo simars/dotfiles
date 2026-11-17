@@ -24,6 +24,12 @@ alias b="bundle"
 alias migrate="bin/rails db:migrate db:rollback && bin/rails db:migrate db:test:prepare"
 alias s="rspec"
 
+# Plain cd on every host: Omarchy aliases cd to its zoxide wrapper zd, where a mistyped folder jumps elsewhere and
+# zsh's cd -2 / cd old new stop working. z and zi still jump by frecency. The one Omarchy name replaced here besides ls.
+if alias cd 2> /dev/null | grep -q 'zd'; then
+    unalias cd
+fi
+
 # Parent directories (Omarchy's names; it defines them first, so keep its own where they exist)
 alias .. > /dev/null 2>&1 || alias ..='cd ..'
 alias ... > /dev/null 2>&1 || alias ...='cd ../..'

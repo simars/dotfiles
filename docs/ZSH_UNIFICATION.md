@@ -3,9 +3,9 @@
 zsh at the prompt behaves the same on the Macs and on Omarchy: vi keys, the same options, completion, history
 suggestions, syntax highlighting, `ls`, and Omarchy's helpers and fzf keys (cheatsheet: "zsh Line Editor" and
 "Omarchy's Helpers on Every Host"). This file records the differences that are left, with a recommendation each, so
-they can be decided later. Nothing here is implemented yet.
+they can be decided later.
 
-Status: open (written 2026-11-15).
+Status: **decided 2026-11-16**; every item below is either done or kept different on purpose.
 
 ## Done (for reference)
 
@@ -17,6 +17,11 @@ Status: open (written 2026-11-15).
 | Omarchy's helpers and Ctrl+Alt+F/L/V on the Macs | `dot_config/zsh/shared-helpers.zsh.tmpl`, generated from `docs/omarchy-stock/shell/` |
 | Ctrl+Alt+F on Omarchy | Omarchy's widget kept as `fzf-find-files-widget` (fzf's setup replaced it before) |
 | man pages through bat | Macs too |
+| `cd` | plain on every host: `~/.aliases` removes Omarchy's `cd` → `zd` alias (bash and zsh); `z` / `zi` still jump |
+| `compress` | Omarchy's (tar.gz a folder) on every host; Apple's `/usr/bin/compress` stays for scripts |
+| Reconnecting `ssh` | Omarchy's `ssh-reconnect` on the Macs too, in bash, from `~/.config/zsh/ssh-reconnect.bash` (generated from the snapshot) |
+| tmux / Herdr default shell | zsh on every host (`default-shell`, `default_shell`) |
+| Kept different on purpose | `r` (rails on Omarchy, zsh's repeat on the Macs); the prompt (each side its own); `EDITOR`; GNU tools via `userland` on the Macs; login shell; `~/.zshrc.local` on the Macs only |
 
 ## Group 2: name clashes, no side effects either way
 
