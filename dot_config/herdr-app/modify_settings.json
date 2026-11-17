@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# chezmoi modify script for the Herdr desktop app's ~/.config/herdr-app/settings.json (macOS): the app writes this
+# file, so only option_as_alt is set and everything else is kept. Its default, "auto", treats Option as Alt only on
+# US-style layouts, not on the Canadian layout these Macs use; "left" matches iTerm2, Wave, kitty and Ghostty.
+# The app reads ~/.config/herdr/config.toml for everything herdr shares (keys, default shell, copy on select).
+set -euo pipefail
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+current="$(cat)"
+[[ -n "${current//[[:space:]]/}" ]] || current='{}'
+if command -v jq > /dev/null 2>&1 && updated="$(printf '%s\n' "$current" | jq --indent 2 '.option_as_alt = "left"' 2> /dev/null)"; then
+    printf '%s\n' "$updated"
+else
+    printf '%s' "$current"
+fi

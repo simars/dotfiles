@@ -34,7 +34,7 @@ EOF
 | Standalone binary instead (section 3) | `age`, `bat`, `dust`, `fx`, `herdr`, `mise`, `neovim`, `git` (built, section 4), plus `timeout` in place of `coreutils` and `ip` in place of `iproute2mac` |
 | Go without, or another source | `bash` (Apple's `/bin/bash` 3.2 is enough: Claude Code uses it there), `bitwarden-cli`, `colima`, `coreutils`, `curl` (Apple's works), `docker`, `docker-compose` (Docker Desktop brings both), `eza` (`ll` falls back to `ls -lah`), `gawk`, `gnu-tar`, `httpie` (mise's Python installs it, from `~/.config/mise/default-python-packages`), `rsync` (Apple's `openrsync`), `shellcheck`, `vim` (Apple's), `wget` |
 
-Casks are prebuilt apps, so `brew install --cask <name>` does not compile; install the ones whose app still ships an Intel build (`1password-cli`, `font-jetbrains-mono-nerd-font`, `iterm2`, `warp`, `wave`).
+Casks are prebuilt apps, so `brew install --cask <name>` does not compile; install the ones whose app still ships an Intel build (`1password-cli`, `font-jetbrains-mono-nerd-font`, `ghostty`, `herdr-app`, `iterm2`, `kitty`, `warp`, `wave`; check each still offers an Intel build).
 
 ## 3. Standalone binaries
 

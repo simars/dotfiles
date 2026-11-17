@@ -27,6 +27,18 @@ Library/**
 .config/waveterm
 .config/waveterm/**
 {{ end }}
+# kitty and Ghostty settings (copy on select; Option as Alt on macOS): the Macs and Omarchy.
+{{ if not (or (eq .chezmoi.os "darwin") (eq (dig "osRelease" "id" "" .chezmoi) "omarchy")) }}
+.config/kitty
+.config/kitty/**
+.config/ghostty
+.config/ghostty/**
+{{ end }}
+# The Herdr desktop app's settings (Option as Alt): macOS only; on Linux it needs nothing beyond herdr's config.
+{{ if ne .chezmoi.os "darwin" }}
+.config/herdr-app
+.config/herdr-app/**
+{{ end }}
 # foot's settings (selection-target=both): Omarchy only, whose default terminal it is.
 {{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 .config/foot

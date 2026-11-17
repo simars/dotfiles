@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# chezmoi modify script for kitty's ~/.config/kitty/kitty.conf: Omarchy ships this file (and its theme include), so
+# only these settings are set and everything else is kept. Selecting text copies it to the clipboard, as in every
+# other terminal{{ if eq .chezmoi.os "darwin" }}; left Option is Alt, right Option types special characters{{ end }}.
+# Cheatsheet: "Copy and Paste", "Option as Alt in the Mac Terminals".
+set -euo pipefail
+MARKER="# Set by chezmoi (dot_config/kitty/modify_kitty.conf.tmpl); edits to these lines are replaced on apply"
+{{- if eq .chezmoi.os "darwin" }}
+KEYS="copy_on_select macos_option_as_alt"
+BLOCK=$'copy_on_select clipboard\nmacos_option_as_alt left'
+{{- else }}
+KEYS="copy_on_select"
+BLOCK='copy_on_select clipboard'
+{{- end }}
+{{ template "kv-settings.awk.sh" . }}

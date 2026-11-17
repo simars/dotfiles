@@ -50,7 +50,10 @@ formulae = [
 casks = [
     "1password-cli",
     "font-jetbrains-mono-nerd-font",
+    "ghostty",
+    "herdr-app",
     "iterm2",
+    "kitty",
     "warp",
     "wave"
 ]
@@ -70,9 +73,12 @@ pacman = [
     "duf",
     "dust",
     "fx",
+    "ghostty",
     "gitleaks",
     "google-chrome",
+    "herdr-app",
     "httpie",
+    "kitty",
     "omarchy-zsh",
     "shellcheck",
     "slack-desktop",

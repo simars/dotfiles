@@ -350,6 +350,31 @@ check "bootstrap refuses to run without a terminal" 1 "$(bash bootstrap/omarchy.
 check "omarchy setup runs the Tailscale and 1Password installers" 2 "$(grep -cE '^        omarchy install service (tailscale|1password) ' "$work/omarchy.setup")"
 check "omarchy packages include the declared apps" 6 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -oE '"(chezmoi|claude-desktop|cursor-bin|google-chrome|slack-desktop|visual-studio-code-bin)"' | sort -u | wc -l | tr -d ' ')"
 
+# kitty and Ghostty: copy on select everywhere, Option as Alt on macOS, as one-key edits of the apps' own files; the
+# Herdr desktop app gets Option as Alt on macOS. Macs and Omarchy only (where they are installed).
+for host in darwin omarchy; do
+    check "$host manages kitty.conf" yes "$(manages "$host" .config/kitty/kitty.conf)"
+    check "$host manages Ghostty's config" yes "$(manages "$host" .config/ghostty/config)"
+done
+for host in arch ubuntu; do
+    check "$host leaves kitty and Ghostty alone" "no no" "$(manages "$host" .config/kitty/kitty.conf) $(manages "$host" .config/ghostty/config)"
+done
+check "darwin manages the Herdr app's settings" yes "$(manages darwin .config/herdr-app/settings.json)"
+check "omarchy leaves the Herdr app's settings alone" no "$(manages omarchy .config/herdr-app/settings.json)"
+kv() { render "$1" "$2" > "$work/kv.sh"; printf '%b' "$3" | bash "$work/kv.sh" | grep -v '^# Set by chezmoi' | paste -sd'|' -; }
+check "kitty on macOS: keeps the rest, sets copy on select and left Option as Alt" "include t.conf|font_size 11||copy_on_select clipboard|macos_option_as_alt left" \
+    "$(kv darwin dot_config/kitty/modify_kitty.conf.tmpl 'include t.conf\ncopy_on_select no\nfont_size 11\n')"
+check "kitty on Omarchy: copy on select only" "include t.conf||copy_on_select clipboard" "$(kv omarchy dot_config/kitty/modify_kitty.conf.tmpl 'include t.conf\n')"
+check "Ghostty on macOS: copy on select and left Option as Alt, comments kept" "# copy-on-select = false|font-size = 11||copy-on-select = clipboard|macos-option-as-alt = left" \
+    "$(kv darwin dot_config/ghostty/modify_config.tmpl '# copy-on-select = false\ncopy-on-select = true\nfont-size = 11\n')"
+render omarchy dot_config/ghostty/modify_config.tmpl > "$work/ghostty.sh"
+check "Ghostty: second run changes nothing" "$(printf 'a = 1\n' | bash "$work/ghostty.sh")" "$(printf 'a = 1\n' | bash "$work/ghostty.sh" | bash "$work/ghostty.sh")"
+if command -v jq > /dev/null 2>&1; then
+    check "Herdr app on macOS: left Option as Alt, rest kept" '{"x":1,"option_as_alt":"left"}' "$(printf '{"x":1}' | bash dot_config/herdr-app/modify_settings.json | jq -c .)"
+fi
+check "darwin casks include kitty, Ghostty and the Herdr app" 3 "$(render darwin run_onchange_before_00_install_packages.sh.tmpl | grep -cE '^cask "(kitty|ghostty|herdr-app)"$')"
+check "omarchy packages include kitty, Ghostty and the Herdr app" 3 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -oE '"(kitty|ghostty|herdr-app)"' | sort -u | wc -l | tr -d ' ')"
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do
