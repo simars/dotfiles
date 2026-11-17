@@ -77,6 +77,13 @@ saved() {
         say "this machine does not run GNOME keyring's SSH agent (gcr-ssh-agent), which is what reads the saved passphrase"
         return 2
     fi
+    # A locked keyring (right after an autologin, before anything unlocked it) can answer a search with nothing, which
+    # would read as "not saved": report "cannot tell" instead.
+    if command -v busctl > /dev/null 2>&1 && [[ "$(busctl --user get-property org.freedesktop.secrets \
+        /org/freedesktop/secrets/aliases/default org.freedesktop.Secret.Collection Locked 2> /dev/null)" == "b true" ]]; then
+        say "the login keyring is locked in this session (unlock it at the desktop, e.g. by logging in there), so this cannot tell"
+        return 2
+    fi
     # Count matching items only; the secret line never leaves this pipe.
     [[ "$(secret-tool search --all unique "ssh-store:$key" 2> /dev/null | grep -c '^\[')" -gt 0 ]]
 }

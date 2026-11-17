@@ -397,6 +397,16 @@ for host in darwin intel arch ubuntu; do
     check "$host requirement check has no Omarchy version-file check" 0 "$(grep -c want_idiomatic "$work/$host.requirements")"
 done
 check "omarchy requirement check never mentions mise-audit" 0 "$(grep -c 'mise-audit' "$work/omarchy.requirements")"
+# ssh-key-remember --check on Linux: a locked login keyring is "cannot tell" (2), never "not saved" (1).
+mkdir -p "$work/lockstub"
+printf '#!/bin/sh\necho "b true"\n' > "$work/lockstub/busctl"
+printf '#!/bin/sh\nexit 0\n' > "$work/lockstub/secret-tool"
+printf '#!/bin/sh\nexit 0\n' > "$work/lockstub/systemctl"
+chmod +x "$work/lockstub/"*
+if [[ "$(uname -s)" == Linux ]]; then
+    check "ssh-key-remember --check reports a locked keyring as cannot tell" 2 \
+        "$(PATH="$work/lockstub:$PATH" bash dot_local/bin/executable_ssh-key-remember --check > /dev/null 2>&1; echo $?)"
+fi
 # ssh-key-remember: deployed everywhere, checked (warn only) after every apply; the old Mac-only run_once enrolment is gone.
 for host in $hosts; do
     check "$host manages ssh-key-remember" yes "$(manages "$host" .local/bin/ssh-key-remember)"
