@@ -25,6 +25,13 @@ surface_dim = "black"
 [terminal]
 # Matches -c "#{pane_current_path}" on every split, window, and session
 new_cwd = "follow"
+# New panes open zsh on every host, as tmux does (default-shell follows $SHELL). On Omarchy the herdr server starts
+# from Hyprland's session, where $SHELL is bash, the login shell; this skips the bash-to-zsh hand-over there.
+{{- if eq .chezmoi.os "darwin" }}
+default_shell = "/bin/zsh"
+{{- else }}
+default_shell = "/usr/bin/zsh"
+{{- end }}
 
 [keys]
 prefix = "ctrl+b"

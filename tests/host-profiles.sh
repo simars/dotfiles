@@ -324,6 +324,10 @@ for host in omarchy arch ubuntu; do
     check "$host ~/.zshrc has no iTerm2 shell integration" 0 "$(grep -c 'iterm2_shell_integration' "$work/$host.zshrc")"
 done
 
+# herdr opens zsh in new panes on every host.
+check "darwin herdr default shell is /bin/zsh" 1 "$(render darwin dot_config/herdr/config.toml.tmpl | grep -cx 'default_shell = "/bin/zsh"')"
+check "omarchy herdr default shell is /usr/bin/zsh" 1 "$(render omarchy dot_config/herdr/config.toml.tmpl | grep -cx 'default_shell = "/usr/bin/zsh"')"
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do
