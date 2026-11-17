@@ -82,7 +82,9 @@ chmod 700 "$HOME/.ssh"
 chmod 600 "$HOME/.ssh/id_rsa"
 # Saves the passphrase in the login keyring once (it says so if already saved); asks for it here.
 "$BIN/ssh-key-remember" || echo "    ssh-key-remember did not finish; the agent will ask for the passphrase instead."
-if ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 | grep -q 'successfully authenticated'; then
+# GitHub's test login always exits 1 (no shell), so judge by its message, not the exit status.
+github_reply="$(ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 || true)"
+if [[ "$github_reply" == *"successfully authenticated"* ]]; then
     echo "    GitHub accepts this key over SSH."
 else
     die "GitHub does not accept ~/.ssh/id_rsa over SSH yet (ssh -T git@github.com). Check the key, then run this again."
