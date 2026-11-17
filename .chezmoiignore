@@ -3,6 +3,8 @@ docs/
 docs/**
 tests/
 tests/**
+bootstrap/
+bootstrap/**
 .github/
 .github/**
 .gitleaks.toml

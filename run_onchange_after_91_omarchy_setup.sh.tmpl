@@ -31,6 +31,20 @@ else
     echo "==> Not a terminal, so no dev-env is installed. Run: ${cmds% && }"
 fi
 
+# Omarchy installers for apps that need setup beyond the package: only when the package is missing, from a terminal.
+{{- range .omarchy_installers }}
+if omarchy pkg missing {{ .package | quote }}; then
+    if [[ -t 0 && -t 1 ]]; then
+        echo "==> omarchy install {{ .command }}"
+        omarchy install {{ .command }} || echo "WARNING: omarchy install {{ .command }} failed. Run it yourself."
+    else
+        echo "==> Not a terminal, so {{ .package }} is not installed. Run: omarchy install {{ .command }}"
+    fi
+else
+    echo "==> {{ .package }}: installed."
+fi
+{{- end }}
+
 # Shell plugins: add the missing ones (no sudo needed), enable them, turn off what they replace.
 installed_plugins="$(omarchy plugin list --json 2> /dev/null | jq -r '.[] | "\(.id) \(if .enabled then "enabled" else "disabled" end)"' 2> /dev/null)"
 plugin_state() { awk -v id="$1" '$1 == id { print $2 }' <<< "$installed_plugins"; }

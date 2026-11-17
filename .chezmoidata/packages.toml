@@ -56,7 +56,7 @@ casks = [
 ]
 
 # Omarchy: installed only with Omarchy's own commands (`omarchy pkg add`, `omarchy pkg aur add`), never pacman, apt
-# or downloads. Omarchy already ships the rest of the Mac list (tmux, neovim, herdr, mise, eza, bat, fd, fzf, ...).
+# or downloads. Apps that need setup beyond the package (Tailscale, 1Password) are omarchy_installers in omarchy.toml. Omarchy already ships the rest of the Mac list (tmux, neovim, herdr, mise, eza, bat, fd, fzf, ...).
 # Runtimes come from `omarchy install dev-env <lang>`, not from here.
 [omarchy]
 # bitwarden-cli is left out: Arch's package needs nodejs-lts-jod (Node 22), which conflicts with Omarchy's nodejs,
@@ -64,14 +64,20 @@ casks = [
 pacman = [
     "age",
     "alacritty",
+    "chezmoi",
+    "claude-desktop",
+    "cursor-bin",
     "duf",
     "dust",
     "fx",
     "gitleaks",
+    "google-chrome",
     "httpie",
     "omarchy-zsh",
     "shellcheck",
+    "slack-desktop",
     "vim",
+    "visual-studio-code-bin",
     "wget",
     "zsh",
     "zsh-autosuggestions"

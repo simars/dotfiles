@@ -338,6 +338,18 @@ done
 check "darwin herdr default shell is /bin/zsh" 1 "$(render darwin dot_config/herdr/config.toml.tmpl | grep -cx 'default_shell = "/bin/zsh"')"
 check "omarchy herdr default shell is /usr/bin/zsh" 1 "$(render omarchy dot_config/herdr/config.toml.tmpl | grep -cx 'default_shell = "/usr/bin/zsh"')"
 
+# New Omarchy machine: one bootstrap command (bootstrap/omarchy.sh), kept in the repository, never deployed to $HOME.
+for host in $hosts; do
+    check "$host does not deploy bootstrap/" 0 "$(grep -c '^bootstrap' "$work/$host.managed")"
+done
+check "bootstrap/omarchy.sh is valid bash" "" "$(bash -n bootstrap/omarchy.sh 2>&1)"
+if command -v shellcheck > /dev/null 2>&1; then
+    check "bootstrap/omarchy.sh passes shellcheck" "" "$(shellcheck -S warning bootstrap/omarchy.sh 2>&1)"
+fi
+check "bootstrap refuses to run without a terminal" 1 "$(bash bootstrap/omarchy.sh < /dev/null > /dev/null 2>&1; echo $?)"
+check "omarchy setup runs the Tailscale and 1Password installers" 2 "$(grep -cE '^        omarchy install service (tailscale|1password) ' "$work/omarchy.setup")"
+check "omarchy packages include the declared apps" 6 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -oE '"(chezmoi|claude-desktop|cursor-bin|google-chrome|slack-desktop|visual-studio-code-bin)"' | sort -u | wc -l | tr -d ' ')"
+
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
 check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do

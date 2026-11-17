@@ -279,7 +279,7 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `tests/host-profiles.sh --base main` | Check All Host Kinds | From the source directory: checks what macOS, Omarchy, Arch, Ubuntu and Debian hosts get (CI runs it on every push), and notes scripts that would re-run on existing hosts. |
 
 * **What chezmoi touches:** single files, written as real files (no symlinks). It never deletes or replaces anything it does not manage, so the rest of `~/.config` stays as it is. It does set the permissions of the directories it manages (`~/.vim` is `0700`).
-* **Omarchy:** chezmoi installs only the packages in `[omarchy]` of `.chezmoidata/packages.toml` (`age`, `duf`, `dust`, `fx`, `gitleaks`, `httpie`, `shellcheck`, `vim`, `wget`, `zsh`, `zsh-autosuggestions`, `omarchy-zsh`, `alacritty`, and `lunarvim-git` and `waveterm-bin` (Wave) from the AUR; LunarVim then needs a one-time per-user link: `mkdir -p ~/.local/share/lunarvim && ln -s /usr/share/lunarvim ~/.local/share/lunarvim/lvim`, then `lvim --headless +qa`. Never run the package's `init-lvim.sh`: it overwrites `~/.config/lvim/config.lua` and installs tools with `yarn global` and `cargo`. If its build seems stuck on `gdb-add-index` lines, that is makepkg's slow `debug` pass, not a loop), only with `omarchy pkg add` / `omarchy pkg aur add`, and only when `chezmoi apply` runs in a terminal (they ask for the sudo password). Otherwise it prints the command, and the check after every apply keeps listing what is missing. Runtimes: `omarchy install dev-env go` (or `python`, ...). `bitwarden-cli` is macOS-only: Arch's package needs Node 22, which conflicts with Omarchy's Node. Build AUR packages with the system Python first (`PATH="/usr/bin:$PATH" omarchy pkg aur add ...`) once `omarchy install dev-env python` has put mise's Python on `PATH`. Omarchy's own Alacritty, Starship, `~/.config/mise/config.toml` and Neovim files are left alone; tmux and Herdr use the shared configs; Neovim gets only `lua/plugins/shared.lua`.
+* **Omarchy:** chezmoi installs only the packages in `[omarchy]` of `.chezmoidata/packages.toml` (`age`, `duf`, `dust`, `fx`, `gitleaks`, `httpie`, `shellcheck`, `vim`, `wget`, `zsh`, `zsh-autosuggestions`, `omarchy-zsh`, `alacritty`, `chezmoi`, the apps `google-chrome`, `visual-studio-code-bin`, `cursor-bin`, `claude-desktop`, `slack-desktop` (Tailscale and 1Password come through Omarchy's installers, below), and `lunarvim-git` and `waveterm-bin` (Wave) from the AUR; LunarVim then needs a one-time per-user link: `mkdir -p ~/.local/share/lunarvim && ln -s /usr/share/lunarvim ~/.local/share/lunarvim/lvim`, then `lvim --headless +qa`. Never run the package's `init-lvim.sh`: it overwrites `~/.config/lvim/config.lua` and installs tools with `yarn global` and `cargo`. If its build seems stuck on `gdb-add-index` lines, that is makepkg's slow `debug` pass, not a loop), only with `omarchy pkg add` / `omarchy pkg aur add`, and only when `chezmoi apply` runs in a terminal (they ask for the sudo password). Otherwise it prints the command, and the check after every apply keeps listing what is missing. Runtimes: `omarchy install dev-env go` (or `python`, ...). `bitwarden-cli` is macOS-only: Arch's package needs Node 22, which conflicts with Omarchy's Node. Build AUR packages with the system Python first (`PATH="/usr/bin:$PATH" omarchy pkg aur add ...`) once `omarchy install dev-env python` has put mise's Python on `PATH`. Omarchy's own Alacritty, Starship, `~/.config/mise/config.toml` and Neovim files are left alone; tmux and Herdr use the shared configs; Neovim gets only `lua/plugins/shared.lua`.
 * **Other Linux:** no system packages are installed; the distribution brings its own.
 * **zsh on Omarchy:** the interactive shell, the way Omarchy's `omarchy-zsh` package does it: a marked block in `~/.bashrc` (added by `~/guides/omarchy/zsh/apply.sh`, not by chezmoi) hands a new terminal's bash, or an interactive SSH login, over to zsh. The login shell stays bash, so the desktop session, `ssh host '<command>'`, `bash -c` and scripts never run zsh. In interactive shells `~/.zshrc` first loads `omarchy-zsh`'s zsh options (Up/Down search history by prefix, highlighted Tab menu, case-insensitive completion, syntax highlighting, `AUTO_CD`, `EXTENDED_GLOB`; its emacs keys are switched to vi later, as on every host, see "zsh Line Editor"), then Omarchy's own current envs, aliases and helpers from `$OMARCHY_PATH/default/bash` (`cx`, `a`, `h`, `mup`, `hdl`, `rsw`, `fip` and the rest, as in bash; `EDITOR` and `BROWSER` are Omarchy's launchers). `ssh` (reconnect), `iso2sd` and `format-drive` run in bash, because zsh misreads them. Everything after that block still wins: history (50,000 lines), fzf, zoxide, mise, starship, `~/.aliases`, `~/.zshrc.local`. It exports `SHELL=/usr/bin/zsh`, so tmux, herdr and nvim's terminal open zsh, and `CLAUDE_CODE_SHELL=/usr/bin/bash`, so Claude Code keeps bash (the Macs set it in `~/.zprofile`, which a non-login zsh does not read). Without the package the block is skipped and zsh behaves as on other Linux hosts. Undo: `~/guides/omarchy/zsh/undo.sh`.
 
@@ -301,12 +301,33 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `mise-audit` | Find Missing Project Pins | List the runtime pins under `$HOME` that mise has not installed (also run, as a warning, after every `chezmoi apply`):<br>`mise-audit` |
 | `mise-audit --install` | Install Missing Project Pins | Run `mise install` in every project with a missing pin, then report what still failed:<br>`mise-audit --install` |
 
+### New Omarchy Machine (one command)
+From a terminal on a fresh Omarchy, signed in as yourself:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/simars/dotfiles/main/bootstrap/omarchy.sh)
+# with the remote disk unlock (changes boot; per machine): add --with-remote-unlock
+```
+
+| Step | What happens | Your part |
+| :--- | :--- | :--- |
+| 1. chezmoi, git | `omarchy pkg add chezmoi git` | sudo password |
+| 2. Dotfiles and setup | `chezmoi init --apply` (https): packages and apps, Tailscale and 1Password installers, `python` / `go` runtimes, shell plugins | chezmoi's three questions; the Tailscale login link |
+| 3. SSH key | stops until `~/.ssh/id_rsa` is there (copy it by hand), saves its passphrase (`ssh-key-remember`), checks GitHub over SSH, switches chezmoi's remote to SSH | copy the key; its passphrase once |
+| 4. `~/.cfg` | clones and checks out the private bare repository (never overwrites a file; stops and names it) | — |
+| 5. Guides | `setup-guides apply`: zsh, terminals-clipboard, wave-keys | — |
+| 6. Remote disk unlock | only with `--with-remote-unlock`: the guide's `apply.sh`; the router steps are in its README | router, first unlock at the machine |
+| 7. Summary | the requirement check and the guides' verdicts | read it |
+
+Safe to run again: after a stop (the SSH key, a failed step) fix the cause and run the same command. Per machine afterwards: monitors (the bar's Display widget, monitor-layout), the tablet mapping, theme, web apps, and signing in to the apps.
+
 ### Omarchy Setup (beyond packages)
 Listed in `.chezmoidata/omarchy.toml`; `chezmoi apply` on Omarchy does what it can and the requirement check after every apply reports the rest, each with its fix.
 
 | What | Listed as | Done by `chezmoi apply` | If missing |
 | :--- | :--- | :--- | :--- |
 | Runtimes `python`, `go` (`omarchy install dev-env`) | `omarchy_dev_env` | yes, from a terminal (needs sudo); otherwise prints the command | `omarchy install dev-env <lang>` |
+| Tailscale (service, login, operator, Taildrop, bar widget) and 1Password (+ CLI, browser extension) | `omarchy_installers` | yes, from a terminal, when the package is missing | `omarchy install service tailscale` / `service 1password` |
 | Shell plugins: monitor-layout (replaces Omarchy's display widget), drawing-tablet, sandman | `omarchy_plugins` | yes: `omarchy plugin add <url>` (latest version), enabled in the bar's right section | `omarchy plugin add <url> --enable` |
 | Guides `zsh`, `terminals-clipboard`, `wave-keys` (`~/guides/omarchy`, private `~/.cfg`) | `omarchy_guides` | **no**, only reported | `setup-guides apply` (`setup-guides` alone shows each guide's verdict) |
 

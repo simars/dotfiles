@@ -26,6 +26,11 @@ omarchy_dev_env = ["python", "go"]
 #   chezmoi: the requirement check reports the ones not active, and `setup-guides apply` applies them.
 omarchy_guides = ["zsh", "terminals-clipboard", "wave-keys"]
 
+# omarchy_installers: Omarchy installers that set an app up beyond its package (services, login, browser extension,
+#   bar widget). Each runs when its package is missing, from a terminal only (sudo, logins); otherwise it is printed.
+#   tailscale: enables tailscaled, `tailscale up` (login link), operator=$USER, Taildrop to ~/Downloads, bar widget.
+#   1password: 1password and 1password-cli, plus its Chromium extension.
+
 # omarchy_plugins: shell plugins, added with `omarchy plugin add <url>` at their latest version and placed in the bar's
 #   right section. Their settings (monitor names, tablet mapping) stay per machine and are not managed. `replaces`
 #   names an Omarchy plugin to turn off. Update later with `omarchy plugin update`.
@@ -41,3 +46,11 @@ url = "https://github.com/alxcrt/omarchy-drawing-tablet.git"
 [[omarchy_plugins]]
 id = "lgse.sandman"
 url = "https://github.com/lgse/sandman.git"
+
+[[omarchy_installers]]
+package = "tailscale"
+command = "service tailscale"
+
+[[omarchy_installers]]
+package = "1password"
+command = "service 1password"

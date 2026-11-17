@@ -97,6 +97,13 @@ if [[ -z "$need" ]]; then
 else
     report warn "Omarchy dev-env runtimes missing: ${need% }. Fix: $(for l in $need; do printf 'omarchy install dev-env %s && ' "$l"; done | sed 's/ && $//')"
 fi
+{{- range .omarchy_installers }}
+if omarchy pkg missing {{ .package | quote }}; then
+    report warn "{{ .package }} is not installed. Fix: omarchy install {{ .command }}"
+else
+    echo "OK:   {{ .package }}"
+fi
+{{- end }}
 plugins_json="$(omarchy plugin list --json 2> /dev/null)"
 {{- range .omarchy_plugins }}
 case "$(jq -r --arg id {{ .id | quote }} '.[] | select(.id == $id) | .enabled' <<< "$plugins_json" 2> /dev/null)" in
