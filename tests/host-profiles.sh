@@ -308,6 +308,21 @@ if command -v zsh > /dev/null 2>&1; then
     check "Wave pane commands parse in zsh" "" "$(zsh -n dot_aliases 2>&1)"
 fi
 
+# with-op turns ./.op-env into --environment flags, dropping # comments, in bash and in the interactive zsh, which
+# has EXTENDED_GLOB on (dot_zshrc.tmpl): there an unquoted # in a pattern is a glob operator and `#*` a bad pattern.
+# A stub `op` prints the arguments it was given.
+mkdir -p "$work/with-op/bin"
+printf '#!/bin/sh\necho "$@"\n' > "$work/with-op/bin/op"
+chmod +x "$work/with-op/bin/op"
+printf '# first environment\nenv111 # inline comment\n  env222\n' > "$work/with-op/.op-env"
+with_op_expected="run --no-masking --environment env111 --environment env222 -- true"
+check "with-op reads .op-env (bash)" "$with_op_expected" \
+    "$(cd "$work/with-op" && PATH="$work/with-op/bin:$PATH" bash -c 'source "$0"; with-op true' "$OLDPWD/dot_aliases" 2>&1)"
+if command -v zsh > /dev/null 2>&1; then
+    check "with-op reads .op-env (zsh with EXTENDED_GLOB)" "$with_op_expected" \
+        "$(cd "$work/with-op" && PATH="$work/with-op/bin:$PATH" zsh -fc 'setopt EXTENDED_GLOB; source "$0"; with-op true' "$OLDPWD/dot_aliases" 2>&1)"
+fi
+
 # Omarchy setup beyond packages (.chezmoidata/omarchy.toml): dev-env runtimes and shell plugins by a run_onchange
 # script, guides only reported (setup-guides). Nothing of it on other hosts.
 render omarchy run_onchange_after_91_omarchy_setup.sh.tmpl > "$work/omarchy.setup"
