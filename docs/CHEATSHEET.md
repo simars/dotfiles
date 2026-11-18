@@ -422,7 +422,7 @@ Defined in `~/.aliases`, so they work in zsh and bash (Omarchy).
 
 | Command | Purpose | Example |
 | :--- | :--- | :--- |
-| `dkill` | `docker compose down` in every subdirectory of the current directory that has a `docker-compose.yml` or `.yaml` | `cd ~/code && dkill` |
+| `dkill` | `docker compose down` in every subdirectory of the current directory that has a `docker-compose.yml` or `.yaml`, printing each `(cd <dir>/ && docker compose down)` first | `cd ~/code && dkill` |
 | `dprune` | `docker system prune -a --volumes -f`: removes every stopped container, unused image, network and volume, without asking | `dprune` |
 
 ### SSH Hosts

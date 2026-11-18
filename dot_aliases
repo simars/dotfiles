@@ -86,6 +86,7 @@ dkill() {
     local d
     for d in */; do
         if [[ -f "${d}docker-compose.yml" || -f "${d}docker-compose.yaml" ]]; then
+            if [[ -t 2 ]]; then printf '→ (cd %q && docker compose down)\n' "$d" >&2; fi
             (cd "$d" && docker compose down)
         fi
     done

@@ -409,6 +409,28 @@ tmux new-session -Ad -s my-app
 tmux switch-client -t my-app" "$tat_dir" env TMUX=x STUB_TMUX_HAS=1 "$tp" sh "$tat"
 check "tat is valid sh" "" "$(sh -n "$tat" 2>&1)"
 
+# dkill prints each docker compose down it runs, to a terminal only.
+mkdir -p "$work/dkill/bin" "$work/dkill/api" "$work/dkill/web" "$work/dkill/docs" "$work/dkill/my svc"
+touch "$work/dkill/api/docker-compose.yml" "$work/dkill/web/docker-compose.yaml" "$work/dkill/my svc/docker-compose.yml"
+printf '#!/bin/sh\necho "docker $* in $(basename "$PWD")"\n' > "$work/dkill/bin/docker"
+chmod +x "$work/dkill/bin/docker"
+dkill_out="docker compose down in api
+docker compose down in my svc
+docker compose down in web"
+dp="PATH=$work/dkill/bin:$PATH"
+check "dkill is silent off a terminal" "$dkill_out" \
+    "$(cd "$work/dkill" && env "$dp" bash -c 'source "$0"; dkill' "$repo/dot_aliases" 2>&1)"
+dkill_tty="→ (cd api/ && docker compose down)
+docker compose down in api
+→ (cd my\\ svc/ && docker compose down)
+docker compose down in my svc
+→ (cd web/ && docker compose down)
+docker compose down in web"
+tty_check "dkill echoes each folder (bash)" "$dkill_tty" "$work/dkill" env "$dp" bash -c 'source "$0"; dkill' "$repo/dot_aliases"
+if command -v zsh > /dev/null 2>&1; then
+    tty_check "dkill echoes each folder (zsh EXTENDED_GLOB)" "$dkill_tty" "$work/dkill" env "$dp" zsh -fc 'setopt EXTENDED_GLOB; source "$0"; dkill' "$repo/dot_aliases"
+fi
+
 # Omarchy setup beyond packages (.chezmoidata/omarchy.toml): dev-env runtimes and shell plugins by a run_onchange
 # script, guides only reported (setup-guides). Nothing of it on other hosts.
 render omarchy run_onchange_after_91_omarchy_setup.sh.tmpl > "$work/omarchy.setup"
