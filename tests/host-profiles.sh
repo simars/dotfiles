@@ -10,6 +10,10 @@
 #   re-run it on their next apply. A report, not a failure.
 #
 # Needs an initialized chezmoi (CI runs `chezmoi init` first). Runs under bash 3.2, the macOS /bin/bash.
+#
+# SC2016 is off for this file: single-quoted `$` here is deliberate, either a grep pattern for a literal `$VAR` in a
+# rendered file or code for a child shell (`bash -c`, `zsh -c`, stub scripts) that must expand it there, not here.
+# shellcheck disable=SC2016
 
 set -u
 
@@ -273,7 +277,7 @@ for host in darwin intel arch ubuntu; do
 done
 check "ssh-reconnect.bash is Omarchy's function, valid bash" "1 " "$(render darwin dot_config/zsh/ssh-reconnect.bash.tmpl | grep -c '^ssh() {') $(render darwin dot_config/zsh/ssh-reconnect.bash.tmpl | bash -n 2>&1)"
 check "omarchy stock-drift report covers ssh-reconnect" 1 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c 'ssh-port-forwarding ssh-reconnect tmux')"
-check "~/.aliases makes cd plain where Omarchy aliased it to zd" "" "$(bash -c 'alias cd=zd; source dot_aliases; alias cd 2>&1 | grep zd')"
+check "every host's ~/.aliases makes cd plain where Omarchy aliased it to zd" "" "$(bash -c 'alias cd=zd; source dot_aliases; alias cd 2>&1 | grep zd')"
 check "tmux opens zsh in new panes" 1 "$(grep -c "^if-shell '\[ -x /usr/bin/zsh \]' 'set -g default-shell /usr/bin/zsh' 'if-shell \"\[ -x /bin/zsh \]\" \"set -g default-shell /bin/zsh\"'$" dot_config/tmux/tmux.conf)"
 check "shared helpers rename the Ctrl+Alt+F widget" "0 1" "$(grep -c 'fzf-file-widget()' "$work/helpers.zsh") $(grep -c "^  bindkey '\^\[\^F' fzf-find-files-widget" "$work/helpers.zsh")"
 check "shared helpers' sff prefers GNU find" 1 "$(grep -cF 'file=$(${commands[gfind]:-find} . -type f' "$work/helpers.zsh")"
@@ -502,7 +506,7 @@ check "darwin casks include kitty, Ghostty and the Herdr app" 3 "$(render darwin
 check "omarchy packages include kitty, Ghostty and the Herdr app" 3 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -oE '"(kitty|ghostty|herdr-app)"' | sort -u | wc -l | tr -d ' ')"
 
 # ls: the system's own ls with colour only, on every host (replaces Omarchy's eza ls on purpose).
-check "~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
+check "every host's ~/.aliases sets ls only to ls --color=auto" "alias ls='ls --color=auto'" "$(grep -E '^ *alias ls=' dot_aliases | xargs -0 | sed 's/^ *//' | tr -d '\n')"
 for host in $hosts; do
     check "$host requirement check is valid bash" "" "$(render "$host" run_after_99_assert_requirements.sh.tmpl | bash -n 2>&1)"
 done

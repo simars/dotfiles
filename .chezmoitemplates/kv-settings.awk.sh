@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared body of the kitty and Ghostty modify scripts (included by their templates): set a few settings in a config
 # file the app or Omarchy also writes, keep everything else. Each setting line is "key<sep>value"; existing lines for
 # the same keys (and an earlier block from this script) are dropped, then the block is appended, so it wins (both
