@@ -19,6 +19,7 @@ if [[ "${1:-}" == "--base" ]]; then
 fi
 
 cd "$(dirname "$0")/.." || exit 1
+repo="$PWD"
 
 # Every host sets both id and idLike: --override-data merges into the real data, so a Linux runner's own
 # ID_LIKE=debian would otherwise leak into the Arch host.
@@ -51,6 +52,31 @@ check() { # check NAME EXPECTED ACTUAL
         fail=$((fail + 1))
         echo "FAIL $1: expected [$2], got [$3]"
     fi
+}
+
+# Terminal checks: on_tty runs a command with stdin, stdout and stderr on a pseudo-terminal (script(1)) and prints
+# its output with the carriage returns removed. util-linux script takes the command as one string (-c); BSD/macOS
+# script takes it as arguments after the typescript file.
+on_tty() { # on_tty CMD...
+    local words
+    if script --version 2> /dev/null | grep -q util-linux; then
+        words="$(printf ' %q' "$@")"
+        SHELL=/bin/bash script -qec "${words# }" /dev/null < /dev/null | tr -d '\r'
+    else
+        script -q /dev/null "$@" < /dev/null | tr -d '\r'
+    fi
+}
+tty_ok=no
+if [[ "$(on_tty sh -c '[ -t 2 ] && echo yes' 2> /dev/null)" == "yes" ]]; then
+    tty_ok=yes
+else
+    echo "SKIP terminal checks: script(1) gives no terminal here"
+fi
+tty_check() { # tty_check NAME EXPECTED DIR CMD...: check, with CMD run in DIR on a terminal; skipped without one
+    local name="$1" expected="$2" dir="$3"
+    shift 3
+    [[ "$tty_ok" == yes ]] || return 0
+    check "$name" "$expected" "$(cd "$dir" && on_tty "$@")"
 }
 
 manages() { # manages HOST TARGET
@@ -317,10 +343,10 @@ chmod +x "$work/with-op/bin/op"
 printf '# first environment\nenv111 # inline comment\n  env222\n' > "$work/with-op/.op-env"
 with_op_expected="run --no-masking --environment env111 --environment env222 -- true"
 check "with-op reads .op-env (bash)" "$with_op_expected" \
-    "$(cd "$work/with-op" && PATH="$work/with-op/bin:$PATH" bash -c 'source "$0"; with-op true' "$OLDPWD/dot_aliases" 2>&1)"
+    "$(cd "$work/with-op" && PATH="$work/with-op/bin:$PATH" bash -c 'source "$0"; with-op true' "$repo/dot_aliases" 2>&1)"
 if command -v zsh > /dev/null 2>&1; then
     check "with-op reads .op-env (zsh with EXTENDED_GLOB)" "$with_op_expected" \
-        "$(cd "$work/with-op" && PATH="$work/with-op/bin:$PATH" zsh -fc 'setopt EXTENDED_GLOB; source "$0"; with-op true' "$OLDPWD/dot_aliases" 2>&1)"
+        "$(cd "$work/with-op" && PATH="$work/with-op/bin:$PATH" zsh -fc 'setopt EXTENDED_GLOB; source "$0"; with-op true' "$repo/dot_aliases" 2>&1)"
 fi
 
 # Agent aliases (o = with-op, y = no prompts, oy = both): defined only for installed tools. Stubs stand in for the
@@ -350,6 +376,22 @@ alias agyy='agy --dangerously-skip-permissions'" "$(agent_shell "$work/agents/bi
 check "only installed agents get aliases" "cdxy agyy" "$(agent_shell "$work/agents/some" 'out=; for n in $AGENT_ALIASES; do alias "$n" > /dev/null 2>&1 && out="$out $n"; done; echo "${out# }"')"
 check "cld and csr are gone" "" "$(agent_shell "$work/agents/bin:$PATH" 'alias cld csr 2> /dev/null')"
 check "codex and agy never run under with-op" "" "$(agent_shell "$work/agents/bin:$PATH" 'alias | grep -E "with-op (codex|agy)"')"
+
+# with-op prints the command it runs, to a terminal only (the two checks above capture stderr and see nothing).
+mkdir -p "$work/no-secrets"
+op_p="PATH=$work/with-op/bin:$PATH"
+op_line="→ op run --no-masking --environment env111 --environment env222 -- true"
+stub_line="run --no-masking --environment env111 --environment env222 -- true"
+tty_check "with-op echoes the op run command (bash)" "$op_line
+$stub_line" "$work/with-op" env "$op_p" bash -c 'source "$0"; with-op true' "$repo/dot_aliases"
+tty_check "with-op echoes the op run command (zsh EXTENDED_GLOB)" "$op_line
+$stub_line" "$work/with-op" env "$op_p" zsh -fc 'setopt EXTENDED_GLOB; source "$0"; with-op true' "$repo/dot_aliases"
+tty_check "with-op says when no secrets load" "→ echo hi  (no .op-env or .env: no secrets)
+hi" "$work/no-secrets" bash -c 'source "$0"; with-op echo hi' "$repo/dot_aliases"
+tty_check "with-op quotes arguments with spaces" "$op_line fix\\ the\\ bug
+$stub_line fix the bug" "$work/with-op" env "$op_p" bash -c 'source "$0"; with-op true "fix the bug"' "$repo/dot_aliases"
+check "with-op passes the exit status through" 1 \
+    "$(cd "$work/no-secrets" && bash -c 'source "$0"; with-op false; echo $?' "$repo/dot_aliases")"
 
 # Omarchy setup beyond packages (.chezmoidata/omarchy.toml): dev-env runtimes and shell plugins by a run_onchange
 # script, guides only reported (setup-guides). Nothing of it on other hosts.

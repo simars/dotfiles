@@ -119,12 +119,29 @@ cheatsheet() {
 # ==============================================================================
 # 1Password-aware command runner
 # ==============================================================================
+# __echo_cmd [-n NOTE] WORD...: show a command on stderr, only when that is a terminal.
+__echo_cmd() {
+  local note=
+  if [ "$1" = -n ]; then
+    note=$2
+    shift 2
+  fi
+  if [ -t 2 ]; then
+    printf '→' >&2
+    printf ' %q' "$@" >&2
+    [ -n "$note" ] && printf '  (%s)' "$note" >&2
+    printf '\n' >&2
+  fi
+  return 0
+}
+
 # Runs a command under `op run` when ./.op-env or ./.env exists.
 # ./.op-env lists 1Password Environment IDs, one per line (# comments allowed);
 # each becomes an --environment flag, and the last one wins on name clashes.
 # ./.env is passed as --env-file so op:// references in it resolve, and a
 # legacy OP_TARGET_ENVIRONMENT=<id> line in it adds one more Environment.
 # With neither file the command runs untouched.
+# It prints the command it runs to stderr when that is a terminal.
 # The flags live in an array: zsh does not word-split an unquoted $var, so a
 # plain string would reach `op` as one argument there.
 with-op() {
@@ -143,6 +160,7 @@ with-op() {
     flags+=(--env-file=.env)
   fi
   if [ ${#flags[@]} -eq 0 ]; then
+    __echo_cmd -n "no .op-env or .env: no secrets" "$@"
     "$@"
     return
   fi
@@ -150,6 +168,7 @@ with-op() {
   # --no-masking: with secrets loaded, op run pipes stdout/stderr through a
   # masking filter, so interactive TUIs (claude, cursor) see no TTY and claude
   # falls into --print mode.
+  __echo_cmd op run --no-masking "${flags[@]}" -- "$@"
   op run --no-masking "${flags[@]}" -- "$@"
 }
 
