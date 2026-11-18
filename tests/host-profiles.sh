@@ -395,6 +395,20 @@ $stub_line fix the bug" "$work/with-op" env "$op_p" bash -c 'source "$0"; with-o
 check "with-op passes the exit status through" 1 \
     "$(cd "$work/no-secrets" && bash -c 'source "$0"; with-op false; echo $?' "$repo/dot_aliases")"
 
+# tat prints the tmux command it runs, to a terminal only.
+mkdir -p "$work/tat/bin" "$work/tat/my.app"
+printf '#!/bin/sh\nif [ "$1" = has-session ]; then exit "${STUB_TMUX_HAS:-1}"; fi\necho "tmux $*"\n' > "$work/tat/bin/tmux"
+chmod +x "$work/tat/bin/tmux"
+tat_dir="$work/tat/my.app"; tat="$repo/dot_local/bin/executable_tat"; tp="PATH=$work/tat/bin:$PATH"
+check "tat is silent off a terminal" "tmux new-session -As my-app" "$(cd "$tat_dir" && env -u TMUX "$tp" sh "$tat" 2>&1)"
+tty_check "tat echoes outside tmux" "→ tmux new-session -As my-app
+tmux new-session -As my-app" "$tat_dir" env -u TMUX "$tp" sh "$tat"
+tty_check "tat echoes create and switch inside tmux" "→ tmux new-session -Ad -s my-app
+tmux new-session -Ad -s my-app
+→ tmux switch-client -t my-app
+tmux switch-client -t my-app" "$tat_dir" env TMUX=x STUB_TMUX_HAS=1 "$tp" sh "$tat"
+check "tat is valid sh" "" "$(sh -n "$tat" 2>&1)"
+
 # Omarchy setup beyond packages (.chezmoidata/omarchy.toml): dev-env runtimes and shell plugins by a run_onchange
 # script, guides only reported (setup-guides). Nothing of it on other hosts.
 render omarchy run_onchange_after_91_omarchy_setup.sh.tmpl > "$work/omarchy.setup"

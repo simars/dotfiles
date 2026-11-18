@@ -469,7 +469,7 @@ Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh dif
 | `~/.bashrc.local` | Host additions to Claude's bash | Lines installers append to `~/.bashrc` (fzf, LM Studio) belong here |
 
 ### tmux Sessions
-`tat` (`~/.local/bin/tat`, deployed by chezmoi) opens the tmux session named after the current directory, so each project keeps its own session that survives a detach. Dots and colons in the directory name become dashes (`my.app` gives `my-app`), because tmux cannot target a session name that contains them. It is a POSIX `sh` script adapted from [thoughtbot/dotfiles](https://github.com/thoughtbot/dotfiles/blob/main/bin/tat).
+`tat` (`~/.local/bin/tat`, deployed by chezmoi) opens the tmux session named after the current directory, so each project keeps its own session that survives a detach. Dots and colons in the directory name become dashes (`my.app` gives `my-app`), because tmux cannot target a session name that contains them. `tat` prints the tmux command it runs (`→ tmux new-session -As my-app`) when stderr is a terminal. It is a POSIX `sh` script adapted from [thoughtbot/dotfiles](https://github.com/thoughtbot/dotfiles/blob/main/bin/tat).
 
 | Command | Purpose | Example |
 | :--- | :--- | :--- |

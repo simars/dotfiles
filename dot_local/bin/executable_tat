@@ -10,6 +10,10 @@
 path_name="$(basename "$PWD" | tr '.:' '--')"
 session_name=${1-$path_name}
 
+show_cmd() {
+  if [ -t 2 ]; then printf '→ %s\n' "$*" >&2; fi
+}
+
 not_in_tmux() {
   [ -z "$TMUX" ]
 }
@@ -19,16 +23,19 @@ session_exists() {
 }
 
 create_detached_session() {
+  show_cmd tmux new-session -Ad -s "$session_name"
   (TMUX='' tmux new-session -Ad -s "$session_name")
 }
 
 create_if_needed_and_attach() {
   if not_in_tmux; then
+    show_cmd tmux new-session -As "$session_name"
     tmux new-session -As "$session_name"
   else
     if ! session_exists; then
       create_detached_session
     fi
+    show_cmd tmux switch-client -t "$session_name"
     tmux switch-client -t "$session_name"
   fi
 }
