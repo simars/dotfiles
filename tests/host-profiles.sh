@@ -384,8 +384,10 @@ op_line="→ op run --no-masking --environment env111 --environment env222 -- tr
 stub_line="run --no-masking --environment env111 --environment env222 -- true"
 tty_check "with-op echoes the op run command (bash)" "$op_line
 $stub_line" "$work/with-op" env "$op_p" bash -c 'source "$0"; with-op true' "$repo/dot_aliases"
+if command -v zsh > /dev/null 2>&1; then
 tty_check "with-op echoes the op run command (zsh EXTENDED_GLOB)" "$op_line
 $stub_line" "$work/with-op" env "$op_p" zsh -fc 'setopt EXTENDED_GLOB; source "$0"; with-op true' "$repo/dot_aliases"
+fi
 tty_check "with-op says when no secrets load" "→ echo hi  (no .op-env or .env: no secrets)
 hi" "$work/no-secrets" bash -c 'source "$0"; with-op echo hi' "$repo/dot_aliases"
 tty_check "with-op quotes arguments with spaces" "$op_line fix\\ the\\ bug
