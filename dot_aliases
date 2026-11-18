@@ -153,8 +153,34 @@ with-op() {
   op run --no-masking "${flags[@]}" -- "$@"
 }
 
-alias cld="with-op claude"
-alias csr="with-op cursor ."
+# Agent shortcuts, one scheme for every agent: plain = the tool's own name, o = under with-op (project 1Password
+# secrets; Claude, Copilot and Cursor only), y = the tool's no-prompt flag, oy = both. Each exists only where its
+# tool is installed.
+if command -v claude &> /dev/null; then
+  alias cldo="with-op claude"
+  alias cldy="claude --dangerously-skip-permissions"
+  alias cldoy="with-op claude --dangerously-skip-permissions"
+fi
+if command -v copilot &> /dev/null; then
+  alias cplo="with-op copilot"
+  alias cply="copilot --yolo"
+  alias cploy="with-op copilot --yolo"
+fi
+if command -v cursor-agent &> /dev/null; then
+  alias csao="with-op cursor-agent"
+  alias csay="cursor-agent --yolo"
+  alias csaoy="with-op cursor-agent --yolo"
+fi
+if command -v cursor &> /dev/null; then
+  alias csro="with-op cursor ."
+fi
+# Codex has no --yolo; its only full skip also turns off the sandbox.
+if command -v codex &> /dev/null; then
+  alias cdxy="codex --dangerously-bypass-approvals-and-sandbox"
+fi
+if command -v agy &> /dev/null; then
+  alias agyy="agy --dangerously-skip-permissions"
+fi
 
 # ==============================================================================
 # Wave Terminal: open panes from the shell (macOS and Omarchy)

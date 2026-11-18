@@ -323,6 +323,34 @@ if command -v zsh > /dev/null 2>&1; then
         "$(cd "$work/with-op" && PATH="$work/with-op/bin:$PATH" zsh -fc 'setopt EXTENDED_GLOB; source "$0"; with-op true' "$OLDPWD/dot_aliases" 2>&1)"
 fi
 
+# Agent aliases (o = with-op, y = no prompts, oy = both): defined only for installed tools. Stubs stand in for the
+# agents; $work/agents/some holds only codex and agy. Each check sources dot_aliases in /bin/bash under its own PATH.
+mkdir -p "$work/agents/bin" "$work/agents/some"
+for agent in claude copilot cursor-agent cursor codex agy; do
+    printf '#!/bin/sh\necho "$0 $*"\n' > "$work/agents/bin/$agent"
+    chmod +x "$work/agents/bin/$agent"
+done
+cp "$work/agents/bin/codex" "$work/agents/bin/agy" "$work/agents/some/"
+agent_aliases="cldo cldy cldoy cplo cply cploy csao csay csaoy csro cdxy agyy"
+agent_shell() { # PATH, then the command body; the alias list arrives as $AGENT_ALIASES
+    PATH="$1" AGENT_ALIASES="$agent_aliases" /bin/bash -c "source dot_aliases 2> /dev/null; $2"
+}
+check "agent aliases expand as designed" "alias cldo='with-op claude'
+alias cldy='claude --dangerously-skip-permissions'
+alias cldoy='with-op claude --dangerously-skip-permissions'
+alias cplo='with-op copilot'
+alias cply='copilot --yolo'
+alias cploy='with-op copilot --yolo'
+alias csao='with-op cursor-agent'
+alias csay='cursor-agent --yolo'
+alias csaoy='with-op cursor-agent --yolo'
+alias csro='with-op cursor .'
+alias cdxy='codex --dangerously-bypass-approvals-and-sandbox'
+alias agyy='agy --dangerously-skip-permissions'" "$(agent_shell "$work/agents/bin:$PATH" 'alias $AGENT_ALIASES')"
+check "only installed agents get aliases" "cdxy agyy" "$(agent_shell "$work/agents/some" 'out=; for n in $AGENT_ALIASES; do alias "$n" > /dev/null 2>&1 && out="$out $n"; done; echo "${out# }"')"
+check "cld and csr are gone" "" "$(agent_shell "$work/agents/bin:$PATH" 'alias cld csr 2> /dev/null')"
+check "codex and agy never run under with-op" "" "$(agent_shell "$work/agents/bin:$PATH" 'alias | grep -E "with-op (codex|agy)"')"
+
 # Omarchy setup beyond packages (.chezmoidata/omarchy.toml): dev-env runtimes and shell plugins by a run_onchange
 # script, guides only reported (setup-guides). Nothing of it on other hosts.
 render omarchy run_onchange_after_91_omarchy_setup.sh.tmpl > "$work/omarchy.setup"

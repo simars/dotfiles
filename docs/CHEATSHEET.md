@@ -29,14 +29,23 @@ In `~/.aliases`, modern aliases (`ll`, `lt`, `ltree`, `preview`, `fp`, `dfh`, `d
 
 All aliases are for interactive shells. When `~/.zshrc` is sourced by a shell that is not interactive, as Claude Code does to build its tool shell, it ends by removing every alias, including those from `~/.aliases.local`, `~/.zshrc.local` and the env files it sources. Commands then run as typed, and a helper function named like an alias (`g`, `config`) can be defined. `config` still works there as `~/.local/bin/config`.
 
-### 1Password-Aware Runner (`with-op`, `cld`, `csr`)
+### 1Password-Aware Runner and Agent Shortcuts (`with-op`, `cldo`, `cldy`, ...)
 `with-op <command...>` runs a command under `op run` when the current directory has a `.op-env` or a `.env`; with neither it runs the command untouched. `.op-env` lists 1Password Environment IDs (not names), one per line with `#` comments allowed, and each becomes `--environment <id>`; when two define the same variable the last one wins. `.env` is passed as `--env-file=.env`, so `op://` references in it resolve, and a legacy `OP_TARGET_ENVIRONMENT=<id>` line in it adds one more Environment. Only the current directory is checked, not its parents. It passes `--no-masking`: with secrets loaded, `op run` otherwise pipes output through a masking filter, interactive tools such as `claude` see no terminal, and `claude` falls into `--print` mode. The cost is that a secret the command prints shows in clear text. It is a function (bash and zsh), so it also works where aliases are stripped.
 
 | Command | Expands to | Use |
 | :--- | :--- | :--- |
 | `with-op <cmd>` | `op run --no-masking [--environment <id>]... [--env-file=.env] -- <cmd>` | Any command that needs the project's 1Password secrets. |
-| `cld` | `with-op claude` | Claude Code with the project's secrets. Interactive shells only (alias). |
-| `csr` | `with-op cursor .` | Cursor on the current directory with the project's secrets. Interactive shells only (alias). |
+
+| Agent | `o` (secrets) | `y` (no prompts) | `oy` (both) | Plain |
+| :--- | :--- | :--- | :--- | :--- |
+| Claude Code | `cldo` = `with-op claude` | `cldy` = `claude --dangerously-skip-permissions` | `cldoy` | `claude` |
+| Copilot | `cplo` = `with-op copilot` | `cply` = `copilot --yolo` | `cploy` | `copilot` |
+| Cursor agent | `csao` = `with-op cursor-agent` | `csay` = `cursor-agent --yolo` | `csaoy` | `cursor-agent` |
+| Cursor editor | `csro` = `with-op cursor .` | none | none | `cursor` |
+| Codex | none | `cdxy` = `codex --dangerously-bypass-approvals-and-sandbox` | none | `codex` |
+| Antigravity | none | `agyy` = `agy --dangerously-skip-permissions` | none | `agy` |
+
+The letters mean the same for every agent: `o` runs it under `with-op` (the project's 1Password secrets), `y` adds its no-prompt flag, `oy` does both, and the plain name is the tool itself. Only Claude, Copilot and Cursor get `o`, since they are the agents used with project secrets. Each alias exists only where its tool is installed, and extra arguments append (`cldy -p "hi"`). Codex has no `--yolo`: its flag also turns off its sandbox. `cld` and `csr` were replaced by `cldo` and `csro`. These are aliases, so interactive shells only.
 
 ### GNU & Linux-Compatible Tools (macOS)
 On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, `find`, `tar`, `awk`, `make` and the rest of coreutils run. The default, `gnu`, aliases them to the GNU versions in your interactive shell only; scripts and other child processes keep Apple's tools, so macOS scripts that use BSD flags keep working. On Ubuntu the plain names are GNU already.
