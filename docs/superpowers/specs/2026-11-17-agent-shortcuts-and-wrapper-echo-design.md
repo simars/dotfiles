@@ -62,8 +62,9 @@ without Copilot has no `cpl*`. None of the names clashes with a command, builtin
 
 ### Echo
 
-- Format: `→ <command>` on one line, arguments quoted with `printf %q` so the line can be pasted and run. `%q` behaves
-  the same in bash and zsh; `tat` is POSIX `sh`, which has no `%q`, and prints its session name as is (already free of
+- Format: `→ <command>` on one line, arguments quoted with `printf %q` so the line can be pasted and run. bash and zsh
+  quote some characters differently (`a#b` becomes `a\#b` and `=x` becomes `\=x` in zsh), but each pastes back
+  correctly into the shell that printed it; `tat` is POSIX `sh`, which has no `%q`, and prints its session name as is (already free of
   `.` and `:`).
 - Only when stderr is a terminal (`[ -t 2 ]`), and to stderr.
 - `with-op`: `→ op run --no-masking --environment <id> [--env-file=.env] -- <cmd...>`; without `.op-env` or `.env`:

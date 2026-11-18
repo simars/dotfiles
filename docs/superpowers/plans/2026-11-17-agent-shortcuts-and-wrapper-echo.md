@@ -16,7 +16,7 @@
 - Every alias is wrapped in `if command -v <tool> &> /dev/null; then ... fi` (AGENTS.md 3.2).
 - `dot_aliases` must work when sourced by bash and by zsh, including zsh with `EXTENDED_GLOB` (escape `#`, `^`, `~` in patterns). `tat` stays POSIX `sh`.
 - `tests/host-profiles.sh` runs under bash 3.2 (macOS `/bin/bash`): no associative arrays, `mapfile`, `${var,,}`. CI runs it on `ubuntu-latest` and `macos-26`.
-- Echo format: `→ ` then the command; to stderr; only when `[ -t 2 ]`; arguments quoted with `printf %q` (bash and zsh give identical output for these arguments, checked).
+- Echo format: `→ ` then the command; to stderr; only when `[ -t 2 ]`; arguments quoted with `printf %q` (bash and zsh quote some characters differently, e.g. zsh prints `a#b` as `a\#b` and `=x` as `\=x`, but each output pastes back correctly into the shell that printed it).
 - y flags, verbatim: `claude --dangerously-skip-permissions`, `copilot --yolo`, `cursor-agent --yolo`, `codex --dangerously-bypass-approvals-and-sandbox`, `agy --dangerously-skip-permissions`.
 - `docs/CHEATSHEET.md` changes in the same commit as the code it documents (AGENTS.md 2).
 - Commit as `Simar Singh <simarpaulsingh@gmail.com>` (the repo's configured identity), conventional messages, no `Co-Authored-By` or other trailers. Never push.
