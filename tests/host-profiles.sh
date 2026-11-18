@@ -63,14 +63,17 @@ on_tty() { # on_tty CMD...
         words="$(printf ' %q' "$@")"
         SHELL=/bin/bash script -qec "${words# }" /dev/null < /dev/null | tr -d '\r'
     else
-        script -q /dev/null "$@" < /dev/null | tr -d '\r'
+        # BSD script writes the EOF character to the pty when stdin ends; the tty echoes it as ^D plus two
+        # backspaces, possibly after the child's first output, so strip every ^D, not only a leading one.
+        script -q /dev/null "$@" < /dev/null | tr -d '\r\b' | sed 's/\^D//g'
     fi
 }
 tty_ok=no
-if [[ "$(on_tty sh -c '[ -t 2 ] && echo yes' 2> /dev/null)" == "yes" ]]; then
+probe="$(on_tty sh -c '[ -t 2 ] && echo yes' 2> /dev/null)"
+if [[ "$probe" == "yes" ]]; then
     tty_ok=yes
 else
-    echo "SKIP terminal checks: script(1) gives no terminal here"
+    echo "SKIP terminal checks: the probe printed [$(printf '%s' "$probe" | od -c | head -2 | tr -s ' ' | tr '\n' ';')], not [yes]"
 fi
 tty_check() { # tty_check NAME EXPECTED DIR CMD...: check, with CMD run in DIR on a terminal; skipped without one
     local name="$1" expected="$2" dir="$3"
@@ -385,7 +388,7 @@ stub_line="run --no-masking --environment env111 --environment env222 -- true"
 tty_check "with-op echoes the op run command (bash)" "$op_line
 $stub_line" "$work/with-op" env "$op_p" bash -c 'source "$0"; with-op true' "$repo/dot_aliases"
 if command -v zsh > /dev/null 2>&1; then
-tty_check "with-op echoes the op run command (zsh EXTENDED_GLOB)" "$op_line
+    tty_check "with-op echoes the op run command (zsh EXTENDED_GLOB)" "$op_line
 $stub_line" "$work/with-op" env "$op_p" zsh -fc 'setopt EXTENDED_GLOB; source "$0"; with-op true' "$repo/dot_aliases"
 fi
 tty_check "with-op says when no secrets load" "→ echo hi  (no .op-env or .env: no secrets)
@@ -393,7 +396,7 @@ hi" "$work/no-secrets" bash -c 'source "$0"; with-op echo hi' "$repo/dot_aliases
 tty_check "with-op quotes arguments with spaces" "$op_line fix\\ the\\ bug
 $stub_line fix the bug" "$work/with-op" env "$op_p" bash -c 'source "$0"; with-op true "fix the bug"' "$repo/dot_aliases"
 check "with-op passes the exit status through" 1 \
-    "$(cd "$work/no-secrets" && bash -c 'source "$0"; with-op false; echo $?' "$repo/dot_aliases")"
+    "$(cd "$work/no-secrets" && bash -c 'source "$0"; with-op false; echo $?' "$repo/dot_aliases" 2>&1)"
 
 # tat prints the tmux command it runs, to a terminal only.
 mkdir -p "$work/tat/bin" "$work/tat/my.app"
