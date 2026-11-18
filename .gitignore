@@ -6,3 +6,6 @@ key.txt
 
 # The shared ~/.config/git/info-exclude ignores bin/ in every repo; this repo ships scripts there.
 !dot_local/bin/
+
+# Claude Code worktrees (local, never committed)
+.claude/worktrees/
