@@ -327,7 +327,7 @@ check "tmux unbinds Alt-Left/Right and binds nothing to them" "2 0" "$(grep -cE 
 check "herdr binds nothing to alt+left/right" 0 "$(grep -vE '^ *#' dot_config/herdr/config.toml.tmpl | grep -cE '"alt\+(left|right)"')"
 
 # iTerm2 may set the Mac clipboard (OSC 52) for copies in tmux, herdr and Neovim: macOS only.
-check "darwin turns on iTerm2 clipboard access" 1 "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | grep -c '^defaults write com.googlecode.iterm2 AllowClipboardAccess -bool true$')"
+check "darwin turns on iTerm2 clipboard access" 1 "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | grep -c '^elif ! defaults write com.googlecode.iterm2 AllowClipboardAccess -bool true; then$')"
 check "darwin iTerm2 clipboard script is valid bash" "" "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | bash -n 2>&1)"
 for host in omarchy arch ubuntu; do
     check "$host gets no iTerm2 clipboard script" "" "$(render "$host" run_after_96_macos_terminal_clipboard.sh.tmpl | tr -d '[:space:]')"
@@ -620,6 +620,37 @@ if [[ -n "$base" ]]; then
         done
     done
 fi
+
+# The "To do on this machine" list at the end of every apply (.chezmoitemplates/after-apply.sh): the run_after_ scripts
+# add to it, run_after_99 prints it last. A stub pgrep says whether the app "runs" (PGREP_EXIT).
+aa="$work/after-apply"
+mkdir -p "$aa/bin" "$aa/home"
+printf '#!/bin/sh\nexit "${PGREP_EXIT:-0}"\n' > "$aa/bin/pgrep"
+chmod +x "$aa/bin/pgrep"
+aa_run() { HOME="$aa/home" CHEZMOI_CACHE_DIR="$aa/cache" XDG_STATE_HOME="$aa/state" PATH="$aa/bin:$PATH" bash -c "source .chezmoitemplates/after-apply.sh; $1" | paste -sd'|' -; }
+nothing="==> Nothing to do on this machine after this apply."
+check "after apply: an empty list says so" "$nothing" "$(aa_run print_todo)"
+check "after apply: items numbered, a repeated one listed once" "==> To do on this machine after this apply:|    1. a|    2. b" "$(aa_run 'todo a; todo b; todo a; print_todo')"
+check "after apply: the list is removed once printed" 0 "$(find "$aa/cache" -name 'after-apply.*' | wc -l | tr -d ' ')"
+printf 'one\n' > "$aa/home/app.conf"
+check "reload hint: the first apply only records the file" "$nothing" "$(aa_run 'reload_hint "$HOME/app.conf" app "reload app"; print_todo')"
+check "reload hint: unchanged file, nothing to do" "$nothing" "$(aa_run 'reload_hint "$HOME/app.conf" app "reload app"; print_todo')"
+printf 'two\n' > "$aa/home/app.conf"
+check "reload hint: changed file, app running" "==> To do on this machine after this apply:|    1. reload app" "$(aa_run 'reload_hint "$HOME/app.conf" app "reload app"; print_todo')"
+printf 'three\n' > "$aa/home/app.conf"
+check "reload hint: changed file, app not running" "$nothing" "$(PGREP_EXIT=1 aa_run 'reload_hint "$HOME/app.conf" app "reload app"; print_todo')"
+printf 'four\n' > "$aa/home/app.conf"
+check "reload hint: no process to test" "==> To do on this machine after this apply:|    1. reload shells" "$(PGREP_EXIT=1 aa_run 'reload_hint "$HOME/app.conf" "" "reload shells"; print_todo')"
+for host in darwin omarchy arch; do
+    check "$host requirement check prints the to-do list last" "print_todo" "$(render "$host" run_after_99_assert_requirements.sh.tmpl | grep -E '^[a-z_]' | tail -1)"
+done
+check "omarchy Ghostty reload key is Ctrl+Shift+," 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'press Ctrl+Shift+, in Ghostty')"
+check "darwin Ghostty reload key is Cmd+Shift+," 1 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'press Cmd+Shift+, in Ghostty')"
+check "darwin checks the dotfiles-local links; omarchy does not" "1 0" \
+    "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'for local_file in zshrc.local aliases.local') $(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'for local_file in')"
+check "darwin iTerm2 script checks the default profile and the Claude Code integration" 2 \
+    "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | grep -cE 'Default Bookmark Guid|handle-agent-hook')"
+check "omarchy stock-drift notes go on the to-do list" 2 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c '^        todo ')"
 
 echo "$pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

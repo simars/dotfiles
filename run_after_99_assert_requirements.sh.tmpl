@@ -10,6 +10,7 @@ if [[ "${CHEZMOI_CI:-false}" == "true" ]]; then
 fi
 
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+{{ template "after-apply.sh" . }}
 GIT_MIN="{{ .requirements.git.min }}"
 failed=0
 warned=0
@@ -19,8 +20,10 @@ version_ge() {
     [[ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" == "$2" ]]
 }
 
-# report LEVEL MESSAGE: LEVEL "fail" fails the run, "warn" only prints a warning
+# report LEVEL MESSAGE [off-list]: LEVEL "fail" fails the run, "warn" only prints a warning; both go on the to-do list
+# unless the third argument is "off-list" (a warning that may never clear, so the list could never say "Nothing to do")
 report() {
+    [[ "${3:-}" == off-list ]] || todo "$2"
     if [[ "$1" == "warn" ]]; then
         echo "WARN: $2"
         warned=1
@@ -203,17 +206,94 @@ if command -v mise &> /dev/null; then
             echo "OK:   mise-audit: every project runtime pin under \$HOME is installed"
         else
             while IFS= read -r line; do echo "      $line"; done <<< "$audit_out"
-            report warn "the project runtime pins above are not installed (a pin that cannot install stays listed until its project changes it). Fix: mise-audit --install"
+            # Off the to-do list: a pin that cannot install (an old Ruby) stays listed until its project changes it.
+            report warn "the project runtime pins above are not installed (a pin that cannot install stays listed until its project changes it). Fix: mise-audit --install" off-list
         fi
     fi
 {{- end }}
 fi
 
+# Once per machine, by hand (docs/NEW_MACHINE.md): name each step not done yet. Informational: never fails the apply.
+note() {
+    echo "NOTE: $1"
+    todo "$1"
+}
+if [[ -f "$HOME/.ssh/id_rsa" ]]; then
+    echo "OK:   SSH key ~/.ssh/id_rsa"
+else
+    note "there is no SSH key at ~/.ssh/id_rsa, so GitHub over SSH and the hosts in ~/.ssh/config do not work. Fix: copy it from another machine (chmod 600), then run ssh-key-remember"
+fi
+if [[ -d "$HOME/.cfg" ]]; then
+    echo "OK:   ~/.cfg (ai-tooling, guides, dotfiles-local)"
+else
+    note "the private ~/.cfg is not cloned, so ai-tooling, the guides and dotfiles-local are missing. Fix: docs/NEW_MACHINE.md in the chezmoi source, step \"Private files\""
+fi
+if [[ -d "$HOME/ai-tooling" ]]; then
+    if [[ "$(readlink "$HOME/.claude/CLAUDE.md" 2> /dev/null)" == "$HOME/ai-tooling/claude/CLAUDE.md" ]]; then
+        echo "OK:   ai-tooling is set up for Claude Code"
+    else
+        note "ai-tooling is not set up here (~/.claude/CLAUDE.md is not its link). Fix: cd ~/ai-tooling && make setup"
+    fi
+fi
+{{- if eq .chezmoi.os "darwin" }}
+# This Mac's own shell settings: ~/dotfiles-local (from ~/.cfg) reaches the shell through two links.
+for local_file in zshrc.local aliases.local; do
+    [[ -f "$HOME/dotfiles-local/$local_file" ]] || continue
+    if [[ -e "$HOME/.$local_file" ]]; then
+        echo "OK:   ~/.$local_file"
+    else
+        note "~/.$local_file is missing, so this Mac's own settings in ~/dotfiles-local are not loaded. Fix: ln -s ~/dotfiles-local/$local_file ~/.$local_file"
+    fi
+done
+{{- end }}
+if command -v gh &> /dev/null; then
+    if [[ "$(gh config get git_protocol 2> /dev/null)" == ssh ]]; then
+        echo "OK:   gh clones over SSH"
+    else
+        note "gh clones over https, so new clones get https remotes. Fix: gh config set git_protocol ssh"
+    fi
+    if gh auth token -h github.com &> /dev/null; then
+        echo "OK:   gh is logged in to github.com"
+{{- if eq .chezmoi.os "darwin" }}
+    elif [[ -n "${SSH_CONNECTION:-}" ]]; then
+        echo "NOTE: gh login not checked: its token is in the login Keychain, which is locked over SSH"
+{{- end }}
+    else
+        note "gh is not logged in to github.com. Fix: gh auth login"
+    fi
+fi
+{{- if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+# LunarVim (lunarvim-git) needs a one-time link per user; never its init-lvim.sh.
+if command -v lvim &> /dev/null; then
+    if [[ -e "$HOME/.local/share/lunarvim/lvim" ]]; then
+        echo "OK:   LunarVim is set up"
+    else
+        note "LunarVim is installed but not set up for you. Fix: mkdir -p ~/.local/share/lunarvim && ln -s /usr/share/lunarvim ~/.local/share/lunarvim/lvim && lvim --headless +qa"
+    fi
+fi
+{{- end }}
+
+# Apps that read a changed config only when they start or on a reload key. kitty, Wave, Hyprland and iTerm2's dynamic
+# profiles reload by themselves; iTerm2's global settings are run_after_96's.
+{{- if eq .chezmoi.os "darwin" }}
+reload_hint "$HOME/.config/ghostty/config" ghostty "Ghostty's config changed: press Cmd+Shift+, in Ghostty to reload it, or open a new window"
+{{- else }}
+reload_hint "$HOME/.config/ghostty/config" ghostty "Ghostty's config changed: press Ctrl+Shift+, in Ghostty to reload it, or open a new window"
+reload_hint "$HOME/.config/foot/foot.ini" foot "foot's config changed: new foot windows use it; open ones keep the old settings"
+{{- end }}
+reload_hint "$HOME/.config/herdr/config.toml" herdr "Herdr's config changed: run herdr server reload-config (or press Ctrl-b r in Herdr)"
+reload_hint "$HOME/.config/tmux/tmux.conf" tmux "tmux's config changed: press Ctrl-b r in tmux"
+for startup_file in .zshrc .zprofile .aliases; do
+    reload_hint "$HOME/$startup_file" "" "Shell startup files changed: run exec zsh in open shells, or open new ones"
+done
+
 if [[ "$failed" -ne 0 ]]; then
     echo "==> Requirement check failed: commits on this machine are not fully secret-scanned."
+    print_todo
     exit 1
 fi
 
 if [[ "$warned" -ne 0 ]]; then
     echo "==> Requirement check passed with warnings (WARN lines above)."
 fi
+print_todo

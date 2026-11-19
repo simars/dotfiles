@@ -5,15 +5,18 @@
 # When an Omarchy update changes one of those stock files, say so and show the change, so it can be merged or the
 # snapshot refreshed (docs/omarchy-stock/README.md in the chezmoi source). Informational: never fails the apply.
 set -u
+{{ template "after-apply.sh" . }}
 
 check_stock() { # check_stock NAME STOCK_FILE SNAPSHOT_FILE
     if [[ ! -f "$2" ]]; then
         echo "NOTE: Omarchy's stock $1 ($2) is gone; what was taken from it may need review."
+        todo "Omarchy's stock $1 is gone: review what the chezmoi source took from it (docs/omarchy-stock/)"
     elif cmp -s "$3" "$2"; then
         echo "OK:   Omarchy's stock $1 is unchanged since it was last taken over"
     else
         echo "NOTE: Omarchy's stock $1 changed since it was last taken over. Merge what is wanted, then update docs/omarchy-stock/:"
         diff -u --label "snapshot" --label "$2" "$3" "$2" | sed 's/^/      /'
+        todo "Omarchy's stock $1 changed: merge it into the chezmoi source and refresh docs/omarchy-stock/ (diff above)"
     fi
 }
 

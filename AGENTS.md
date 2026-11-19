@@ -77,6 +77,11 @@ Agents must strictly uphold these architectural guarantees at all times:
   gitleaks detect --source ~/.local/share/chezmoi -v
   ```
 
+### 3.5 Say What Is Left After Every Apply
+- **Invariant:** `chezmoi apply` ends with one to-do list: `==> To do on this machine after this apply:` with numbered fixes, or `==> Nothing to do on this machine after this apply.` `run_after_99_assert_requirements.sh` prints it last (`print_todo`); every `run_after_` script that prints an action the user must take (a `WARN:`, `FAIL:` or `NOTE:` with a fix) also adds it with `todo` from `.chezmoitemplates/after-apply.sh`. A purely informational line ("not checked over SSH") is not a to-do, and neither is a warning that may never clear (uninstallable project runtime pins: `report warn ... off-list`), so the list can say "Nothing to do".
+- **Once-per-machine steps** live in `docs/NEW_MACHINE.md`. When one changes, update the guide in the same commit, and add a check to `run_after_99` (or the iTerm2 script on macOS) when chezmoi can see it cheaply and offline; keep checks silent where they cannot tell (a Mac's Keychain over SSH).
+- **Reload hints:** `reload_hint FILE PROCESS MESSAGE` reports an app whose config changed since the last apply while it runs. A newly managed config that its app reads only at start or on a key gets a line there.
+
 ---
 
 ## 4. Platform Specifics & Multi-Architecture Rules

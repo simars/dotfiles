@@ -3,22 +3,17 @@
 Deterministic workstation setup for **macOS on Apple silicon** (dotfiles and packages), **Intel Macs** (dotfiles; tools by hand, see `docs/INTEL_MACS.md`) and **Omarchy Linux** (dotfiles, plus a short package list installed with `omarchy pkg add`).
 
 ## Fresh Machine Bootstrap
+Step by step, with what is yours to do: [`docs/NEW_MACHINE.md`](docs/NEW_MACHINE.md) (Apple-silicon Mac and Omarchy; Intel Macs: [`docs/INTEL_MACS.md`](docs/INTEL_MACS.md)). In short:
 
-### 1. Provision Age / SSH Secret Key (Optional if using encrypted files)
 ```bash
-# If using native age key:
-mkdir -p ~/.config/chezmoi
-nano ~/.config/chezmoi/key.txt
-chmod 600 ~/.config/chezmoi/key.txt
+# Omarchy, from a terminal on the machine (stops until your SSH key is copied in, then continues):
+bash <(curl -fsSL https://raw.githubusercontent.com/simars/dotfiles/main/bootstrap/omarchy.sh)
 
-# Or ensure your SSH key is present:
-ls -la ~/.ssh/id_rsa
+# Apple-silicon Mac, after Homebrew and your SSH key (~/.ssh/id_rsa):
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" init --apply https://github.com/simars/dotfiles.git
 ```
 
-### 2. Initialize & Apply Dotfiles
-```bash
-sh -c "$(curl -fsLS https://get.chezmoi.io)" -- init --apply git@github.com:simars/dotfiles.git
-```
+Every `chezmoi apply` ends with `==> To do on this machine after this apply:` (or `Nothing to do`): follow it until nothing is left.
 
 ---
 
@@ -35,7 +30,7 @@ sh -c "$(curl -fsLS https://get.chezmoi.io)" -- init --apply git@github.com:sima
 | **Open Source Directory** | `chezmoi cd` | Launch interactive shell inside `~/.local/share/chezmoi` |
 | **Check Managed Files** | `chezmoi managed` | List all files currently managed by chezmoi |
 | **Inspect System Status** | `chezmoi status` | List state changes between source and destination |
-| **Fresh Machine Bootstrap** | `sh -c "$(curl -fsLS https://get.chezmoi.io)" -- init --apply git@github.com:simars/dotfiles.git` | Bootstrap an entire workstation in one command |
+| **Fresh Machine Bootstrap** | `docs/NEW_MACHINE.md` | Mac and Omarchy, step by step |
 
 ---
 
