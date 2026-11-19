@@ -103,6 +103,8 @@ Agents must strictly uphold these architectural guarantees at all times:
 
 ## 5. Development & Verification Workflow
 
+**Worktrees go outside the source directory:** `git worktree add ~/.local/share/chezmoi-worktrees/<name> -b <branch>`, never under `~/.local/share/chezmoi` (not `.claude/worktrees/` either; move one out with `git worktree move`). `chezmoi execute-template`, which `tests/host-profiles.sh` uses to render, also reads `.chezmoitemplates/` and `.chezmoidata/` from nested folders, and a nested copy wins over the root one (`.chezmoiignore` does not stop it). A stale worktree inside therefore makes the tests and template previews use its old files: 6 false test failures on 2026-11-19. `chezmoi apply`, `diff` and `cat` ignore nested folders, so applies are not affected. If tests fail oddly in the source directory, check `git worktree list` first.
+
 When performing tasks in this repository, follow this execution sequence:
 
 1. **Check Status & Plan:**
