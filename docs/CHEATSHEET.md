@@ -510,6 +510,21 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 
 `omarchy refresh tmux` (or `herdr`) puts Omarchy's stock file back; `chezmoi apply ~/.config/tmux/tmux.conf` (or `~/.config/herdr/config.toml`) restores the shared one.
 
+### Keys the Terminal Must Not Take (macOS and Omarchy)
+A key reaches Claude Code, Herdr, tmux or zsh only if nothing before it takes it: first the desktop (Hyprland, macOS), then the terminal app, then Herdr or tmux. A key that is taken does something else instead (Ctrl-Enter in Ghostty made the window full screen, which hides Omarchy's top bar).
+
+| Key | Needed by | Taken by | What to do |
+| :--- | :--- | :--- | :--- |
+| `Ctrl-Enter` | Claude Code: send queued messages now | Ghostty on Omarchy (full screen) | Given back by chezmoi. Full screen is `Super-F`. Where a terminal sends it as plain Enter, use `Ctrl-x Ctrl-s` |
+| `Alt-1`..`9` | Herdr and tmux: go to tab / window | Ghostty on Omarchy (its own tabs) | Given back by chezmoi. Ghostty's tabs: `Ctrl-Tab`, `Ctrl-PgUp` / `Ctrl-PgDn` |
+| `Ctrl-Alt-arrows` | Herdr and tmux: focus pane | Ghostty on Omarchy (its own splits) | Given back by chezmoi |
+| `Ctrl-b` | Claude Code: run in the background | Herdr and tmux (the prefix) | Press it twice |
+| `Alt-Enter` | Claude Code: new line | Herdr and tmux (split) | `Shift-Enter` or `Ctrl-j` |
+| `Alt-t` `Alt-d` `Alt-n` `Alt-w` `Alt-g` `Alt-1`..`9` ... | Claude Code (`Alt-t` thinking), zsh (`Alt-d` delete word), Herdr | Wave on Omarchy: Wave's Mac `Cmd` keys are `Alt` on Linux, and Wave cannot change them | Run agents and Herdr in Ghostty or foot on Omarchy; Wave is fine on macOS |
+| `Alt-Space`, right `Alt`, `F9` | Programs | Omarchy's dictation (toggle; push to talk), once a dictation app is installed; `F9` comes from `~/.config/hypr/bindings.lua` | Not changed; delete the `F9` lines there to give `F9` back |
+
+A running Ghostty applies the change in a new window or after reloading its config (`Ctrl-Shift-,`). `ghostty +list-keybinds` shows what Ghostty still takes.
+
 ---
 
 ## 5. Machine-Specific Customization Points

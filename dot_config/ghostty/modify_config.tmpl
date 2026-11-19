@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
 # chezmoi modify script for Ghostty's ~/.config/ghostty/config: Omarchy ships this file (and its theme include), so
 # only these settings are set and everything else is kept. Selecting text copies it to the clipboard, as in every
-# other terminal{{ if eq .chezmoi.os "darwin" }}; left Option is Alt, right Option types special characters{{ end }}.
-# Cheatsheet: "Copy and Paste", "Option as Alt in the Mac Terminals".
+# other terminal{{ if eq .chezmoi.os "darwin" }}; left Option is Alt, right Option types special characters{{ else }}; and Ghostty gives back keys the programs inside need{{ end }}.
+# Cheatsheet: "Copy and Paste", "Option as Alt in the Mac Terminals", "Keys the Terminal Must Not Take".
 set -euo pipefail
 MARKER="# Set by chezmoi (dot_config/ghostty/modify_config.tmpl); edits to these lines are replaced on apply"
 {{- if eq .chezmoi.os "darwin" }}
-KEYS="copy-on-select macos-option-as-alt"
 BLOCK=$'copy-on-select = clipboard\nmacos-option-as-alt = left'
 {{- else }}
-KEYS="copy-on-select"
 BLOCK='copy-on-select = clipboard'
+# Ghostty's Linux defaults take these keys even when the action cannot run (no `performable:`), so the program never
+# sees them: Ctrl+Enter is full screen there (Claude Code: send queued messages now; Super+F is full screen on
+# Omarchy), Alt+1..9 go to a Ghostty tab and Ctrl+Alt+arrows to a Ghostty split (Herdr's go-to-tab and focus-pane
+# keys). `unbind` passes them on. Ghostty's own tabs still switch with Ctrl+Tab and Ctrl+PgUp/PgDn. The Mac's Ghostty
+# uses Cmd for all of these.
+for key in ctrl+enter alt+{1..9} alt+digit_{1..9} ctrl+alt+arrow_{up,down,left,right}; do
+    BLOCK+=$'\n'"keybind = $key=unbind"
+done
 {{- end }}
 {{ template "kv-settings.awk.sh" . }}

@@ -499,6 +499,15 @@ check "Ghostty on macOS: copy on select and left Option as Alt, comments kept" "
     "$(kv darwin dot_config/ghostty/modify_config.tmpl '# copy-on-select = false\ncopy-on-select = true\nfont-size = 11\n')"
 render omarchy dot_config/ghostty/modify_config.tmpl > "$work/ghostty.sh"
 check "Ghostty: second run changes nothing" "$(printf 'a = 1\n' | bash "$work/ghostty.sh")" "$(printf 'a = 1\n' | bash "$work/ghostty.sh" | bash "$work/ghostty.sh")"
+# Ghostty on Omarchy gives Ctrl+Enter (Claude Code), Alt+1..9 and Ctrl+Alt+arrows (Herdr) to the program; a keybind
+# line is matched by its trigger, so Omarchy's other bindings stay.
+ghostty_out="$(printf 'keybind = shift+enter=csi:13;2u\nkeybind = ctrl+enter=toggle_fullscreen\n' | bash "$work/ghostty.sh")"
+check "Ghostty on Omarchy: Omarchy's own key bindings kept" 1 "$(grep -cxF 'keybind = shift+enter=csi:13;2u' <<< "$ghostty_out")"
+check "Ghostty on Omarchy: one Ctrl+Enter line, handed to the program" "keybind = ctrl+enter=unbind" "$(grep -F 'ctrl+enter' <<< "$ghostty_out")"
+check "Ghostty on Omarchy: Alt+1..9 (both forms) and Ctrl+Alt+arrows handed to the program" "18 4" \
+    "$(grep -cE '^keybind = alt\+(digit_)?[1-9]=unbind$' <<< "$ghostty_out") $(grep -cE '^keybind = ctrl\+alt\+arrow_(up|down|left|right)=unbind$' <<< "$ghostty_out")"
+check "Ghostty on Omarchy: second run changes nothing, key bindings included" "$ghostty_out" "$(bash "$work/ghostty.sh" <<< "$ghostty_out")"
+check "Ghostty on macOS: keys left to Ghostty (it uses Cmd)" 0 "$(render darwin dot_config/ghostty/modify_config.tmpl > "$work/ghostty-mac.sh"; printf 'a = 1\n' | bash "$work/ghostty-mac.sh" | grep -c 'unbind')"
 if command -v jq > /dev/null 2>&1; then
     check "Herdr app on macOS: left Option as Alt, rest kept" '{"x":1,"option_as_alt":"left"}' "$(printf '{"x":1}' | bash dot_config/herdr-app/modify_settings.json | jq -c .)"
 fi

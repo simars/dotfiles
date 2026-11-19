@@ -6,10 +6,8 @@
 set -euo pipefail
 MARKER="# Set by chezmoi (dot_config/kitty/modify_kitty.conf.tmpl); edits to these lines are replaced on apply"
 {{- if eq .chezmoi.os "darwin" }}
-KEYS="copy_on_select macos_option_as_alt"
 BLOCK=$'copy_on_select clipboard\nmacos_option_as_alt left'
 {{- else }}
-KEYS="copy_on_select"
 BLOCK='copy_on_select clipboard'
 {{- end }}
 {{ template "kv-settings.awk.sh" . }}
