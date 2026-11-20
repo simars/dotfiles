@@ -355,6 +355,8 @@ check "shared look: silent, flashing bell and all 16 ANSI colours" "true|true|tr
     "$(shared_look repo | jq -r '.Profiles[0] as $p | "\($p."Silence Bell")|\($p."Flashing Bell")|\([range(0;16) | "Ansi \(.) Color"] | all(. as $k | $p | has($k)))"')"
 check "shared look: 10000 lines of scrollback" "10000|false" \
     "$(shared_look repo | jq -r '.Profiles[0] | "\(."Scrollback Lines")|\(."Unlimited Scrollback")"')"
+check "shared look: one colour set, not separate light and dark ones (which would hide the Atom colours)" false \
+    "$(shared_look repo | jq '.Profiles[0]."Use Separate Colors for Light and Dark Mode"')"
 check "shared look: no per-Mac or left-Option keys" "" \
     "$(shared_look repo | jq -r '.Profiles[0] | keys[] | select(IN("Description","Default Bookmark","Shortcut","Tags","Working Directory","Option Key Sends"))')"
 check "shared look: names no font that isn't installed (Hack)" 0 "$(shared_look repo | grep -c Hack)"
