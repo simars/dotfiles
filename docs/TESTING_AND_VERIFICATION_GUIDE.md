@@ -748,6 +748,30 @@ Claude Code ran its Bash tool in zsh and replayed the aliases of `~/.zshrc` into
 
 ---
 
+### 9.16 Terminal Leader Keys and Herdr Like tmux (2026-11-20)
+
+Spec: `docs/superpowers/specs/2026-11-20-terminal-leader-keys-design.md`. Measured on `simars-works` (Omarchy, tmux 3.8,
+Ghostty 1.4.0, foot 1.28.0, Herdr 0.9.5 client with a 0.9.1 server) unless the row says "by hand".
+
+| Check | foot | Ghostty | How |
+| :--- | :--- | :--- | :--- |
+| tmux sees extended keys (`extkeys` in `#{client_termfeatures}`) | yes (tmux names it `foot(1.28.0)`) | yes | Throwaway `tmux -L` server in a new window, `display -p` |
+| Ghostty config with the leader block validates | n/a | yes | `ghostty +validate-config` on `chezmoi cat ~/.config/ghostty/config` |
+| Hyprland leaves Super+B free | yes | yes | Requirement check: `OK:   Super+B is free in Hyprland (terminal leader)` |
+| Herdr 0.9.1 server reloading the new config | n/a | n/a | Rejects the whole `[keys]` section over the prefix list and keeps its current keys; the 0.9.5 binary accepts it (`herdr config check`) |
+| `Super-b` types nothing (`cat -v`, then inside tmux) | by hand | by hand | Synthetic keys (Hyprland `send_key_state`, `wtype`) did not reach a probe window, so press the keys |
+| `Super-b` then `c`, `%`, `"`, `h`/`l`, `z`, `1`, `n`, `,`, `&`, `=`, `?` | n/a | by hand | Each does what the cheatsheet's "Terminal Tabs and Splits" table says |
+| `Super-b` then `q` (unbound): nothing typed; `Super-b` then `Esc`: typing works again | by hand | by hand | Review Focus 1 and 2 of the plan |
+| `Super-b r`, `l l l`, `Esc` resizes and stops | n/a | by hand | |
+| `Super-b x` with `sleep 100` running asks first | n/a | by hand | `confirm-close-surface = true` |
+| `Ctrl-Space c` makes a tmux window | by hand | by hand | |
+| `Ctrl-Space c` makes a Herdr tab | by hand, after the server restart | same | Needs a 0.9.2+ server (apply's to-do list) |
+| Claude Code inside tmux gets Ctrl+Enter and Shift+Enter | by hand | by hand | |
+| `y` in tmux and Herdr copy mode reaches the clipboard, locally and over `ssh localhost` (OSC 52) | by hand | by hand | |
+| Herdr desktop app starts with the new config and takes `Ctrl-b` | by hand | | `herdr-app`; it has no config checker |
+
+Mac rows (iTerm2 and Ghostty with `Cmd-b`) follow when a Mac is reachable (plan tasks 5 to 7).
+
 ## 10. Global Secret-Scanning Hook Verification (2026-10-17)
 
 The hook (`hook.gitleaks` in `~/.gitconfig`, running `~/.config/git/hooks/gitleaks-pre-commit`) was tested in a sandbox with a throwaway global config and repos, on git 2.54.0 (Apple, `Simars-MacBook-Work`) and 2.56.0 (Homebrew, `simar-mbp`). Both versions gave identical results.

@@ -397,6 +397,8 @@ check "darwin ~/.zshrc binds Alt+Left to backward-word" 1 "$(grep -cF "for _key 
 
 # Alt+Left/Right belong to the shell (word jumps), not to tmux windows or herdr tabs.
 check "tmux unbinds Alt-Left/Right and binds nothing to them" "2 0" "$(grep -cE '^unbind -n M-(Left|Right)$' dot_config/tmux/tmux.conf) $(grep -cE '^bind .* -n M-(Left|Right) ' dot_config/tmux/tmux.conf)"
+# tmux before 3.8 does not recognise Ghostty, so its extended keys (Ctrl+Enter, Shift+Enter) are declared once.
+check "tmux declares Ghostty's extended keys once" 1 "$(grep -cxF 'set -ag terminal-features "xterm-ghostty:extkeys"' dot_config/tmux/tmux.conf)"
 check "herdr binds nothing to alt+left/right" 0 "$(grep -vE '^ *#' dot_config/herdr/config.toml.tmpl | grep -cE '"alt\+(left|right)"')"
 
 # iTerm2's after-script (macOS only): the repo's global settings (clipboard access for OSC 52 copies in tmux, herdr and
