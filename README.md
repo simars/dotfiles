@@ -56,7 +56,7 @@ Every `chezmoi apply` ends with `==> To do on this machine after this apply:` (o
     ```
     This allows remote `git`, `chezmoi update`, and GitHub access to authenticate seamlessly using your workstation's unlocked agent without storing unencrypted keys or typing passphrases.
 * **Non-Interactive / Headless Bootstrap:**
-  * `.chezmoi.toml.tmpl` includes fallback defaults (`simarpaulsingh@gmail.com`, `Simar Singh`, and no work email) so automated or headless installations run cleanly without requiring an interactive TTY. Without a work email, the end-of-apply to-do list says so until `chezmoi init --prompt` gets one (or `none`).
+  * `.chezmoi.toml.tmpl` has defaults for every question (`simarpaulsingh@gmail.com`, `Simar Singh`, and no work email), so an automated install runs `chezmoi init --promptDefaults` without a TTY. Without a work email, the end-of-apply to-do list says so until `chezmoi init --prompt` gets one (or `none`). A plain `chezmoi init` without a TTY stops at the first unanswered question instead, and changes nothing.
 
 
 ## Directory Structure Overview

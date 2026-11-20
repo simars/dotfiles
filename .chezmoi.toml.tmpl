@@ -3,7 +3,7 @@
 {{- /* Work identity: the work email and the work GitHub orgs stay in this machine's config, never in this public
        repository (AGENTS.md 3.3). Every host gets the same rules from them (dot_gitconfig.tmpl); "none" means this
        machine has no work repositories. Each default is the current answer, so `chezmoi init --prompt` shows it.
-       A stored blank (from a headless init) is not an answer: it is asked again, and a --promptString fills it. */ -}}
+       A stored blank (from `chezmoi init --promptDefaults`) is not an answer: it is asked again, and a --promptString fills it. */ -}}
 {{- $workEmail := dig "work" "email" "" . -}}
 {{- if eq $workEmail "" -}}
 {{-   $workEmail = promptString "Work email for your work GitHub orgs (none if this machine has no work repositories)" "" -}}

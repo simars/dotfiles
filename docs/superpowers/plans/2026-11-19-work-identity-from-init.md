@@ -269,30 +269,50 @@ git commit -m "feat(requirements): list a to-do while a machine has no work emai
 
 ### Task 4: Rollout to works, mbp-work and mbp (done by the controller, not a subagent)
 
-The controller runs this after the branch is fast-forwarded into `main`, the user has OK'd the push, the iTerm2 session has been told, and CI is green on the pushed commit (`gh run watch`).
+The controller runs this after the branch is fast-forwarded into `main`, the user has OK'd the push, the iTerm2
+session has been told, and CI is green on every job for the pushed commit (`gh run watch`). This order (revised
+after the final review) never leaves a machine without work rules: the hand-made files stay in place until the
+chezmoi-built rules are proven on their own.
 
 - [ ] **Step 1: Per machine, read the current answers from its hand-made files.**
   - Email: `git config -f ~/.gitconfig.work user.email`.
-  - Orgs: `grep -oE 'hasconfig:remote\.\*\.url:git@github\.com:[^/]+' ~/.gitconfig.local | sed 's/.*://' | sort -u | paste -sd, - | sed 's/,/, /g'`.
+  - Orgs: the unique `<org>` names in `~/.gitconfig.local`'s `hasconfig:remote.*.url:git@github.com:<org>/**` rules,
+    joined with `, `.
 
   Print only counts and domains in the transcript.
-- [ ] **Step 2: Get the new source.** On works, the local source is already current. On the Macs, run `chezmoi git -- pull --ff-only`.
-- [ ] **Step 3: Answer the new questions.** Run `chezmoi init --no-tty --promptString "P_EMAIL=<email>" --promptString "P_ORGS=<orgs>" < /dev/null`.
+- [ ] **Step 2: Check the hand-made files hold nothing else.** Stop and ask if either holds more:
+  - `~/.gitconfig.local`: only comments, the work `includeIf` lines and their `path = ~/.gitconfig.work` lines;
+  - `~/.gitconfig.work`: only `[user]` and `email`.
+- [ ] **Step 3: Get the new source.** On works, the local source is already current. On the Macs, run
+  `chezmoi git -- pull --ff-only`.
+- [ ] **Step 4: Answer the new questions.** Run `chezmoi init --no-tty --promptString "P_EMAIL=<email>" --promptString "P_ORGS=<orgs>" < /dev/null`.
 
-  Expected: `[data.work]` in `~/.config/chezmoi/chezmoi.toml` with `enabled = true` and the same number of orgs as before (3 on the Macs).
-- [ ] **Step 4: Move the hand-made files aside.** Do this only if `~/.gitconfig.local` holds nothing but comments, the work `includeIf` lines and their `path = ~/.gitconfig.work` lines; otherwise stop and ask.
+  Expected: exit 0, and `[data.work]` with `enabled = true` and as many orgs as Step 1 found. This was tested with a
+  real `chezmoi init` against a config shaped like the machines'.
+- [ ] **Step 5: Preview.** Run `chezmoi diff`.
 
-  Rename it to `~/.gitconfig.local.bak-2026-11-19`, and `~/.gitconfig.work` to `~/.gitconfig.work.bak-2026-11-19`.
-- [ ] **Step 5: Apply.** Run `chezmoi apply`.
+  Expected: exit 0. `~/.gitconfig` gains 3 `includeIf` blocks per org, and `~/.gitconfig.work` changes only by its
+  comment lines.
+- [ ] **Step 6: Apply, with a backup copy.**
+  1. Copy (don't move) `~/.gitconfig.work` to `~/.gitconfig.work.bak-2026-11-19`.
+  2. Run `chezmoi apply`.
 
   Expected: exit 0, and the end-of-apply list has no work-email item.
-- [ ] **Step 6: Verify.** Run `git config --show-origin user.email` in one work repository and in `~/.local/share/chezmoi`.
-  - Expected: the work one shows `file:~/.gitconfig.work` and the work domain; the personal one shows `file:~/.gitconfig` and `gmail.com`.
-  - Then run `~/.config/git/hooks/git-identity-guard --pre-commit` in the work repository; it should exit 0.
+- [ ] **Step 7: Verify with both rule sets in place.** Run `git config --show-origin user.email` in one work
+  repository. Expected: `file:~/.gitconfig.work` and the work domain.
+- [ ] **Step 8: Prove chezmoi's rules alone.**
+  1. Move `~/.gitconfig.local` to `~/.gitconfig.local.bak-2026-11-19`.
+  2. Repeat Step 7 in the work repository, and check that `~/.local/share/chezmoi` gives `file:~/.gitconfig` with
+     `gmail.com`.
+  3. Run `~/.config/git/hooks/git-identity-guard --pre-commit` in the work repository; it should exit 0.
 
-  The work repository to use on each machine is any clone whose origin is in a work org. On works, use the one
-  whose commits were re-authored on 2026-11-19. Its path stays out of this file (AGENTS.md 3.3).
-- [ ] **Step 7: Report to the user.**
+  If anything fails, move `~/.gitconfig.local` back, and investigate.
+
+  The work repository to use on each machine is any clone whose origin is in a work org. On works, use the one whose
+  commits were re-authored on 2026-11-19. Its path stays out of this file (AGENTS.md 3.3).
+- [ ] **Step 9: Report to the user.**
   - The per-machine results.
   - The backups, kept until the user says to delete them.
   - Any to-dos the applies printed.
+  - Any machine that couldn't be reached. It keeps its hand-made files, which still work, but its to-do wrongly says
+    the personal email is used everywhere until Steps 3 to 8 run there.

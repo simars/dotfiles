@@ -65,11 +65,12 @@ chezmoi() { command chezmoi --config "$suite_config" --source "$repo" "$@"; }
 
 # Every host renders the whole tree with that fresh config: a template reading a key the config no longer writes
 # fails here, not on a new machine.
-fresh_render_failures() {
-    local host
+fresh_render_failures() { # prints "HOST: first error line; " for each host that fails
+    local host err
     for host in $hosts; do
-        chezmoi --destination "$work/dest-$host" --override-data "$(host_data "$host")" archive --output /dev/null > /dev/null 2>&1 \
-            || printf '%s ' "$host"
+        if ! err="$(chezmoi --destination "$work/dest-$host" --override-data "$(host_data "$host")" archive --output /dev/null 2>&1 > /dev/null)"; then
+            printf '%s: %s; ' "$host" "$(printf '%s\n' "$err" | head -1)"
+        fi
     done
 }
 pass=0
@@ -697,7 +698,7 @@ check "init: a messy org list is cleaned" 'org_list = ["example-org", "other-org
     "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work@example.com" --promptString "$p_orgs= example-org ,, other-org, example-org " | work_block | tr '|' '\n' | grep '^org_list')"
 check "init: none turns work off, without orgs" 'email = "none"|enabled = false' \
     "$(init_render "$work/cfg-empty.toml" --promptString "$p_email= NONE " | work_block | tr '|' '\n' | grep -E '^(email|enabled) ' | paste -sd'|' -)"
-check "init: no answers (headless) leave work unset" 'email = ""|enabled = false' \
+check "init: default answers (--promptDefaults) leave work unset" 'email = ""|enabled = false' \
     "$(init_render "$work/cfg-empty.toml" | work_block | tr '|' '\n' | grep -E '^(email|enabled) ' | paste -sd'|' -)"
 check "init: existing answers are kept without a prompt" "$on" \
     "$(init_render "$work/cfg-work.toml" --promptString "$p_orgs=zzz" | work_block)"
@@ -709,7 +710,7 @@ check "init: a non-address email fails" 1 \
     "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work" --promptString "$p_orgs=example-org" | grep -c 'is not an email address')"
 check "init: no is_work any more" 0 "$(init_render "$work/cfg-empty.toml" | grep -c 'is_work')"
 printf '[data]\n    email = "me@example.com"\n    name = "Test User"\n[data.work]\n    email = ""\n    orgs = ""\n    enabled = false\n    org_list = []\n' > "$work/cfg-blank-work.toml"
-check "init: a blank stored by a headless init is asked again" "$on" \
+check "init: a blank stored by --promptDefaults is asked again" "$on" \
     "$(init_render "$work/cfg-blank-work.toml" --promptString "$p_email=work@example.com" --promptString "$p_orgs=example-org, other-org" | work_block)"
 
 # Work rules: rendered with a throwaway config, then resolved by git itself in a throwaway HOME
