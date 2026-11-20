@@ -302,9 +302,9 @@ fi
 # Apps that read a changed config only when they start or on a reload key. kitty, Wave, Hyprland and iTerm2's dynamic
 # profiles reload by themselves; iTerm2's global settings are run_after_96's.
 {{- if eq .chezmoi.os "darwin" }}
-reload_hint "$HOME/.config/ghostty/config" ghostty "Ghostty's config changed: press Cmd+Shift+, in Ghostty to reload it, or open a new window"
+reload_hint "$HOME/.config/ghostty/config" ghostty "Ghostty's config changed: quit Ghostty (every window; a new window joins the running Ghostty) and start it again. Cmd+Shift+, reloads most settings, but did not pick up new key bindings"
 {{- else }}
-reload_hint "$HOME/.config/ghostty/config" ghostty "Ghostty's config changed: press Ctrl+Shift+, in Ghostty to reload it, or open a new window"
+reload_hint "$HOME/.config/ghostty/config" ghostty "Ghostty's config changed: quit Ghostty (every window; a new window joins the running Ghostty) and start it again. Ctrl+Shift+, reloads most settings, but did not pick up new key bindings"
 reload_hint "$HOME/.config/foot/foot.ini" foot "foot's config changed: new foot windows use it; open ones keep the old settings"
 {{- end }}
 # Herdr: Ctrl-Space as a second prefix needs 0.9.2 or later, in the installed binary and in the running server.

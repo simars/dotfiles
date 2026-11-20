@@ -819,6 +819,12 @@ printf '#!/bin/sh\necho %s\n' "'[{\"modmask\":64,\"key\":\"b\",\"description\":\
 chmod +x "$work/hypr-undescribed/hyprctl"
 check "omarchy requirement check warns about an undescribed Super+B bind, naming its dispatcher" 1 "$(super_b hypr-undescribed | grep -c '^WARN: Hyprland binds Super+B (exec foo)')"
 check "omarchy requirement check: Super+Shift+B leaves Super+B free" "OK:   Super+B is free in Hyprland (terminal leader)" "$(super_b hypr-free)"
+# A new Ghostty window joins the running Ghostty process, and on 2026-11-20 a reload (Ctrl+Shift+,) did not pick up new
+# key bindings there: the hint says to quit Ghostty and start it again.
+for host in darwin omarchy; do
+    check "$host Ghostty reload hint says to quit and restart, not to open a window" "1 0" \
+        "$(render "$host" run_after_99_assert_requirements.sh.tmpl | grep -F 'ghostty/config" ghostty' | grep -c 'quit Ghostty') $(render "$host" run_after_99_assert_requirements.sh.tmpl | grep -F 'ghostty/config" ghostty' | grep -c 'open a new window')"
+done
 check "darwin requirement check has no Hyprland check" 0 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'check_super_b')"
 check "omarchy requirement check warns when another file overrides the version-file setting" 1 "$(grep -c 'not $want_idiomatic, so projects' "$work/omarchy.requirements")"
 check "omarchy option A requirement check skips that warning" 0 "$(chezmoi --override-data "$omarchy_a" execute-template < "$requirements" | grep -c want_idiomatic)"
@@ -887,8 +893,8 @@ check "reload hint: no process to test" "==> To do on this machine after this ap
 for host in darwin omarchy arch; do
     check "$host requirement check prints the to-do list last" "print_todo" "$(render "$host" run_after_99_assert_requirements.sh.tmpl | grep -E '^[a-z_]' | tail -1)"
 done
-check "omarchy Ghostty reload key is Ctrl+Shift+," 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'press Ctrl+Shift+, in Ghostty')"
-check "darwin Ghostty reload key is Cmd+Shift+," 1 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'press Cmd+Shift+, in Ghostty')"
+check "omarchy Ghostty reload key is Ctrl+Shift+," 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'Ctrl+Shift+, reloads most settings')"
+check "darwin Ghostty reload key is Cmd+Shift+," 1 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'Cmd+Shift+, reloads most settings')"
 check "darwin checks the dotfiles-local links; omarchy does not" "1 0" \
     "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'for local_file in zshrc.local aliases.local') $(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'for local_file in')"
 check "darwin iTerm2 script checks the default profile and the Claude Code integration" 2 \

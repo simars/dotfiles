@@ -761,6 +761,7 @@ Ghostty 1.4.0, foot 1.28.0, Herdr 0.9.5 client with a 0.9.1 server) unless the r
 | Herdr 0.9.1 server reloading the new config | n/a | n/a | Rejects the whole `[keys]` section over the prefix list and keeps its current keys; the 0.9.5 binary accepts it (`herdr config check`) |
 | `Super-b` types nothing (`cat -v`, then inside tmux) | by hand | by hand | Synthetic keys (Hyprland `send_key_state`, `wtype`) did not reach a probe window, so press the keys |
 | `Super-b` then `c`, `%`, `"`, `h`/`l`, `z`, `1`, `n`, `,`, `&`, `=`, `?` | n/a | by hand | Each does what the cheatsheet's "Terminal Tabs and Splits" table says |
+| `Super-b` then `%` splits (Omarchy) / `Cmd-b` then `%` splits (mbp) | n/a | yes, in a Ghostty started after the apply | Pressed by the user. The Ghostty running since before the apply typed `b%` even after `Ctrl-Shift-,`: a new window joins that process, so quit Ghostty and start it again |
 | `Super-b` then `q` (unbound): nothing typed; `Super-b` then `Esc`: typing works again | by hand | by hand | Review Focus 1 and 2 of the plan |
 | `Super-b r`, `l l l`, `Esc` resizes and stops | n/a | by hand | |
 | `Super-b x` with `sleep 100` running asks first | n/a | by hand | `confirm-close-surface = true` |

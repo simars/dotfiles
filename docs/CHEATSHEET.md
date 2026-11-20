@@ -565,7 +565,7 @@ A key reaches Claude Code, Herdr, tmux or zsh only if nothing before it takes it
 | `Alt-t` `Alt-d` `Alt-n` `Alt-w` `Alt-g` `Alt-1`..`9` ... | Claude Code (`Alt-t` thinking), zsh (`Alt-d` delete word), Herdr | Wave on Omarchy: Wave's Mac `Cmd` keys are `Alt` on Linux, and Wave cannot change them | Run agents and Herdr in Ghostty or foot on Omarchy; Wave is fine on macOS |
 | `Alt-Space`, right `Alt`, `F9` | Programs | Omarchy's dictation (toggle; push to talk), once a dictation app is installed; `F9` comes from `~/.config/hypr/bindings.lua` | Not changed; delete the `F9` lines there to give `F9` back |
 
-A running Ghostty applies the change in a new window or after reloading its config (`Ctrl-Shift-,`). `ghostty +list-keybinds` shows what Ghostty still takes.
+A running Ghostty needs a restart for changed key bindings: quit it (every window; a new window joins the running Ghostty) and start it again. Reloading its config (`Ctrl-Shift-,`) applies most other settings, but did not pick up new key bindings on 2026-11-20. `ghostty +list-keybinds` shows what Ghostty still takes.
 
 ---
 
