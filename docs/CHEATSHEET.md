@@ -261,7 +261,7 @@ Repositories created under the retired thoughtbot `init.templatedir` link `.git/
 | **Explain a match** | `git check-ignore -v <path>` | Show which list and line ignores a path (`.git/info/exclude:<line>:<pattern>`). |
 
 ### Secret Scanning & Identity Guard on Commit/Push (Git 2.54+)
-Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` through `hook.gitleaks` in `~/.gitconfig` to scan staged changes for secrets. In addition, `~/.config/git/hooks/git-identity-guard` runs on `pre-commit` (`hook.identity-pre-commit`), `commit-msg` (`hook.identity-commit-msg`), and `pre-push` (`hook.identity-pre-push`) to enforce that the author and committer match the expected global identity (`~/.gitconfig` + `~/.gitconfig.local` / `~/.gitconfig.work` `includeIf` rules) and that no `Co-Authored-By:` trailer is present. A repo's own `.git/hooks/*` still runs after them.
+Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` through `hook.gitleaks` in `~/.gitconfig` to scan staged changes for secrets. In addition, `~/.config/git/hooks/git-identity-guard` runs on `pre-commit` (`hook.identity-pre-commit`), `commit-msg` (`hook.identity-commit-msg`), and `pre-push` (`hook.identity-pre-push`) to enforce that the author and committer match the expected global identity (`~/.gitconfig`, whose work `includeIf` rules include `~/.gitconfig.work`, plus `~/.gitconfig.local`) and that no `Co-Authored-By:` trailer is present. A repo's own `.git/hooks/*` still runs after them.
 
 | Task | Command | Description |
 | :--- | :--- | :--- |
@@ -537,8 +537,8 @@ The configuration strictly separates shared, tracked dotfiles from machine-speci
 | `~/.aliases.local` | Sourced at end of `~/.aliases` | Machine-specific shell aliases, hardware shortcuts, or team-specific alias overrides. |
 | `~/.zshrc.local` | Sourced at end of `~/.zshrc` | Host-specific Zsh functions, custom prompt overrides, local PATH additions, the sourcing of work-specific env files, or private configurations. |
 | `~/.bashrc.local` | Sourced at end of `~/.bashrc` (macOS) | Host additions to Claude Code's bash, such as the lines installers append to `~/.bashrc`. No aliases. |
-| `~/.gitconfig.local` | Included via `~/.gitconfig` | Machine-specific Git configurations, alternative email addresses, or hardware GPG/SSH signing keys. |
-| `~/.gitconfig.work` | `includeIf` in `~/.gitconfig.local` | Work email for remotes in the work GitHub orgs and for clones under the matching `~/<org>/` directories. Check with `git config --show-origin user.email`. |
+| `~/.gitconfig.local` | Included via `~/.gitconfig`, last | One machine's own Git settings, such as hardware GPG/SSH signing keys. Not for the work email: that comes from `chezmoi init`. |
+| `~/.gitconfig.work` | `includeIf` rules in `~/.gitconfig` | Managed by chezmoi from the `chezmoi init` answers (work email, work GitHub orgs), kept only in `~/.config/chezmoi/chezmoi.toml`. Used for remotes in the work orgs and for clones under `~/<org>/`. Change the answers with `chezmoi init --prompt`, then `chezmoi apply`; type org names as in clone URLs (matching is case-sensitive). Check with `git config --show-origin user.email`. |
 | `~/secrets.env` | Sourced if readable by `~/.zshrc` | Local environment variables, personal API tokens, and development secrets (never committed to Git). |
 | Work-specific env files | Sourced if readable by `~/.zshrc.local` | Corporate/enterprise environment credentials, staging tokens, and internal endpoint variables. They are listed in `~/.zshrc.local`, not in this repository. |
 

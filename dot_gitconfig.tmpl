@@ -60,6 +60,20 @@
     event = pre-push
     command = ~/.config/git/hooks/git-identity-guard --pre-push
 
+{{- if dig "work" "enabled" false . }}
+
+# Work identity (from the `chezmoi init` answers): repositories in a work GitHub org, by remote or under ~/<org>/,
+# commit with the email in ~/.gitconfig.work. Before ~/.gitconfig.local, so a machine-local setting still wins.
+{{- range dig "work" "org_list" list . }}
+[includeIf "hasconfig:remote.*.url:git@github.com:{{ . }}/**"]
+    path = ~/.gitconfig.work
+[includeIf "hasconfig:remote.*.url:https://github.com/{{ . }}/**"]
+    path = ~/.gitconfig.work
+[includeIf "gitdir:~/{{ . }}/"]
+    path = ~/.gitconfig.work
+{{- end }}
+{{- end }}
+
 [include]
     path = ~/.gitconfig.local
 

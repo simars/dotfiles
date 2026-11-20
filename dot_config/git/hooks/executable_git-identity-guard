@@ -4,8 +4,8 @@
 #
 # Enforces on every commit (`pre-commit`, `commit-msg`) and push (`pre-push`):
 #   1. The author and committer name and email match the global identity
-#      resolved from ~/.gitconfig (+ ~/.gitconfig.local / ~/.gitconfig.work
-#      includeIf rules), ignoring accidental local `.git/config`, `-c`, or
+#      resolved from ~/.gitconfig (whose work includeIf rules include
+#      ~/.gitconfig.work) plus ~/.gitconfig.local, ignoring accidental local `.git/config`, `-c`, or
 #      `GIT_AUTHOR_*` / `GIT_COMMITTER_*` overrides.
 #   2. Commit messages contain no `Co-Authored-By:` trailers.
 

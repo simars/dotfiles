@@ -82,7 +82,8 @@ Every `chezmoi apply` ends with `==> To do on this machine after this apply:` (o
 │   ├── nvim/init.lua.tmpl             # Self-bootstrapping lazy.nvim + treesitter + telescope
 │   ├── starship.toml.tmpl             # Cross-platform shell prompt
 │   └── tmux/tmux.conf                 # 256-color, vi-keys, mouse mode tmux config
-├── dot_gitconfig.tmpl                 # Cross-platform git configuration + work overrides
+├── dot_gitconfig.tmpl                 # Cross-platform git configuration + work identity rules (chezmoi init answers)
+├── dot_gitconfig.work.tmpl            # ~/.gitconfig.work: the work email, only where one was given
 ├── dot_local/bin/executable_tat       # tat: attach to or create a tmux session named after the directory
 ├── dot_zprofile.tmpl                  # Architecture-aware Homebrew & mise shims
 ├── dot_zshrc.tmpl                     # Aliases, Docker helpers, mise & starship activation

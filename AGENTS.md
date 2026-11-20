@@ -67,7 +67,7 @@ Agents must strictly uphold these architectural guarantees at all times:
   - `~/secrets.env`
   - any work-specific env file that `~/.zshrc.local` sources
 - **Rationale:** These files are strictly reserved for uncommitted host-specific overrides, employer-specific configurations, and local credentials. Dotfiles templates source these files at the very end of their respective configurations to guarantee local precedence.
-- **No work identifiers in this repository:** it is public. Do not write work organisation names, work email addresses or the paths of work-specific files into any tracked file, message or commit. Refer to them generically ("the work orgs", "the work email") and keep the specifics in `~/.zshrc.local` and `~/.gitconfig.local`.
+- **No work identifiers in this repository:** it is public. Do not write work organisation names, work email addresses or the paths of work-specific files into any tracked file, message or commit. Refer to them generically ("the work orgs", "the work email") and keep the specifics in the `chezmoi init` answers (`[data.work]` in `~/.config/chezmoi/chezmoi.toml`, from which `dot_gitconfig.tmpl` and `dot_gitconfig.work.tmpl` build the work identity on every host) and in `~/.zshrc.local`. Tests use `example-org`.
 
 ### 3.4 Zero Secret Leaks & Gitleaks Enforcement
 - **Invariant:** Every commit must pass `gitleaks` scanning with 0 findings.

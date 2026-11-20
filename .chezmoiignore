@@ -14,6 +14,10 @@ bootstrap/**
 # that rely on it. Keep them repo-only.
 AGENTS.md
 CLAUDE.md
+# ~/.gitconfig.work (the work email) only where `chezmoi init` got a work email; elsewhere git uses the personal one.
+{{ if not (dig "work" "enabled" false .) }}
+.gitconfig.work
+{{ end }}
 # ~/.bashrc is Claude Code's shell config on macOS only (CLAUDE_CODE_SHELL in ~/.zprofile). Leave the distribution's
 # ~/.bashrc alone elsewhere.
 {{ if ne .chezmoi.os "darwin" }}

@@ -681,5 +681,39 @@ check "init: a non-address email fails" 1 \
     "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work" --promptString "$p_orgs=example-org" | grep -c 'is not an email address')"
 check "init: no is_work any more" 0 "$(init_render "$work/cfg-empty.toml" | grep -c 'is_work')"
 
+# Work rules: rendered with a throwaway config, then resolved by git itself in a throwaway HOME
+wdata='{"email":"me@example.com","name":"Test User","work":{"enabled":true,"email":"work@example.com","org_list":["example-org","other-org"]}}'
+odata='{"email":"me@example.com","name":"Test User","work":{"enabled":false,"email":"none","org_list":[]}}'
+ndata='{"email":"me@example.com","name":"Test User"}'
+render_cfg() { chezmoi --config "$work/cfg-empty.toml" --source "$repo" --override-data "$1" execute-template < "$repo/$2"; } # DATA FILE
+check "gitconfig: three rules per work org, all to ~/.gitconfig.work" "6 6" \
+    "$(render_cfg "$wdata" dot_gitconfig.tmpl | grep -c '^\[includeIf ') $(render_cfg "$wdata" dot_gitconfig.tmpl | grep -c '^    path = ~/.gitconfig.work$')"
+check "gitconfig: work rules come before ~/.gitconfig.local" yes \
+    "$(render_cfg "$wdata" dot_gitconfig.tmpl | awk '/^\[includeIf /{w=NR} /path = ~\/.gitconfig.local/{l=NR} END{print (w && w<l) ? "yes" : "no"}')"
+check "gitconfig: no work rules when off or never answered" "0 0" \
+    "$(render_cfg "$odata" dot_gitconfig.tmpl | grep -c includeIf) $(render_cfg "$ndata" dot_gitconfig.tmpl | grep -c includeIf)"
+for d in wdata odata ndata; do
+    eval "data=\$$d"
+    managed_work="$(chezmoi --config "$work/cfg-empty.toml" --source "$repo" --override-data "$data" managed --include=files | grep -cx '.gitconfig.work')"
+    check ".gitconfig.work managed only when work is on ($d)" "$([[ $d == wdata ]] && echo 1 || echo 0)" "$managed_work"
+done
+gh_home="$(cd "$work" && pwd -P)/githome" # the real path: gitdir: compares against it (macOS /var -> /private/var)
+mkdir -p "$gh_home"
+render_cfg "$wdata" dot_gitconfig.tmpl > "$gh_home/.gitconfig"
+render_cfg "$wdata" dot_gitconfig.work.tmpl > "$gh_home/.gitconfig.work" 2> /dev/null
+check ".gitconfig.work holds the work email" work@example.com "$(git config -f "$gh_home/.gitconfig.work" user.email)"
+gitenv() { HOME="$gh_home" GIT_CONFIG_GLOBAL="$gh_home/.gitconfig" GIT_CONFIG_NOSYSTEM=1 git "$@"; }
+email_in() { # email_in DIR ORIGIN: the user.email git resolves in a new repository at DIR with that origin
+    mkdir -p "$1" && gitenv -C "$1" init -q && gitenv -C "$1" remote add origin "$2" && gitenv -C "$1" config user.email
+}
+check "git: ssh remote in a work org" work@example.com "$(email_in "$gh_home/src/a" git@github.com:example-org/a.git)"
+check "git: https remote in a work org" work@example.com "$(email_in "$gh_home/src/b" https://github.com/other-org/b.git)"
+check "git: fork under ~/example-org/" work@example.com "$(email_in "$gh_home/example-org/fork" git@github.com:someone/fork.git)"
+check "git: personal repository" me@example.com "$(email_in "$gh_home/src/c" git@github.com:someone/c.git)"
+check "git: a lookalike org is not a work org" me@example.com "$(email_in "$gh_home/src/d" git@github.com:example-org-two/d.git)"
+printf '[user]\n    email = local@example.com\n' > "$gh_home/.gitconfig.local"
+check "git: ~/.gitconfig.local still wins" local@example.com "$(email_in "$gh_home/src/e" git@github.com:example-org/e.git)"
+rm -f "$gh_home/.gitconfig.local"
+
 echo "$pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
