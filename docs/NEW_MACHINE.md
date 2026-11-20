@@ -38,8 +38,11 @@ and apps whose config just changed and need a reload. Follow it until it says no
    ```bash
    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" init --apply https://github.com/simars/dotfiles.git
    ```
-   - It asks three questions. Give your Git email and name, and answer **yes** to "Is this a work machine" only on a
-     work Mac (it turns on the work-only parts of the prompt and of `~/.ssh/config`).
+   - It asks four questions: your Git email and name, your work email and your work GitHub orgs (separated by commas,
+     spelled as in clone URLs). Answer the work ones on every machine, or `none` for the email on one that never has
+     work repositories. The answers stay in `~/.config/chezmoi/chezmoi.toml` on this machine, never in the
+     repository, and chezmoi builds the work rules in `~/.gitconfig` and `~/.gitconfig.work` from them. To change
+     them later: `chezmoi init --prompt`, then `chezmoi apply`.
    - It then installs the Homebrew tools and apps in `.chezmoidata/packages.toml` (iTerm2, Ghostty, kitty, Wave, Warp,
      the Herdr app, the 1Password CLI, the Nerd Font), LunarVim and the mise runtimes.
    - It ends with the to-do list. Most of it is the steps below.
@@ -67,8 +70,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
    ln -s ~/dotfiles-local/zshrc.local ~/.zshrc.local
    ln -s ~/dotfiles-local/aliases.local ~/.aliases.local
    ```
-   On a work Mac, also create `~/.gitconfig.local` (with the `includeIf` for `~/.gitconfig.work` and the work email)
-   and any work env files `~/.zshrc.local` sources. They are never committed.
+   On a work Mac, also create any work env files `~/.zshrc.local` sources. They are never committed. (The work git
+   email needs nothing here: it comes from chezmoi's questions in step 4.)
 9. **Claude Code, then ai-tooling** (Claude's, Cursor's and the other agents' shared config, skills and agents):
    ```bash
    curl -fsSL https://claude.ai/install.sh | bash
@@ -106,8 +109,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
    - It installs chezmoi and git, then applies the dotfiles, packages, apps, runtimes, Tailscale, 1Password and shell
      plugins. It also copies in your SSH key, clones `~/.cfg` and applies the guides (zsh, terminals-clipboard,
      wave-keys).
-   - It pauses for the sudo password, chezmoi's three questions, the Tailscale login link, the SSH key and its
-     passphrase.
+   - It pauses for the sudo password, chezmoi's four questions (as on the Mac: Git email and name, work email or
+     `none`, work GitHub orgs), the Tailscale login link, the SSH key and its passphrase.
    - It is safe to run again: after any stop, fix what it says and run the same command.
 3. **Open a new terminal.** It starts zsh; the login shell stays bash.
 4. **Claude Code and ai-tooling.** Omarchy ships `claude` and `gh`; the bootstrap does not set up ai-tooling.
@@ -137,6 +140,7 @@ What the list at the end of `chezmoi apply` / `chezmoi update` can name:
 | :--- | :--- | :--- |
 | Requirement warnings | gitleaks missing (fails the apply), old git or mise, SSH passphrase not saved, missing Omarchy packages, runtimes, plugins or guides | `run_after_99_assert_requirements.sh` |
 | Once-per-machine steps not done | no SSH key, `~/.cfg` not cloned, ai-tooling not set up, dotfiles-local links missing (Mac), `gh` not on SSH or not logged in, LunarVim not linked (Omarchy) | `run_after_99_assert_requirements.sh` |
+| No work email answer | `chezmoi init` never got a work email (a headless init, or a machine set up before 2026-11-19): `chezmoi init --prompt` | `run_after_99_assert_requirements.sh` |
 | iTerm2 (Mac) | reopen iTerm2 for the clipboard setting; chezmoi's profile not the default; Claude Code integration missing | `run_after_96_macos_terminal_clipboard.sh` |
 | A config changed under a running app | Ghostty: `Ctrl+Shift+,` (Mac: `Cmd+Shift+,`); Herdr: `herdr server reload-config`; tmux: `Ctrl-b r`; foot: new windows; open shells: `exec zsh` | `run_after_99_assert_requirements.sh` (checksums in `~/.local/state/chezmoi-after-apply`; the first apply only records them) |
 | Omarchy stock files changed | merge the change into the chezmoi source | `run_after_95_omarchy_stock_drift.sh` |

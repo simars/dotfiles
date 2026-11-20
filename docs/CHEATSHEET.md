@@ -325,7 +325,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/simars/dotfiles/main/bootstr
 | Step | What happens | Your part |
 | :--- | :--- | :--- |
 | 1. chezmoi, git | `omarchy pkg add chezmoi git` | sudo password |
-| 2. Dotfiles and setup | `chezmoi init --apply` (https): packages and apps, Tailscale and 1Password installers, `python` / `go` runtimes, shell plugins | chezmoi's three questions; the Tailscale login link |
+| 2. Dotfiles and setup | `chezmoi init --apply` (https): packages and apps, Tailscale and 1Password installers, `python` / `go` runtimes, shell plugins | chezmoi's four questions (Git email and name, work email or `none`, work GitHub orgs); the Tailscale login link |
 | 3. SSH key | stops until `~/.ssh/id_rsa` is there (copy it by hand), saves its passphrase (`ssh-key-remember`), checks GitHub over SSH, switches chezmoi's remote to SSH | copy the key; its passphrase once |
 | 4. `~/.cfg` | clones and checks out the private bare repository (never overwrites a file; stops and names it) | — |
 | 5. Guides | `setup-guides apply`: zsh, terminals-clipboard, wave-keys | — |

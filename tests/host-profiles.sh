@@ -715,5 +715,15 @@ printf '[user]\n    email = local@example.com\n' > "$gh_home/.gitconfig.local"
 check "git: ~/.gitconfig.local still wins" local@example.com "$(email_in "$gh_home/src/e" git@github.com:example-org/e.git)"
 rm -f "$gh_home/.gitconfig.local"
 
+# The requirement check: a to-do while this machine has no work email answer
+r99() { render_cfg "$1" run_after_99_assert_requirements.sh.tmpl; } # DATA
+check "requirements: work on is OK" 1 "$(r99 "$wdata" | grep -c 'OK:   work email for 2 work GitHub orgs')"
+check "requirements: none is OK and no to-do" "1 0" "$(r99 "$odata" | grep -c 'answered none at chezmoi init') $(r99 "$odata" | grep -c 'no work email set')"
+check "requirements: never answered is a to-do" 1 "$(r99 "$ndata" | grep -c '^note "no work email set')"
+for d in wdata odata ndata; do
+    eval "data=\$$d"
+    check "requirements with work data ($d) is valid bash" "" "$(r99 "$data" | bash -n 2>&1)"
+done
+
 echo "$pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
