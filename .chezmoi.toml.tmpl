@@ -23,7 +23,8 @@
 {{- range splitList "," $workOrgs }}{{ $org := trim . }}{{ if and $org (not (has $org $orgList)) }}{{ $orgList = append $orgList $org }}{{ end }}{{ end -}}
 {{- $workEnabled := and (ne $workEmail "") (ne $workEmail "none") -}}
 {{- if $workEnabled -}}
-{{-   if not (contains "@" $workEmail) }}{{ fail (printf "work.email: %q is not an email address (or answer none)" $workEmail) }}{{ end -}}
+{{- /* One @, a dot in the domain, and no space, quote, backslash, # or ; (git config would cut or break those). */ -}}
+{{-   if not (regexMatch `^[^\s"\\#;@]+@[^\s"\\#;@]+\.[^\s"\\#;@]+$` $workEmail) }}{{ fail (printf "work.email: %q is not an email address (or answer none)" $workEmail) }}{{ end -}}
 {{-   if not $orgList }}{{ fail "work.orgs: list at least one work GitHub org when a work email is set" }}{{ end -}}
 {{-   range $orgList }}{{ if not (regexMatch "^[A-Za-z0-9][A-Za-z0-9-]*$" .) }}{{ fail (printf "work.orgs: %q is not a GitHub org name (letters, digits and hyphens)" .) }}{{ end }}{{ end -}}
 {{- end -}}

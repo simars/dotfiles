@@ -273,7 +273,7 @@ The entire configuration was deployed and verified across two live Intel macOS m
    * *Fix:* Configured `useBuiltin = false` in `.chezmoi.toml.tmpl`. Chezmoi now delegates to the external `age` binary (`~/.local/bin/age`), which natively supports RSA and Ed25519 SSH recipients.
 4. **Headless SSH & Non-TTY Prompts:**
    * *Problem:* In automated SSH sessions without a TTY, `promptStringOnce` failed because `/dev/tty` could not be opened.
-   * *Fix:* Supplied fallback defaults to `promptStringOnce` (`email` -> `"simarpaulsingh@gmail.com"`, `name` -> `"Simar Singh"`) and `promptBoolOnce` (`is_work` -> `false`).
+   * *Fix:* Supplied fallback defaults to `promptStringOnce` (`email` -> `"simarpaulsingh@gmail.com"`, `name` -> `"Simar Singh"`) and `promptBoolOnce` (`is_work` -> `false`). (`is_work` was removed on 2026-11-19; the work email and orgs questions replaced it.)
 5. **Git URL Rewriting & SSH Agent Forwarding:**
    * *Problem:* With `insteadOf = https://github.com/`, all GitHub access requires SSH keys. On a remote machine over headless SSH, passphrase-protected keys cannot prompt for a passphrase without macOS Keychain GUI integration.
    * *Fix:* Connecting via `ssh -A simars@simars-macbook-16i.example-tailnet.ts.net` forwards the local unlocked SSH agent, enabling remote GitHub operations effortlessly.

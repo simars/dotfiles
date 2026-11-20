@@ -265,11 +265,12 @@ fi
 # The work identity comes from the `chezmoi init` answers ([data.work]), the same on every host: without them,
 # work repositories get the personal email.
 {{- if dig "work" "enabled" false . }}
-echo "OK:   work email for {{ len (dig "work" "org_list" list .) }} work GitHub orgs (~/.gitconfig.work)"
+{{- $orgCount := len (dig "work" "org_list" list .) }}
+echo "OK:   work email for {{ $orgCount }} work GitHub org{{ if ne $orgCount 1 }}s{{ end }} (~/.gitconfig.work)"
 {{- else if eq (dig "work" "email" "" .) "none" }}
 echo "OK:   no work email on this machine (answered none at chezmoi init)"
 {{- else }}
-note "no work email set, so git uses your personal email in every repository, work ones included. Fix: chezmoi init --prompt (answer none if this machine never has work repositories)"
+note "chezmoi has no work email for this machine, so work repositories get your personal email unless a repository or ~/.gitconfig.local sets one. Fix: chezmoi init --prompt (answer none if this machine never has work repositories)"
 {{- end }}
 {{- if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
 # LunarVim (lunarvim-git) needs a one-time link per user; never its init-lvim.sh.

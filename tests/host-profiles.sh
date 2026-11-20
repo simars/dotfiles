@@ -841,6 +841,12 @@ check "init: a bad org name fails" 1 \
     "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work@example.com" --promptString "$p_orgs=bad org!" | grep -c 'is not a GitHub org name')"
 check "init: a non-address email fails" 1 \
     "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work" --promptString "$p_orgs=example-org" | grep -c 'is not an email address')"
+# A stored answer is checked too, so a bad work email in the config file stops the next init. TOML literal strings
+# ('…') carry the characters as they are.
+for bad in 'a b@example.com' 'a"b@example.com' 'a#b@example.com' 'a;b@example.com' 'a\b@example.com' 'a@b@example.com' 'a@example'; do
+    printf '[data]\n    email = "me@example.com"\n    name = "Test User"\n[data.work]\n    email = '"'%s'"'\n    orgs = "example-org"\n' "$bad" > "$work/cfg-bad.toml"
+    check "init: rejects the work email [$bad]" 1 "$(init_render "$work/cfg-bad.toml" | grep -c 'is not an email address')"
+done
 check "init: no is_work any more" 0 "$(init_render "$work/cfg-empty.toml" | grep -c 'is_work')"
 printf '[data]\n    email = "me@example.com"\n    name = "Test User"\n[data.work]\n    email = ""\n    orgs = ""\n    enabled = false\n    org_list = []\n' > "$work/cfg-blank-work.toml"
 check "init: a blank stored by --promptDefaults is asked again" "$on" \
@@ -867,6 +873,11 @@ mkdir -p "$gh_home"
 render_cfg "$wdata" dot_gitconfig.tmpl > "$gh_home/.gitconfig"
 render_cfg "$wdata" dot_gitconfig.work.tmpl > "$gh_home/.gitconfig.work" 2> /dev/null
 check ".gitconfig.work holds the work email" work@example.com "$(git config -f "$gh_home/.gitconfig.work" user.email)"
+for odd in 'a#b@example.com' 'a;b@example.com' 'a"b@example.com' 'a\b@example.com'; do
+    render_cfg "$(jq -cn --arg e "$odd" '{email: "me@example.com", name: "Test User", work: {enabled: true, email: $e, org_list: ["example-org"]}}')" \
+        dot_gitconfig.work.tmpl > "$work/odd.gitconfig"
+    check ".gitconfig.work quotes the email, so git reads [$odd] exactly" "$odd" "$(git config -f "$work/odd.gitconfig" user.email 2>&1)"
+done
 gitenv() { HOME="$gh_home" GIT_CONFIG_GLOBAL="$gh_home/.gitconfig" GIT_CONFIG_NOSYSTEM=1 git "$@"; }
 email_in() { # email_in DIR ORIGIN: the user.email git resolves in a new repository at DIR with that origin
     mkdir -p "$1" && gitenv -C "$1" init -q && gitenv -C "$1" remote add origin "$2" && gitenv -C "$1" config user.email
@@ -883,8 +894,11 @@ rm -f "$gh_home/.gitconfig.local"
 # The requirement check: a to-do while this machine has no work email answer
 r99() { render_cfg "$1" run_after_99_assert_requirements.sh.tmpl; } # DATA
 check "requirements: work on is OK" 1 "$(r99 "$wdata" | grep -c 'OK:   work email for 2 work GitHub orgs')"
-check "requirements: none is OK and no to-do" "1 0" "$(r99 "$odata" | grep -c 'answered none at chezmoi init') $(r99 "$odata" | grep -c 'no work email set')"
-check "requirements: never answered is a to-do" 1 "$(r99 "$ndata" | grep -c '^note "no work email set')"
+check "requirements: one org reads \"1 work GitHub org\"" 1 \
+    "$(r99 '{"email":"me@example.com","name":"Test User","work":{"enabled":true,"email":"work@example.com","org_list":["example-org"]}}' | grep -c 'OK:   work email for 1 work GitHub org (')"
+check "requirements: none is OK and no to-do" "1 0" "$(r99 "$odata" | grep -c 'answered none at chezmoi init') $(r99 "$odata" | grep -c 'chezmoi has no work email')"
+check "requirements: never answered is a to-do that claims no more than chezmoi knows" 1 \
+    "$(r99 "$ndata" | grep -c '^note "chezmoi has no work email for this machine, so work repositories get your personal email unless a repository or ~/.gitconfig.local sets one\.')"
 for d in wdata odata ndata; do
     case "$d" in wdata) data="$wdata" ;; odata) data="$odata" ;; *) data="$ndata" ;; esac
     check "requirements with work data ($d) is valid bash" "" "$(r99 "$data" | bash -n 2>&1)"
