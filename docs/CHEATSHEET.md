@@ -559,8 +559,8 @@ A key reaches Claude Code, Herdr, tmux or zsh only if nothing before it takes it
 | `Ctrl-Alt-arrows` | Herdr and tmux: focus pane | Ghostty on Omarchy (its own splits) | Given back by chezmoi |
 | `Ctrl-b` | Claude Code: run in the background | Herdr and tmux (the prefix) | Press it twice |
 | `Super-b` | Ghostty's terminal leader on Omarchy | Hyprland, if Omarchy ever binds Super+B | Left free on purpose; after each apply the requirement check says `OK:   Super+B is free in Hyprland`, or warns and names the binding |
-| `Cmd-b` | Ghostty's (and iTerm2's) terminal leader on the Macs | Nothing on macOS | |
-| `Ctrl-Space` | tmux and Herdr: second prefix | macOS: Select the previous input source, while that shortcut is on | Turn it off once (System Settings > Keyboard > Keyboard Shortcuts > Input Sources); the apply names it while it is on |
+| `Cmd-b` | Ghostty's terminal leader on the Macs (iTerm2's too, once its leader is set up) | Nothing on macOS | |
+| `Ctrl-Space` | tmux and Herdr: second prefix | macOS: Select the previous input source, while that shortcut is on | Turn it off once (System Settings > Keyboard > Keyboard Shortcuts > Input Sources). The apply names it when macOS has stored it as on; a shortcut never changed in System Settings is not stored, so check it there by hand |
 | `Alt-Enter` | Claude Code: new line | Herdr and tmux (split) | `Shift-Enter` or `Ctrl-j` |
 | `Alt-t` `Alt-d` `Alt-n` `Alt-w` `Alt-g` `Alt-1`..`9` ... | Claude Code (`Alt-t` thinking), zsh (`Alt-d` delete word), Herdr | Wave on Omarchy: Wave's Mac `Cmd` keys are `Alt` on Linux, and Wave cannot change them | Run agents and Herdr in Ghostty or foot on Omarchy; Wave is fine on macOS |
 | `Alt-Space`, right `Alt`, `F9` | Programs | Omarchy's dictation (toggle; push to talk), once a dictation app is installed; `F9` comes from `~/.config/hypr/bindings.lua` | Not changed; delete the `F9` lines there to give `F9` back |

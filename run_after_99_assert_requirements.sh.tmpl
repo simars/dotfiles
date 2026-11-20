@@ -278,7 +278,10 @@ note "chezmoi has no work email for this machine, so work repositories get your 
 check_super_b() {
     local binds taken
     command -v jq > /dev/null 2>&1 && binds="$(hyprctl binds -j 2> /dev/null)" || return 0
-    taken="$(jq -r '[.[] | select(.modmask == 64 and (.key | ascii_downcase) == "b") | .description] | join(", ")' <<< "$binds" 2> /dev/null)" || return 0
+    # A bind without a description is named by its dispatcher and argument, so a match never reads as "free".
+    taken="$(jq -r '[.[] | select(.modmask == 64 and (.key | ascii_downcase) == "b")
+        | if (.description // "") != "" then .description else ([.dispatcher, .arg] | map(select(. != null and . != "")) | join(" ")) end
+        | if . == "" then "unnamed" else . end] | if length == 0 then "" else join(", ") end' <<< "$binds" 2> /dev/null)" || return 0
     if [[ -n "$taken" ]]; then
         report warn "Hyprland binds Super+B ($taken), so Ghostty's terminal leader never sees it. Fix: unbind it in ~/.config/hypr/bindings.lua, or pick another leader in dot_config/ghostty/modify_config.tmpl"
     else

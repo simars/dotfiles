@@ -22,35 +22,41 @@ done
 {{- end }}
 # Every close asks first while a program runs in the split, as tmux and Herdr do (Omarchy ships false).
 BLOCK+=$'\nconfirm-close-surface = true'
-# The terminal leader: {{ if eq .chezmoi.os "darwin" }}Cmd-b{{ else }}Super-b (Omarchy's Super is the Mac's Cmd){{ end }}, then the letter tmux uses after Ctrl-b, for Ghostty's own
-# tabs and splits (cheatsheet: "Terminal Tabs and Splits"). A one-shot key table: any other key after the leader is
-# swallowed, never typed into the program; Esc leaves. r enters a resize table where h j k l repeat until Esc or Enter.
+# The terminal leader: {{ if eq .chezmoi.os "darwin" }}Cmd-b{{ else }}Super-b (Omarchy's Super is the Mac's Cmd){{ end }}, then the key tmux uses after Ctrl-b, for Ghostty's own
+# tabs and splits (cheatsheet: "Terminal Tabs and Splits"). The leader opens key table `term`; every action closes it
+# again (chain=deactivate_key_table), and any other key closes it and is swallowed, never typed into the program.
+# Ghostty matches modifiers exactly, so tmux's shifted keys are written with shift (% is shift+digit_5), and a bare
+# Shift press, itself a key event, is ignored so it cannot close the table before the shifted key arrives. r opens
+# table `term_resize`, where h j k l repeat until Esc or Enter.
 LEADER={{ if eq .chezmoi.os "darwin" }}cmd+b{{ else }}super+b{{ end }}
 lead() { BLOCK+=$'\n'"keybind = $1=$2"; }
-lead "$LEADER" activate_key_table_once:term
-lead term/catch_all ignore
-lead term/escape deactivate_all_key_tables
-lead term/c new_tab
-lead term/% new_split:right
-lead term/v new_split:right
-lead term/'"' new_split:down
-lead term/- new_split:down
+act() { lead "term/$1" "$2"; BLOCK+=$'\nkeybind = chain=deactivate_key_table'; }
+lead "$LEADER" activate_key_table:term
+for shift_key in shift_left shift+shift_left shift_right shift+shift_right; do lead "term/$shift_key" ignore; done
+lead term/catch_all deactivate_key_table
+lead term/escape deactivate_key_table
+act c new_tab
+act shift+digit_5 new_split:right
+act v new_split:right
+act shift+quote new_split:down
+act - new_split:down
 for pair in h:left j:down k:up l:right; do
-    lead "term/${pair%%:*}" "goto_split:${pair#*:}"
-    lead "term/arrow_${pair#*:}" "goto_split:${pair#*:}"
+    act "${pair%%:*}" "goto_split:${pair#*:}"
+    act "arrow_${pair#*:}" "goto_split:${pair#*:}"
 done
-lead 'term/;' goto_split:previous
-lead term/o goto_split:next
-lead term/x close_surface
-lead term/z toggle_split_zoom
-for n in 1 2 3 4 5 6 7 8 9; do lead "term/digit_$n" "goto_tab:$n"; done
-lead term/n next_tab
-lead term/p previous_tab
-lead term/, prompt_tab_title
-lead 'term/&' close_tab
-lead term/equal equalize_splits
-lead 'term/?' toggle_command_palette
-lead term/r activate_key_table:term_resize
+act ';' goto_split:previous
+act o goto_split:next
+act x close_surface
+act z toggle_split_zoom
+for n in 1 2 3 4 5 6 7 8 9; do act "digit_$n" "goto_tab:$n"; done
+act n next_tab
+act p previous_tab
+act , prompt_tab_title
+act shift+digit_7 close_tab
+act equal equalize_splits
+act shift+slash toggle_command_palette
+lead term/r deactivate_key_table
+BLOCK+=$'\nkeybind = chain=activate_key_table:term_resize'
 for pair in h:left j:down k:up l:right; do
     lead "term_resize/${pair%%:*}" "resize_split:${pair#*:},20"
     lead "term_resize/arrow_${pair#*:}" "resize_split:${pair#*:},20"

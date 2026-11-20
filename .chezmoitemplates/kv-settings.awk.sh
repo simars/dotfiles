@@ -5,6 +5,8 @@
 # apps let a later line override an earlier one). Running it again changes nothing.
 # "The same thing" is the key, except for Ghostty's `keybind`, which repeats once per key: there it is the key plus
 # the trigger ("keybind = ctrl+enter=..." matches only other ctrl+enter lines), so the app's other bindings stay.
+# A Ghostty `keybind = chain=...` line adds an action to the binding just above it, so it is never a setting of its own:
+# it is kept or dropped with that binding, and the block's chain lines stay where the block puts them.
 # Values go through the environment, not -v: macOS's awk rejects a newline inside a -v value.
 MARKER="$MARKER" BLOCK="$BLOCK" awk '
 function setting(line,    key, trigger) {
@@ -22,11 +24,20 @@ BEGIN {
     marker = ENVIRON["MARKER"]
     block = ENVIRON["BLOCK"]
     n = split(block, wanted, "\n")
-    for (i = 1; i <= n; i++) if (setting(wanted[i]) != "") want[setting(wanted[i])] = 1
+    for (i = 1; i <= n; i++) {
+        s = setting(wanted[i])
+        if (s != "" && s != "keybind chain") want[s] = 1
+    }
 }
 $0 == marker { next }
 {
-    if (setting($0) in want) next
+    s = setting($0)
+    if (s == "keybind chain") {
+        if (!dropped) lines[++count] = $0
+        next
+    }
+    if (s in want) { dropped = 1; next }
+    if (s != "") dropped = 0
     lines[++count] = $0
 }
 END {

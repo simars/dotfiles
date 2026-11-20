@@ -694,7 +694,7 @@ check "kitty on macOS: keeps the rest, sets copy on select and left Option as Al
     "$(kv darwin dot_config/kitty/modify_kitty.conf.tmpl 'include t.conf\ncopy_on_select no\nfont_size 11\n')"
 check "kitty on Omarchy: copy on select only" "include t.conf||copy_on_select clipboard" "$(kv omarchy dot_config/kitty/modify_kitty.conf.tmpl 'include t.conf\n')"
 check "Ghostty on macOS: copy on select and left Option as Alt, comments kept" "# copy-on-select = false|font-size = 11||copy-on-select = clipboard|macos-option-as-alt = left|confirm-close-surface = true" \
-    "$(kv darwin dot_config/ghostty/modify_config.tmpl '# copy-on-select = false\ncopy-on-select = true\nfont-size = 11\n' | tr '|' '\n' | grep -vE '^keybind = (cmd\+b|term)' | paste -sd'|' -)"
+    "$(kv darwin dot_config/ghostty/modify_config.tmpl '# copy-on-select = false\ncopy-on-select = true\nfont-size = 11\n' | tr '|' '\n' | grep -vE '^keybind = (cmd\+b|term|chain=)' | paste -sd'|' -)"
 render omarchy dot_config/ghostty/modify_config.tmpl > "$work/ghostty.sh"
 check "Ghostty: second run changes nothing" "$(printf 'a = 1\n' | bash "$work/ghostty.sh")" "$(printf 'a = 1\n' | bash "$work/ghostty.sh" | bash "$work/ghostty.sh")"
 # Ghostty on Omarchy gives Ctrl+Enter (Claude Code), Alt+1..9 and Ctrl+Alt+arrows (Herdr) to the program; a keybind
@@ -708,19 +708,32 @@ check "Ghostty on Omarchy: second run changes nothing, key bindings included" "$
 check "Ghostty on macOS: keys left to Ghostty (it uses Cmd)" 0 "$(render darwin dot_config/ghostty/modify_config.tmpl > "$work/ghostty-mac.sh"; printf 'a = 1\n' | bash "$work/ghostty-mac.sh" | grep -c '^keybind = [^t].*=unbind')"
 # The terminal leader: Cmd-b (macOS) / Super-b (Omarchy), then tmux's letters for Ghostty's own tabs and splits.
 ghostty_lead="$(printf 'config-file = ?"~/.local/state/omarchy/current/theme/ghostty.conf"\nconfirm-close-surface=false\nkeybind = shift+enter=csi:13;2u\n' | bash "$work/ghostty.sh")"
-check "Ghostty on Omarchy: Super-b opens the term table once" 1 "$(grep -cxF 'keybind = super+b=activate_key_table_once:term' <<< "$ghostty_lead")"
-check "Ghostty on Omarchy: unbound letters after the leader are swallowed" 1 "$(grep -cxF 'keybind = term/catch_all=ignore' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: Super-b opens the term table" 1 "$(grep -cxF 'keybind = super+b=activate_key_table:term' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: any other key after the leader closes it, swallowed" 1 "$(grep -cxF 'keybind = term/catch_all=deactivate_key_table' <<< "$ghostty_lead")"
+# A bare Shift press is a key event too: it must not reach catch_all and close the table before Shift+5 (%) arrives.
+check "Ghostty on Omarchy: bare Shift presses keep the leader open" 4 "$(grep -cxE 'keybind = term/(shift\+)?shift_(left|right)=ignore' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: shifted tmux keys spelled with Shift (Ghostty matches modifiers exactly)" "4 0" \
+    "$(grep -cE '^keybind = term/shift\+(digit_5|quote|digit_7|slash)=' <<< "$ghostty_lead") $(grep -cE '^keybind = term/[%"&?]=' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: every leader action closes the table after it" "" \
+    "$(awk '/^keybind = term\// && !/=(ignore|deactivate_key_table|deactivate_all_key_tables)$/ && !/^keybind = term\/r=/ { getline nxt; if (nxt != "keybind = chain=deactivate_key_table") print }' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: resize table swallows the rest too" 1 "$(grep -cxF 'keybind = term_resize/catch_all=ignore' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: Omarchy's theme include and own keys kept" "1 1" "$(grep -cF 'config-file = ?' <<< "$ghostty_lead") $(grep -cxF 'keybind = shift+enter=csi:13;2u' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: closing asks first, one line" "confirm-close-surface = true" "$(grep -E '^confirm-close-surface' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: leader block is idempotent" "$ghostty_lead" "$(bash "$work/ghostty.sh" <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: tmux's letters after the leader" "new_tab new_split:right new_split:down goto_split:left toggle_split_zoom goto_tab:9 close_tab" \
-    "$(for t in c % '"' h z digit_9 '&'; do grep -F "keybind = term/$t=" <<< "$ghostty_lead" | sed 's/^[^=]*=[^=]*=//'; done | xargs)"
+    "$(for t in c shift+digit_5 shift+quote h z digit_9 shift+digit_7; do grep -F "keybind = term/$t=" <<< "$ghostty_lead" | sed 's/^[^=]*=[^=]*=//'; done | xargs)"
 check "Ghostty on Omarchy: every leader binding is distinct (awk kept all)" \
     "$(grep -cE '^keybind = (term|term_resize)/' <<< "$ghostty_lead")" "$(grep -E '^keybind = (term|term_resize)/' <<< "$ghostty_lead" | sort -u | wc -l | tr -d ' ')"
 ghostty_mac_lead="$(printf 'a = 1\n' | bash "$work/ghostty-mac.sh")"
-check "Ghostty on macOS: Cmd-b opens the term table once, no Super-b" "1 0" \
-    "$(grep -cxF 'keybind = cmd+b=activate_key_table_once:term' <<< "$ghostty_mac_lead") $(grep -c 'super+b' <<< "$ghostty_mac_lead")"
+check "Ghostty on macOS: Cmd-b opens the term table, no Super-b" "1 0" \
+    "$(grep -cxF 'keybind = cmd+b=activate_key_table:term' <<< "$ghostty_mac_lead") $(grep -c 'super+b' <<< "$ghostty_mac_lead")"
+# chain= lines belong to the binding above them: the awk keeps a user's own chain with its binding, drops an old block's
+# chains with their bindings, and never merges two chain lines into one setting.
+ghostty_chain="$(printf 'keybind = ctrl+x=new_tab\nkeybind = chain=goto_tab:1\nfont-size = 11\n' | bash "$work/ghostty.sh")"
+check "Ghostty: a user's chain line stays right after its binding" "keybind = chain=goto_tab:1" "$(grep -A1 -xF 'keybind = ctrl+x=new_tab' <<< "$ghostty_chain" | tail -1)"
+check "Ghostty: chain lines survive a second run unchanged" "$ghostty_chain" "$(bash "$work/ghostty.sh" <<< "$ghostty_chain")"
+check "Ghostty: an old block's chains go with their bindings" 0 \
+    "$(printf 'keybind = term/c=new_window\nkeybind = chain=toggle_fullscreen\n' | bash "$work/ghostty.sh" | grep -cE 'new_window|toggle_fullscreen')"
 check "Ghostty on macOS: closing asks first" 1 "$(grep -cxF 'confirm-close-surface = true' <<< "$ghostty_mac_lead")"
 check "Ghostty: both platforms bind the same term letters" \
     "$(grep -E '^keybind = term' <<< "$ghostty_lead")" "$(grep -E '^keybind = term' <<< "$ghostty_mac_lead")"
@@ -801,6 +814,10 @@ printf '#!/bin/sh\necho %s\n' "'[{\"modmask\":65,\"key\":\"B\",\"description\":\
 chmod +x "$work/hypr-taken/hyprctl" "$work/hypr-free/hyprctl"
 super_b() { PATH="$work/$1:$PATH" bash -c 'report() { echo "WARN: $2"; }; source "$0"; check_super_b' "$work/super_b.sh" 2>&1; }
 check "omarchy requirement check warns when Hyprland takes Super+B" 1 "$(super_b hypr-taken | grep -c '^WARN: Hyprland binds Super+B (Some app)')"
+mkdir -p "$work/hypr-undescribed"
+printf '#!/bin/sh\necho %s\n' "'[{\"modmask\":64,\"key\":\"b\",\"description\":\"\",\"dispatcher\":\"exec\",\"arg\":\"foo\"}]'" > "$work/hypr-undescribed/hyprctl"
+chmod +x "$work/hypr-undescribed/hyprctl"
+check "omarchy requirement check warns about an undescribed Super+B bind, naming its dispatcher" 1 "$(super_b hypr-undescribed | grep -c '^WARN: Hyprland binds Super+B (exec foo)')"
 check "omarchy requirement check: Super+Shift+B leaves Super+B free" "OK:   Super+B is free in Hyprland (terminal leader)" "$(super_b hypr-free)"
 check "darwin requirement check has no Hyprland check" 0 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'check_super_b')"
 check "omarchy requirement check warns when another file overrides the version-file setting" 1 "$(grep -c 'not $want_idiomatic, so projects' "$work/omarchy.requirements")"

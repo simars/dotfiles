@@ -36,7 +36,8 @@ default_shell = "/usr/bin/zsh"
 [keys]
 # ctrl+space too, as tmux's prefix2 (Omarchy's Hyprland Ctrl+Space input-method bind lets the key through). Needs a
 # Herdr of 0.9.2 or later: an older server rejects the whole [keys] section over this list (on a reload it keeps the
-# keys it had; started fresh it would use Herdr's default keys). The requirement check warns about both cases.
+# keys it had, as tested on 0.9.1; started fresh it probably uses Herdr's default keys, not tested). The requirement
+# check warns about both cases.
 prefix = ["ctrl+b", "ctrl+space"]
 
 # Config and help

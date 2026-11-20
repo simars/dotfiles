@@ -98,7 +98,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
     account sync carries it to your other Macs, and chezmoi leaves it alone.
 14. **Ctrl+Space for tmux and Herdr:** System Settings > Keyboard > Keyboard Shortcuts > Input Sources: turn off
     **Select the previous input source** (Ctrl+Space). These Macs never switch input language, and the shortcut would
-    take tmux's and Herdr's second prefix. The apply names it while it is on.
+    take tmux's and Herdr's second prefix. The apply names it only when macOS has stored it as on (after any change
+    in that pane), so check it here on a new Mac.
 15. **Check:** `chezmoi apply`. Repeat steps from the list until it says `Nothing to do on this machine`.
 
 ## B. New Omarchy machine
