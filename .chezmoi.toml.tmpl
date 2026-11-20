@@ -2,10 +2,23 @@
 {{- $name := promptStringOnce . "name" "What is your Git full name" "Simar Singh" -}}
 {{- /* Work identity: the work email and the work GitHub orgs stay in this machine's config, never in this public
        repository (AGENTS.md 3.3). Every host gets the same rules from them (dot_gitconfig.tmpl); "none" means this
-       machine has no work repositories. Each default is the current answer, so `chezmoi init --prompt` shows it. */ -}}
-{{- $workEmail := promptStringOnce . "work.email" "Work email for your work GitHub orgs (none if this machine has no work repositories)" (dig "work" "email" "" .) | trim -}}
+       machine has no work repositories. Each default is the current answer, so `chezmoi init --prompt` shows it.
+       A stored blank (from a headless init) is not an answer: it is asked again, and a --promptString fills it. */ -}}
+{{- $workEmail := dig "work" "email" "" . -}}
+{{- if eq $workEmail "" -}}
+{{-   $workEmail = promptString "Work email for your work GitHub orgs (none if this machine has no work repositories)" "" -}}
+{{- else -}}
+{{-   $workEmail = promptStringOnce . "work.email" "Work email for your work GitHub orgs (none if this machine has no work repositories)" $workEmail -}}
+{{- end -}}
+{{- $workEmail = trim $workEmail -}}
 {{- if eq (lower $workEmail) "none" }}{{ $workEmail = "none" }}{{ end -}}
-{{- $workOrgs := promptStringOnce . "work.orgs" "Work GitHub orgs (separate with commas)" (dig "work" "orgs" "" .) | trim -}}
+{{- $workOrgs := dig "work" "orgs" "" . -}}
+{{- if and (eq $workOrgs "") (ne $workEmail "") (ne $workEmail "none") -}}
+{{-   $workOrgs = promptString "Work GitHub orgs (separate with commas)" "" -}}
+{{- else -}}
+{{-   $workOrgs = promptStringOnce . "work.orgs" "Work GitHub orgs (separate with commas)" $workOrgs -}}
+{{- end -}}
+{{- $workOrgs = trim $workOrgs -}}
 {{- $orgList := list -}}
 {{- range splitList "," $workOrgs }}{{ $org := trim . }}{{ if and $org (not (has $org $orgList)) }}{{ $orgList = append $orgList $org }}{{ end }}{{ end -}}
 {{- $workEnabled := and (ne $workEmail "") (ne $workEmail "none") -}}

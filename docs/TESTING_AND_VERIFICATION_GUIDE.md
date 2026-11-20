@@ -137,7 +137,8 @@ During this initial run:
 1. `chezmoi` prompts for:
    * **Git email address** (e.g. `you@example.com`)
    * **Git full name** (e.g. `Simar Singh`)
-   * **Is this a work machine** (`true` or `false`)
+   * **Work email for your work GitHub orgs** (`none` if the machine has no work repositories)
+   * **Work GitHub orgs** (separated by commas, as in clone URLs)
 2. `chezmoi` renders configurations into `$HOME`.
 3. `run_onchange_before_00_install_packages.sh.tmpl` verifies Homebrew dependencies via `brew bundle`.
 4. `run_onchange_after_90_sync_runtimes.sh.tmpl` installs `mise` runtimes (Go, Python 3.12, Node 22).

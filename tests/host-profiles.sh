@@ -9,7 +9,7 @@
 #   --base also reports each run_onchange_ script whose macOS or Ubuntu render differs from <ref>: hosts like that
 #   re-run it on their next apply. A report, not a failure.
 #
-# Needs an initialized chezmoi (CI runs `chezmoi init` first). Runs under bash 3.2, the macOS /bin/bash.
+# Makes its own chezmoi config from .chezmoi.toml.tmpl (below). Runs under bash 3.2, the macOS /bin/bash.
 #
 # SC2016 is off for this file: single-quoted `$` here is deliberate, either a grep pattern for a literal `$VAR` in a
 # rendered file or code for a child shell (`bash -c`, `zsh -c`, stub scripts) that must expand it there, not here.
@@ -46,6 +46,32 @@ omarchy_owned=".config/nvim/init.lua .config/nvim/lua/config/options.lua .config
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/host-profiles.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
+
+# Every chezmoi call here reads a config made just now from .chezmoi.toml.tmpl with CI's answers, and this checkout as
+# the source: never this machine's own config or source directory, so a local run sees what CI sees. A later --config
+# or --source on a call wins.
+suite_config="$work/chezmoi.toml"
+printf '' > "$work/blank.toml"
+if ! command chezmoi --config "$work/blank.toml" --source "$repo" execute-template --init --no-tty \
+    --promptString "What is your Git email address=ci-bot@example.com" \
+    --promptString "What is your Git full name=CI Runner" \
+    --promptString "Work email for your work GitHub orgs (none if this machine has no work repositories)=work@example.com" \
+    --promptString "Work GitHub orgs (separate with commas)=example-org, other-org" \
+    "$(cat "$repo/.chezmoi.toml.tmpl")" < /dev/null > "$suite_config"; then
+    echo "FAIL .chezmoi.toml.tmpl does not render: $(cat "$suite_config")"
+    exit 1
+fi
+chezmoi() { command chezmoi --config "$suite_config" --source "$repo" "$@"; }
+
+# Every host renders the whole tree with that fresh config: a template reading a key the config no longer writes
+# fails here, not on a new machine.
+fresh_render_failures() {
+    local host
+    for host in $hosts; do
+        chezmoi --destination "$work/dest-$host" --override-data "$(host_data "$host")" archive --output /dev/null > /dev/null 2>&1 \
+            || printf '%s ' "$host"
+    done
+}
 pass=0
 fail=0
 
@@ -94,6 +120,8 @@ render() { # render HOST FILE [SOURCE_DIR]
     local source="${3:-.}"
     chezmoi --source "$source" --override-data "$(host_data "$1")" execute-template < "$source/$2"
 }
+
+check "every host renders with a fresh config" "" "$(fresh_render_failures)"
 
 for host in $hosts; do
     if ! chezmoi --override-data "$(host_data "$host")" managed --include=all > "$work/$host.managed"; then
@@ -680,6 +708,9 @@ check "init: a bad org name fails" 1 \
 check "init: a non-address email fails" 1 \
     "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work" --promptString "$p_orgs=example-org" | grep -c 'is not an email address')"
 check "init: no is_work any more" 0 "$(init_render "$work/cfg-empty.toml" | grep -c 'is_work')"
+printf '[data]\n    email = "me@example.com"\n    name = "Test User"\n[data.work]\n    email = ""\n    orgs = ""\n    enabled = false\n    org_list = []\n' > "$work/cfg-blank-work.toml"
+check "init: a blank stored by a headless init is asked again" "$on" \
+    "$(init_render "$work/cfg-blank-work.toml" --promptString "$p_email=work@example.com" --promptString "$p_orgs=example-org, other-org" | work_block)"
 
 # Work rules: rendered with a throwaway config, then resolved by git itself in a throwaway HOME
 wdata='{"email":"me@example.com","name":"Test User","work":{"enabled":true,"email":"work@example.com","org_list":["example-org","other-org"]}}'
