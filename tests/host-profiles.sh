@@ -725,7 +725,7 @@ check "gitconfig: work rules come before ~/.gitconfig.local" yes \
 check "gitconfig: no work rules when off or never answered" "0 0" \
     "$(render_cfg "$odata" dot_gitconfig.tmpl | grep -c includeIf) $(render_cfg "$ndata" dot_gitconfig.tmpl | grep -c includeIf)"
 for d in wdata odata ndata; do
-    eval "data=\$$d"
+    case "$d" in wdata) data="$wdata" ;; odata) data="$odata" ;; *) data="$ndata" ;; esac
     managed_work="$(chezmoi --config "$work/cfg-empty.toml" --source "$repo" --override-data "$data" managed --include=files | grep -cx '.gitconfig.work')"
     check ".gitconfig.work managed only when work is on ($d)" "$([[ $d == wdata ]] && echo 1 || echo 0)" "$managed_work"
 done
@@ -753,7 +753,7 @@ check "requirements: work on is OK" 1 "$(r99 "$wdata" | grep -c 'OK:   work emai
 check "requirements: none is OK and no to-do" "1 0" "$(r99 "$odata" | grep -c 'answered none at chezmoi init') $(r99 "$odata" | grep -c 'no work email set')"
 check "requirements: never answered is a to-do" 1 "$(r99 "$ndata" | grep -c '^note "no work email set')"
 for d in wdata odata ndata; do
-    eval "data=\$$d"
+    case "$d" in wdata) data="$wdata" ;; odata) data="$odata" ;; *) data="$ndata" ;; esac
     check "requirements with work data ($d) is valid bash" "" "$(r99 "$data" | bash -n 2>&1)"
 done
 
