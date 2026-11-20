@@ -362,6 +362,9 @@ check "shared look: no per-Mac or left-Option keys" "" \
 check "shared look: names no font that isn't installed (Hack)" 0 "$(shared_look repo | grep -c Hack)"
 check "shared look: triggers off in full-screen apps by default" false "$(shared_look repo | jq '.Profiles[0]."Enable Triggers in Interactive Apps"')"
 check "shared look: switch on writes true" true "$(shared_look true | jq '.Profiles[0]."Enable Triggers in Interactive Apps"')"
+check "shared look: a quoted \"true\" still writes true" true "$(shared_look '"true"' | jq '.Profiles[0]."Enable Triggers in Interactive Apps"')"
+check "shared look: any other switch value stops the render with a clear message, instead of invalid JSON" 1 \
+    "$(shared_look '"yes"' 2>&1 | grep -c 'iterm2_triggers_in_interactive_apps must be true or false')"
 check "iTerm2 profile: inherits from the shared look" "chezmoi-shared-look|false|false|false|2" \
     "$(printf '' | bash "$iterm_modify" | jq -r '.Profiles[0] | "\(."Dynamic Profile Parent GUID")|\(has("Dynamic Profile Parent Name"))|\(has("Right Option Key Sends"))|\(has("Enable Triggers in Interactive Apps"))|\(."Option Key Sends")"')"
 check "iTerm2 profile: drops the old parent and a local trigger switch, keeps other local settings" "false|false|x" \
@@ -411,6 +414,7 @@ cat > "$it/bin/defaults" << 'EOF'
 case "$1" in
     read) [[ -f "$IT/defaults/$3" ]] || exit 1; cat "$IT/defaults/$3" ;;
     write)
+        grep -qxF "$3" "$IT/fail_write" 2> /dev/null && exit 1
         case "$4 $5" in "-bool true") v=1 ;; "-bool false") v=0 ;; *) v="$5" ;; esac
         printf '%s\n' "$v" > "$IT/defaults/$3"
         printf '%s\n' "$3" >> "$IT/defaults/written" ;;
@@ -420,7 +424,7 @@ printf '#!/bin/sh\nexit "$(cat "$IT/running")"\n' > "$it/bin/pgrep"
 chmod +x "$it/bin/defaults" "$it/bin/pgrep"
 render darwin "$it96" > "$it/script.sh"
 it_reset() { # the all-OK state, iTerm2 not running ($it/running holds pgrep's exit code)
-    rm -rf "$it/defaults" "$it/cache"
+    rm -rf "$it/defaults" "$it/cache" "$it/fail_write" "$it/nojq"
     mkdir -p "$it/defaults"
     for k in AllowClipboardAccess CopySelection DoubleClickPerformsSmartSelection "Print In Black And White"; do echo 1 > "$it/defaults/$k"; done
     for k in ShowFullScreenTabBar HapticFeedbackForEsc SoundForEsc VisualIndicatorForEsc; do echo 0 > "$it/defaults/$k"; done
@@ -434,7 +438,7 @@ it_reset() { # the all-OK state, iTerm2 not running ($it/running holds pgrep's e
 }
 iterm_after() { # the script's output in the stub Mac, then exit=<code>
     local out rc
-    out="$(IT="$it" HOME="$it/home" PATH="$it/bin:$PATH" ITERM2_APP="${it_app:-$it/iTerm.app}" CHEZMOI_CACHE_DIR="$it/cache" XDG_STATE_HOME="$it/state" bash "$it/script.sh" 2>&1)"
+    out="$(IT="$it" HOME="$it/home" PATH="${it_path:+$it_path:}$it/bin:$PATH" ITERM2_APP="${it_app:-$it/iTerm.app}" CHEZMOI_CACHE_DIR="$it/cache" XDG_STATE_HOME="$it/state" bash "$it/script.sh" 2>&1)"
     rc=$?
     printf '%s\nexit=%s' "$out" "$rc"
 }
@@ -471,6 +475,23 @@ check "iTerm2 script: names settings changed on this Mac only, off the to-do lis
 it_reset
 printf 'not json' > "$it_profile"
 check "iTerm2 script: a profile that is not JSON gives no local-changes line, exit 0" "0|exit=0" "$(iterm_after | grep -c 'changed on this Mac only')|$(iterm_after | tail -1)"
+it_reset
+echo 0 > "$it/defaults/DoubleClickPerformsSmartSelection"
+echo DoubleClickPerformsSmartSelection > "$it/fail_write"
+it_out="$(iterm_after)"
+check "iTerm2 script: a global it cannot write is named, goes on the to-do list, and the apply goes on" \
+    "NOTE: iTerm2 global settings could not be written: DoubleClickPerformsSmartSelection|0|1|exit=0" \
+    "$(printf '%s\n' "$it_out" | head -1)|$(printf '%s\n' "$it_out" | grep -c "global settings match")|$(it_todo | grep -c "Set iTerm2's global settings by hand")|$(printf '%s\n' "$it_out" | tail -1)"
+it_reset
+jq '.Profiles[0] += {"Font": "x"}' "$it_profile" > "$it/p.json" && mv "$it/p.json" "$it_profile"
+mkdir -p "$it/nojq"
+printf '#!/bin/sh\nexit 127\n' > "$it/nojq/jq"
+chmod +x "$it/nojq/jq"
+check "iTerm2 script: without a working jq, no local-changes line, the other three, exit 0" "3|0|exit=0" \
+    "$(it_path="$it/nojq" iterm_after | grep -c '^OK: ')|$(it_path="$it/nojq" iterm_after | grep -c 'this Mac only')|$(it_path="$it/nojq" iterm_after | tail -1)"
+it_reset
+jq '.Profiles[0].Triggers += [{"regex": "x"}]' "$it_profile" > "$it/p.json" && mv "$it/p.json" "$it_profile"
+check "iTerm2 script: a trigger without an action is named \"unnamed\"" 1 "$(iterm_after | grep -c 'not shared: trigger unnamed\.')"
 it_reset
 check "iTerm2 script: silent without iTerm2" "|exit=0" "$(it_app="$it/none" iterm_after | paste -sd'|' -)"
 

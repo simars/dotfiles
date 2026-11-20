@@ -36,7 +36,7 @@ ensure_global {{ $key | quote }} {{ if kindIs "bool" $value }}-bool {{ $value }}
 {{ end -}}
 join() { local IFS=,; printf '%s' "$*" | sed 's/,/, /g'; }
 if [[ ${#failed[@]} -gt 0 ]]; then
-    echo "NOTE: could not write iTerm2 global settings: $(join "${failed[@]}")"
+    echo "NOTE: iTerm2 global settings could not be written: $(join "${failed[@]}")"
     todo "Set iTerm2's global settings by hand (Settings): $(join "${failed[@]}")"
 fi
 if [[ ${#updated[@]} -eq 0 ]]; then
@@ -69,7 +69,7 @@ profile="$HOME/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option
 if [[ -f "$profile" ]] && command -v jq > /dev/null 2>&1 && local_changes="$(jq -r '
     .Profiles[0] as $p
     | [($p | keys[] | select(IN("Name", "Guid", "Dynamic Profile Parent GUID", "Option Key Sends", "Rewritable", "Triggers") | not)),
-       (($p.Triggers // [])[] | .action | select(IN("iTermEnterWorkgroupTrigger", "iTermExitWorkgroupTrigger") | not) | "trigger \(.)")]
+       (($p.Triggers // [])[] | (.action // "unnamed") | select(IN("iTermEnterWorkgroupTrigger", "iTermExitWorkgroupTrigger") | not) | "trigger \(.)")]
     | join(", ")' "$profile" 2> /dev/null)"; then
     if [[ -z "$local_changes" ]]; then
         echo "OK:   iTerm2 profile has no settings changed on this Mac only"

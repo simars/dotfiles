@@ -22,7 +22,7 @@ CLAUDE.md
 # ~/.bashrc alone elsewhere.
 {{ if ne .chezmoi.os "darwin" }}
 .bashrc
-# iTerm2's dynamic profile (left Option as Alt) is macOS only.
+# iTerm2's dynamic profiles (the shared look, and left Option as Alt) are macOS only.
 Library
 Library/**
 {{ end }}

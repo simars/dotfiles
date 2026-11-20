@@ -196,7 +196,7 @@
       "Vertical Spacing": 1.0,
       "Visual Bell": true,
       "Window Type": 0,
-      "Enable Triggers in Interactive Apps": {{ .iterm2_triggers_in_interactive_apps }}
+      "Enable Triggers in Interactive Apps": {{ $switch := toString .iterm2_triggers_in_interactive_apps }}{{ if not (has $switch (list "true" "false")) }}{{ fail (printf "iterm2_triggers_in_interactive_apps must be true or false, not %q (.chezmoidata/macos.toml or [data] in ~/.config/chezmoi/chezmoi.toml)" $switch) }}{{ end }}{{ $switch }}
     }
   ]
 }
