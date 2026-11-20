@@ -63,12 +63,17 @@ else
     todo "Install iTerm2's Claude Code integration: menu iTerm2 > Install Claude Code Integration, then Mark Rewritable and Install"
 fi
 
-# Settings changed in iTerm2 on this Mac only: keys in chezmoi's rewritable profile beyond its own, and triggers beyond
-# the two Claude Code ones. Silent when the file is missing or not JSON, or there is no jq.
-profile="$HOME/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json"
-if [[ -f "$profile" ]] && command -v jq > /dev/null 2>&1 && local_changes="$(jq -r '
+# Settings changed in iTerm2 on this Mac only: keys in chezmoi's rewritable profile beyond its own whose value differs
+# from the shared look (iTerm2 keeps some keys it saves even when they equal the parent's value), and triggers beyond the
+# two Claude Code ones. Without the shared look file, every extra key counts. Silent when the profile is missing or not
+# JSON, or there is no jq.
+dynamic_profiles="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+profile="$dynamic_profiles/chezmoi-option-as-alt.json"
+if [[ -f "$profile" ]] && command -v jq > /dev/null 2>&1 && local_changes="$(jq -r --slurpfile shared <(cat "$dynamic_profiles/chezmoi-0-shared-look.json" 2> /dev/null || echo '{}') '
     .Profiles[0] as $p
-    | [($p | keys[] | select(IN("Name", "Guid", "Dynamic Profile Parent GUID", "Option Key Sends", "Rewritable", "Triggers") | not)),
+    | ((($shared[0].Profiles // [{}])[0]) // {}) as $s
+    | [($p | keys[] | select(IN("Name", "Guid", "Dynamic Profile Parent GUID", "Option Key Sends", "Rewritable", "Triggers") | not)
+          | select(. as $k | (($s | has($k)) and ($s[$k] == $p[$k])) | not)),
        (($p.Triggers // [])[] | (.action // "unnamed") | select(IN("iTermEnterWorkgroupTrigger", "iTermExitWorkgroupTrigger") | not) | "trigger \(.)")]
     | join(", ")' "$profile" 2> /dev/null)"; then
     if [[ -z "$local_changes" ]]; then

@@ -434,6 +434,7 @@ it_reset() { # the all-OK state, iTerm2 not running ($it/running holds pgrep's e
     printf '#!/bin/sh\n' > "$it/home/.config/iterm2/it2"
     chmod +x "$it/home/.config/iterm2/it2"
     printf '' | bash "$iterm_modify" > "$it_profile"
+    shared_look repo > "${it_profile%/*}/chezmoi-0-shared-look.json"
     echo 1 > "$it/running"
 }
 iterm_after() { # the script's output in the stub Mac, then exit=<code>
@@ -472,6 +473,18 @@ jq '.Profiles[0] += {"Font": "x", "Columns": 100} | .Profiles[0].Triggers += [{"
 check "iTerm2 script: names settings changed on this Mac only, off the to-do list" \
     "NOTE: iTerm2 settings changed on this Mac only, not shared: Columns, Font, trigger iTermHighlightLineTrigger. To share them, move them into chezmoi-0-shared-look.json.tmpl; to drop them, delete them from ~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json|0" \
     "$(iterm_after | grep '^NOTE: iTerm2 settings changed')|$(it_todo | grep -c 'this Mac only')"
+# iTerm2 keeps some keys it saves even when they equal the parent's value ("Use Separate Colors for Light and Dark
+# Mode" on 2026-11-20, after a font change and back on a real Mac): a value equal to the shared look is no local change.
+it_reset
+jq '.Profiles[0] += {"Use Separate Colors for Light and Dark Mode": false}' "$it_profile" > "$it/p.json" && mv "$it/p.json" "$it_profile"
+check "iTerm2 script: a setting saved with the shared look's own value is not a local change" 1 "$(iterm_after | grep -c '^OK:   iTerm2 profile has no settings changed on this Mac only$')"
+it_reset
+jq '.Profiles[0] += {"Use Separate Colors for Light and Dark Mode": true}' "$it_profile" > "$it/p.json" && mv "$it/p.json" "$it_profile"
+check "iTerm2 script: the same setting with another value is one" 1 "$(iterm_after | grep -c 'not shared: Use Separate Colors for Light and Dark Mode\.')"
+it_reset
+jq '.Profiles[0] += {"Use Separate Colors for Light and Dark Mode": false}' "$it_profile" > "$it/p.json" && mv "$it/p.json" "$it_profile"
+rm "${it_profile%/*}/chezmoi-0-shared-look.json"
+check "iTerm2 script: without the shared look file, every extra setting counts" 1 "$(iterm_after | grep -c 'not shared: Use Separate Colors for Light and Dark Mode\.')"
 it_reset
 printf 'not json' > "$it_profile"
 check "iTerm2 script: a profile that is not JSON gives no local-changes line, exit 0" "0|exit=0" "$(iterm_after | grep -c 'changed on this Mac only')|$(iterm_after | tail -1)"
