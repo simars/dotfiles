@@ -770,7 +770,19 @@ Ghostty 1.4.0, foot 1.28.0, Herdr 0.9.5 client with a 0.9.1 server) unless the r
 | `y` in tmux and Herdr copy mode reaches the clipboard, locally and over `ssh localhost` (OSC 52) | by hand | by hand | |
 | Herdr desktop app starts with the new config and takes `Ctrl-b` | by hand | | `herdr-app`; it has no config checker |
 
-Mac rows (iTerm2 and Ghostty with `Cmd-b`) follow when a Mac is reachable (plan tasks 5 to 7).
+Measured read-only on `Simars-MacBook-Work` over SSH (macOS 27.2.1; tmux 3.8, Herdr 0.9.5, Ghostty 1.4.0,
+iTerm2 3.7.7), before any apply there:
+
+| Check | Result |
+| :--- | :--- |
+| Ghostty binds nothing to `cmd+b` by default (`ghostty +list-keybinds --default`) | yes |
+| The Mac's Ghostty config with the leader block (rendered from the Mac's current file) validates | yes, 47 bindings |
+| `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty` changes nothing | yes, comments only |
+| macOS's Ctrl+Space input-source shortcut (AppleSymbolicHotKeys 60) | stored, `enabled = 0`: the new check says OK; the text form matches its parser |
+| Herdr ≥ 0.9.2 for `Ctrl-Space` | 0.9.5, no server running |
+| iTerm2 leader storage | not yet known: iTerm2 sets a leader modifier flag on the next key, so leader bindings are key mappings carrying that flag; the exact preference keys need the plan's Task 6 spike in iTerm2's Settings |
+| Key presses in iTerm2 and Ghostty (`Cmd-b` letters, `Ctrl-Space`, Ctrl+Enter in Claude Code inside tmux, OSC 52 over `ssh works`) | by hand, after `chezmoi apply` on the Mac |
+
 
 ## 10. Global Secret-Scanning Hook Verification (2026-10-17)
 
