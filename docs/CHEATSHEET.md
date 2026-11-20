@@ -497,7 +497,7 @@ Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh dif
 | `Ctrl-b !` | Break the current pane out into its own window | Press `Ctrl-b`, release, then `Shift-1`. herdr binds the same keys to move the pane into a new tab |
 
 ### tmux and Herdr Keys (macOS and Omarchy)
-One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space` (Omarchy's old prefix). Press the prefix, release, then the key. `Alt` chords need Option-as-Meta in a Mac terminal. On Omarchy, Super+Alt+K and Super+Ctrl+K list every key. New panes open zsh in both (tmux `default-shell`, Herdr `default_shell`), whatever shell started the server.
+One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's old prefix) in both; Herdr needs 0.9.2 or later for `Ctrl-Space`, in its running server too (the apply's to-do list says when the server is older). Press the prefix, release, then the key. `Alt` chords need Option-as-Meta in a Mac terminal. On Omarchy, Super+Alt+K and Super+Ctrl+K list every key. New panes open zsh in both (tmux `default-shell`, Herdr `default_shell`), whatever shell started the server.
 
 | Key | tmux | Herdr |
 | :--- | :--- | :--- |
@@ -514,6 +514,8 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 | `Alt-Left` / `Alt-Right` | Not bound (Omarchy's stock: previous / next window); passed to the pane, where zsh jumps a word | Same, for tabs |
 | `R` `C` `K` `P` `N` | Rename / new / kill (asks first) / previous / next session | `Shift-r` (or `$`) `Shift-c` `Shift-k` `Shift-p` `Shift-n` for workspaces (closing asks first) |
 | `s` / `w` | Choose session / choose window (tmux defaults) | Workspace picker (both keys) |
+| `(` / `)` | Previous / next session (tmux defaults) | Previous / next workspace |
+| `f` | Find window (tmux default) | Goto picker |
 | `q` | Show pane numbers; press one to jump (tmux default) | Goto picker (also `g`); Herdr has no pane numbers |
 | `r` | Reload config | Same |
 | `[` | Copy mode (`v` select, `y` copy) | Same |
@@ -523,6 +525,8 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 | `d` | Detach | Same |
 | `Ctrl-Alt-arrows` / `Ctrl-Alt-Shift-arrows` | Focus / resize pane, no prefix | Same |
 | `b`, `Shift-o`, `Shift-s`, `Shift-g` | | Sidebar, notification target, settings, new git worktree |
+
+tmux keys Herdr lacks: layouts (`Space`, `Alt-1`..`5` after the prefix, `E`), rotate (`Ctrl-o`), paste buffers (`]` `#` `=`), command prompt (`:`), mark (`m`), move or pick a window by number (`.` `'`), and `PageUp` into copy mode.
 
 `omarchy refresh tmux` (or `herdr`) puts Omarchy's stock file back; `chezmoi apply ~/.config/tmux/tmux.conf` (or `~/.config/herdr/config.toml`) restores the shared one.
 

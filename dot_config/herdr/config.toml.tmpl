@@ -1,6 +1,6 @@
 # Herdr, shared by macOS and Omarchy (chezmoi: dot_config/herdr/config.toml.tmpl).
 # Keys mirror ~/.config/tmux/tmux.conf: tmux session -> herdr workspace, window -> tab, pane -> pane.
-# Herdr takes one prefix: ctrl+b on every machine (tmux also has ctrl+space as its second prefix).
+# Both take two prefixes, ctrl+b and ctrl+space, on every machine (tmux prefix2; Herdr 0.9.2+).
 # Look and feel stays per platform: Omarchy keeps its stock chrome (/usr/share/omarchy/config/herdr/config.toml,
 # omarchy 4.5.0); macOS keeps gaps and outer borders. `omarchy refresh herdr` restores Omarchy's stock file;
 # `chezmoi apply ~/.config/herdr/config.toml` restores this one. Validate with `herdr config check`.
@@ -34,7 +34,10 @@ default_shell = "/usr/bin/zsh"
 {{- end }}
 
 [keys]
-prefix = "ctrl+b"
+# ctrl+space too, as tmux's prefix2 (Omarchy's Hyprland Ctrl+Space input-method bind lets the key through). Needs a
+# Herdr of 0.9.2 or later: an older server rejects the whole [keys] section over this list (on a reload it keeps the
+# keys it had; started fresh it would use Herdr's default keys). The requirement check warns about both cases.
+prefix = ["ctrl+b", "ctrl+space"]
 
 # Config and help
 reload_config = "prefix+r"
@@ -94,7 +97,8 @@ move_tab_previous = "alt+shift+left"
 move_tab_next = "alt+shift+right"
 
 # No pane-number overlay (tmux q, display-panes) in Herdr; q opens the goto picker instead
-goto = ["prefix+g", "prefix+q"]
+# f is tmux's find-window
+goto = ["prefix+f", "prefix+g", "prefix+q"]
 
 # Sessions -> workspaces
 # s chooses a session, w a window; Herdr's workspace navigation covers both
@@ -102,8 +106,9 @@ workspace_picker = ["prefix+s", "prefix+w"]
 new_workspace = "prefix+shift+c"
 rename_workspace = ["prefix+shift+r", "prefix+$"]
 close_workspace = "prefix+shift+k"
-previous_workspace = ["prefix+shift+p", "alt+up"]
-next_workspace = ["prefix+shift+n", "alt+down"]
+# ( ) are tmux's previous / next session
+previous_workspace = ["prefix+(", "prefix+shift+p", "alt+up"]
+next_workspace = ["prefix+)", "prefix+shift+n", "alt+down"]
 
 # Break pane into new tab (tmux `prefix + !`)
 [[keys.command]]

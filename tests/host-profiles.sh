@@ -218,7 +218,7 @@ for host in $hosts; do
 done
 render omarchy dot_config/herdr/config.toml.tmpl > "$work/omarchy.herdr"
 render darwin dot_config/herdr/config.toml.tmpl > "$work/darwin.herdr"
-for line in 'window_title = "{hostname}: {workspace}"' 'panel_bg = "reset"' 'surface_dim = "black"' 'prefix = "ctrl+b"'; do
+for line in 'window_title = "{hostname}: {workspace}"' 'panel_bg = "reset"' 'surface_dim = "black"' 'prefix = ["ctrl+b", "ctrl+space"]'; do
     check "omarchy herdr has $line" 1 "$(grep -cxF -- "$line" "$work/omarchy.herdr")"
 done
 check "darwin herdr has no Omarchy chrome" 0 "$(grep -cE 'window_title|panel_bg|^\[theme' "$work/darwin.herdr")"
@@ -229,6 +229,13 @@ for host in darwin omarchy; do
     check "$host herdr asks before every close" 1 "$(grep -cx 'confirm_close = true' "$work/$host.herdr")"
 done
 check "darwin herdr keeps gaps" 1 "$(grep -cxF 'pane_gaps = true' "$work/darwin.herdr")"
+for host in darwin omarchy; do
+    check "$host herdr takes Ctrl-b and Ctrl-Space as prefixes, like tmux" 1 "$(grep -cxF 'prefix = ["ctrl+b", "ctrl+space"]' "$work/$host.herdr")"
+    check "$host herdr has tmux's ( ) for previous/next workspace and f for find" "1 1 1" \
+        "$(grep -c '^previous_workspace = \["prefix+(",' "$work/$host.herdr") $(grep -c '^next_workspace = \["prefix+)",' "$work/$host.herdr") $(grep -c '^goto = .*"prefix+f"' "$work/$host.herdr")"
+done
+check "requirement check names a stale Herdr server" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'server_binary_stale')"
+check "requirement check wants Herdr 0.9.2 or later (multiple prefixes)" 1 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'version_ge "$herdr_version" 0.9.2')"
 # The stock-drift report runs on Omarchy only and never fails.
 drift=run_after_95_omarchy_stock_drift.sh.tmpl
 for host in $hosts; do
