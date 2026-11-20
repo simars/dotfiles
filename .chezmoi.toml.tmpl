@@ -1,13 +1,31 @@
 {{- $email := promptStringOnce . "email" "What is your Git email address" "simarpaulsingh@gmail.com" -}}
 {{- $name := promptStringOnce . "name" "What is your Git full name" "Simar Singh" -}}
-{{- $isWork := promptBoolOnce . "is_work" "Is this a work machine" false -}}
+{{- /* Work identity: the work email and the work GitHub orgs stay in this machine's config, never in this public
+       repository (AGENTS.md 3.3). Every host gets the same rules from them (dot_gitconfig.tmpl); "none" means this
+       machine has no work repositories. Each default is the current answer, so `chezmoi init --prompt` shows it. */ -}}
+{{- $workEmail := promptStringOnce . "work.email" "Work email for your work GitHub orgs (none if this machine has no work repositories)" (dig "work" "email" "" .) | trim -}}
+{{- if eq (lower $workEmail) "none" }}{{ $workEmail = "none" }}{{ end -}}
+{{- $workOrgs := promptStringOnce . "work.orgs" "Work GitHub orgs (separate with commas)" (dig "work" "orgs" "" .) | trim -}}
+{{- $orgList := list -}}
+{{- range splitList "," $workOrgs }}{{ $org := trim . }}{{ if and $org (not (has $org $orgList)) }}{{ $orgList = append $orgList $org }}{{ end }}{{ end -}}
+{{- $workEnabled := and (ne $workEmail "") (ne $workEmail "none") -}}
+{{- if $workEnabled -}}
+{{-   if not (contains "@" $workEmail) }}{{ fail (printf "work.email: %q is not an email address (or answer none)" $workEmail) }}{{ end -}}
+{{-   if not $orgList }}{{ fail "work.orgs: list at least one work GitHub org when a work email is set" }}{{ end -}}
+{{-   range $orgList }}{{ if not (regexMatch "^[A-Za-z0-9][A-Za-z0-9-]*$" .) }}{{ fail (printf "work.orgs: %q is not a GitHub org name (letters, digits and hyphens)" .) }}{{ end }}{{ end -}}
+{{- end -}}
 
 encryption = "age"
 
 [data]
     email = {{ $email | quote }}
     name = {{ $name | quote }}
-    is_work = {{ $isWork }}
+
+[data.work]
+    email = {{ $workEmail | quote }}
+    orgs = {{ $workOrgs | quote }}
+    enabled = {{ $workEnabled }}
+    org_list = [{{ range $i, $org := $orgList }}{{ if $i }}, {{ end }}{{ $org | quote }}{{ end }}]
 
 [age]
     useBuiltin = false

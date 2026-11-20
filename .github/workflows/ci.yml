@@ -87,7 +87,8 @@ jobs:
             --source="$GITHUB_WORKSPACE" \
             --promptString "What is your Git email address=ci-bot@example.com" \
             --promptString "What is your Git full name=CI Runner" \
-            --promptBool "Is this a work machine=false"
+            --promptString "Work email for your work GitHub orgs (none if this machine has no work repositories)=work@example.com" \
+            --promptString "Work GitHub orgs (separate with commas)=example-org, other-org"
 
       - name: Check What Each Kind of Host Gets (macOS, Omarchy, Arch, Ubuntu, Debian)
         run: bash tests/host-profiles.sh

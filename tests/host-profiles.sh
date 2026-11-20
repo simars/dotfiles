@@ -652,5 +652,34 @@ check "darwin iTerm2 script checks the default profile and the Claude Code integ
     "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | grep -cE 'Default Bookmark Guid|handle-agent-hook')"
 check "omarchy stock-drift notes go on the to-do list" 2 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c '^        todo ')"
 
+# chezmoi init answers -> [data.work] (rendered as `chezmoi init` would, against throwaway configs, so this machine's
+# own answers never leak in). Work names never appear in this repository: example-org and other-org stand in.
+printf '' > "$work/cfg-empty.toml"
+printf '[data]\n    email = "me@example.com"\n    name = "Test User"\n[data.work]\n    email = "work@example.com"\n    orgs = "example-org, other-org"\n    enabled = true\n    org_list = ["example-org", "other-org"]\n' > "$work/cfg-work.toml"
+p_email='Work email for your work GitHub orgs (none if this machine has no work repositories)'
+p_orgs='Work GitHub orgs (separate with commas)'
+init_render() { # init_render CONFIG [--promptString K=V ...]: the config `chezmoi init` would write, or its error
+    chezmoi --config "$1" --source "$repo" execute-template --init --no-tty "${@:2}" "$(cat "$repo/.chezmoi.toml.tmpl")" < /dev/null 2>&1
+}
+work_block() { sed -n '/^\[data\.work\]/,/^$/p' | grep . | sed 's/^ *//' | paste -sd'|' -; }
+on='[data.work]|email = "work@example.com"|orgs = "example-org, other-org"|enabled = true|org_list = ["example-org", "other-org"]'
+check "init: answers become [data.work]" "$on" \
+    "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work@example.com" --promptString "$p_orgs=example-org, other-org" | work_block)"
+check "init: a messy org list is cleaned" 'org_list = ["example-org", "other-org"]' \
+    "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work@example.com" --promptString "$p_orgs= example-org ,, other-org, example-org " | work_block | tr '|' '\n' | grep '^org_list')"
+check "init: none turns work off, without orgs" 'email = "none"|enabled = false' \
+    "$(init_render "$work/cfg-empty.toml" --promptString "$p_email= NONE " | work_block | tr '|' '\n' | grep -E '^(email|enabled) ' | paste -sd'|' -)"
+check "init: no answers (headless) leave work unset" 'email = ""|enabled = false' \
+    "$(init_render "$work/cfg-empty.toml" | work_block | tr '|' '\n' | grep -E '^(email|enabled) ' | paste -sd'|' -)"
+check "init: existing answers are kept without a prompt" "$on" \
+    "$(init_render "$work/cfg-work.toml" --promptString "$p_orgs=zzz" | work_block)"
+check "init: an email without orgs fails" 1 \
+    "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work@example.com" | grep -c 'list at least one work GitHub org')"
+check "init: a bad org name fails" 1 \
+    "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work@example.com" --promptString "$p_orgs=bad org!" | grep -c 'is not a GitHub org name')"
+check "init: a non-address email fails" 1 \
+    "$(init_render "$work/cfg-empty.toml" --promptString "$p_email=work" --promptString "$p_orgs=example-org" | grep -c 'is not an email address')"
+check "init: no is_work any more" 0 "$(init_render "$work/cfg-empty.toml" | grep -c 'is_work')"
+
 echo "$pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
