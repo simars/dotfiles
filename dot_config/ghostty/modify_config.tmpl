@@ -2,7 +2,9 @@
 # chezmoi modify script for Ghostty's ~/.config/ghostty/config: Omarchy ships this file (and its theme include), so
 # only these settings are set and everything else is kept. Selecting text copies it to the clipboard, as in every
 # other terminal{{ if eq .chezmoi.os "darwin" }}; left Option is Alt, right Option types special characters{{ else }}; and Ghostty gives back keys the programs inside need{{ end }}.
-# Cheatsheet: "Copy and Paste", "Option as Alt in the Mac Terminals", "Keys the Terminal Must Not Take".
+# Closing asks first, and a leader key gives Ghostty's tabs and splits tmux's letters.
+# Cheatsheet: "Copy and Paste", "Option as Alt in the Mac Terminals", "Keys the Terminal Must Not Take",
+# "Terminal Tabs and Splits".
 set -euo pipefail
 MARKER="# Set by chezmoi (dot_config/ghostty/modify_config.tmpl); edits to these lines are replaced on apply"
 {{- if eq .chezmoi.os "darwin" }}
@@ -18,4 +20,42 @@ for key in ctrl+enter alt+{1..9} alt+digit_{1..9} ctrl+alt+arrow_{up,down,left,r
     BLOCK+=$'\n'"keybind = $key=unbind"
 done
 {{- end }}
+# Every close asks first while a program runs in the split, as tmux and Herdr do (Omarchy ships false).
+BLOCK+=$'\nconfirm-close-surface = true'
+# The terminal leader: {{ if eq .chezmoi.os "darwin" }}Cmd-b{{ else }}Super-b (Omarchy's Super is the Mac's Cmd){{ end }}, then the letter tmux uses after Ctrl-b, for Ghostty's own
+# tabs and splits (cheatsheet: "Terminal Tabs and Splits"). A one-shot key table: any other key after the leader is
+# swallowed, never typed into the program; Esc leaves. r enters a resize table where h j k l repeat until Esc or Enter.
+LEADER={{ if eq .chezmoi.os "darwin" }}cmd+b{{ else }}super+b{{ end }}
+lead() { BLOCK+=$'\n'"keybind = $1=$2"; }
+lead "$LEADER" activate_key_table_once:term
+lead term/catch_all ignore
+lead term/escape deactivate_all_key_tables
+lead term/c new_tab
+lead term/% new_split:right
+lead term/v new_split:right
+lead term/'"' new_split:down
+lead term/- new_split:down
+for pair in h:left j:down k:up l:right; do
+    lead "term/${pair%%:*}" "goto_split:${pair#*:}"
+    lead "term/arrow_${pair#*:}" "goto_split:${pair#*:}"
+done
+lead 'term/;' goto_split:previous
+lead term/o goto_split:next
+lead term/x close_surface
+lead term/z toggle_split_zoom
+for n in 1 2 3 4 5 6 7 8 9; do lead "term/digit_$n" "goto_tab:$n"; done
+lead term/n next_tab
+lead term/p previous_tab
+lead term/, prompt_tab_title
+lead 'term/&' close_tab
+lead term/equal equalize_splits
+lead 'term/?' toggle_command_palette
+lead term/r activate_key_table:term_resize
+for pair in h:left j:down k:up l:right; do
+    lead "term_resize/${pair%%:*}" "resize_split:${pair#*:},20"
+    lead "term_resize/arrow_${pair#*:}" "resize_split:${pair#*:},20"
+done
+lead term_resize/escape deactivate_all_key_tables
+lead term_resize/enter deactivate_all_key_tables
+lead term_resize/catch_all ignore
 {{ template "kv-settings.awk.sh" . }}

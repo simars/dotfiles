@@ -670,8 +670,8 @@ kv() { render "$1" "$2" > "$work/kv.sh"; printf '%b' "$3" | bash "$work/kv.sh" |
 check "kitty on macOS: keeps the rest, sets copy on select and left Option as Alt" "include t.conf|font_size 11||copy_on_select clipboard|macos_option_as_alt left" \
     "$(kv darwin dot_config/kitty/modify_kitty.conf.tmpl 'include t.conf\ncopy_on_select no\nfont_size 11\n')"
 check "kitty on Omarchy: copy on select only" "include t.conf||copy_on_select clipboard" "$(kv omarchy dot_config/kitty/modify_kitty.conf.tmpl 'include t.conf\n')"
-check "Ghostty on macOS: copy on select and left Option as Alt, comments kept" "# copy-on-select = false|font-size = 11||copy-on-select = clipboard|macos-option-as-alt = left" \
-    "$(kv darwin dot_config/ghostty/modify_config.tmpl '# copy-on-select = false\ncopy-on-select = true\nfont-size = 11\n')"
+check "Ghostty on macOS: copy on select and left Option as Alt, comments kept" "# copy-on-select = false|font-size = 11||copy-on-select = clipboard|macos-option-as-alt = left|confirm-close-surface = true" \
+    "$(kv darwin dot_config/ghostty/modify_config.tmpl '# copy-on-select = false\ncopy-on-select = true\nfont-size = 11\n' | tr '|' '\n' | grep -vE '^keybind = (cmd\+b|term)' | paste -sd'|' -)"
 render omarchy dot_config/ghostty/modify_config.tmpl > "$work/ghostty.sh"
 check "Ghostty: second run changes nothing" "$(printf 'a = 1\n' | bash "$work/ghostty.sh")" "$(printf 'a = 1\n' | bash "$work/ghostty.sh" | bash "$work/ghostty.sh")"
 # Ghostty on Omarchy gives Ctrl+Enter (Claude Code), Alt+1..9 and Ctrl+Alt+arrows (Herdr) to the program; a keybind
@@ -682,7 +682,25 @@ check "Ghostty on Omarchy: one Ctrl+Enter line, handed to the program" "keybind 
 check "Ghostty on Omarchy: Alt+1..9 (both forms) and Ctrl+Alt+arrows handed to the program" "18 4" \
     "$(grep -cE '^keybind = alt\+(digit_)?[1-9]=unbind$' <<< "$ghostty_out") $(grep -cE '^keybind = ctrl\+alt\+arrow_(up|down|left|right)=unbind$' <<< "$ghostty_out")"
 check "Ghostty on Omarchy: second run changes nothing, key bindings included" "$ghostty_out" "$(bash "$work/ghostty.sh" <<< "$ghostty_out")"
-check "Ghostty on macOS: keys left to Ghostty (it uses Cmd)" 0 "$(render darwin dot_config/ghostty/modify_config.tmpl > "$work/ghostty-mac.sh"; printf 'a = 1\n' | bash "$work/ghostty-mac.sh" | grep -c 'unbind')"
+check "Ghostty on macOS: keys left to Ghostty (it uses Cmd)" 0 "$(render darwin dot_config/ghostty/modify_config.tmpl > "$work/ghostty-mac.sh"; printf 'a = 1\n' | bash "$work/ghostty-mac.sh" | grep -c '^keybind = [^t].*=unbind')"
+# The terminal leader: Cmd-b (macOS) / Super-b (Omarchy), then tmux's letters for Ghostty's own tabs and splits.
+ghostty_lead="$(printf 'config-file = ?"~/.local/state/omarchy/current/theme/ghostty.conf"\nconfirm-close-surface=false\nkeybind = shift+enter=csi:13;2u\n' | bash "$work/ghostty.sh")"
+check "Ghostty on Omarchy: Super-b opens the term table once" 1 "$(grep -cxF 'keybind = super+b=activate_key_table_once:term' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: unbound letters after the leader are swallowed" 1 "$(grep -cxF 'keybind = term/catch_all=ignore' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: resize table swallows the rest too" 1 "$(grep -cxF 'keybind = term_resize/catch_all=ignore' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: Omarchy's theme include and own keys kept" "1 1" "$(grep -cF 'config-file = ?' <<< "$ghostty_lead") $(grep -cxF 'keybind = shift+enter=csi:13;2u' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: closing asks first, one line" "confirm-close-surface = true" "$(grep -E '^confirm-close-surface' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: leader block is idempotent" "$ghostty_lead" "$(bash "$work/ghostty.sh" <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: tmux's letters after the leader" "new_tab new_split:right new_split:down goto_split:left toggle_split_zoom goto_tab:9 close_tab" \
+    "$(for t in c % '"' h z digit_9 '&'; do grep -F "keybind = term/$t=" <<< "$ghostty_lead" | sed 's/^[^=]*=[^=]*=//'; done | xargs)"
+check "Ghostty on Omarchy: every leader binding is distinct (awk kept all)" \
+    "$(grep -cE '^keybind = (term|term_resize)/' <<< "$ghostty_lead")" "$(grep -E '^keybind = (term|term_resize)/' <<< "$ghostty_lead" | sort -u | wc -l | tr -d ' ')"
+ghostty_mac_lead="$(printf 'a = 1\n' | bash "$work/ghostty-mac.sh")"
+check "Ghostty on macOS: Cmd-b opens the term table once, no Super-b" "1 0" \
+    "$(grep -cxF 'keybind = cmd+b=activate_key_table_once:term' <<< "$ghostty_mac_lead") $(grep -c 'super+b' <<< "$ghostty_mac_lead")"
+check "Ghostty on macOS: closing asks first" 1 "$(grep -cxF 'confirm-close-surface = true' <<< "$ghostty_mac_lead")"
+check "Ghostty: both platforms bind the same term letters" \
+    "$(grep -E '^keybind = term' <<< "$ghostty_lead")" "$(grep -E '^keybind = term' <<< "$ghostty_mac_lead")"
 if command -v jq > /dev/null 2>&1; then
     check "Herdr app on macOS: left Option as Alt, rest kept" '{"x":1,"option_as_alt":"left"}' "$(printf '{"x":1}' | bash dot_config/herdr-app/modify_settings.json | jq -c .)"
 fi

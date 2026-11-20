@@ -315,3 +315,19 @@ Changes to this repository that came out of the 2026-10-17/18 migration. Nothing
 ### 10.3 Remaining Gaps
 * EOL Ruby 2.x pins have no prebuilt build on macOS. Compiling them was not attempted: ruby-build would also have to build OpenSSL 1.1, which Homebrew no longer ships. Run such projects in containers. The audit keeps listing them, which is the intended reminder.
 * Go tools are not declared yet (B15), Ruby on Intel is a decision (B16), Linux hosts keep an old mise until someone upgrades it (B17), and the project repos have no guard of their own (B18).
+
+## 11. Nesting Herdr Inside tmux (parked 2026-11-20)
+
+Herdr sometimes runs inside tmux. Both take `Ctrl-b` (tmux also `Ctrl-Space`, Herdr too since 2026-11-20), and tmux
+also takes the shared no-prefix chords (Alt-1..9, Alt-Enter, Alt-Esc, Ctrl-Alt-arrows), so the inner Herdr never
+sees them. Today `Ctrl-b Ctrl-b` reaches Herdr (tmux's send-prefix). Parked by the user; two ways to revisit
+(design: `docs/superpowers/specs/2026-11-20-terminal-leader-keys-design.md`, "Parked: nesting"):
+
+* **A. Ctrl-Space goes to the inner one, no mode.** tmux binds `Ctrl-Space` and the shared chords with
+  `if -F '#{==:#{pane_current_command},herdr}'`: when the focused pane runs Herdr they go through (`send-keys`),
+  otherwise they do the tmux action. Modeless; inside Herdr the hand uses `Ctrl-Space`. tmux cannot see a Herdr
+  behind ssh (the pane runs `ssh`).
+* **B. One key turns the outer tmux off.** A toggle key (F12 is the usual choice; check it on iTerm2, foot and Ghostty
+  and against macOS media keys and Hyprland) switches the outer tmux to an empty key table, greys its status bar with
+  `OFF`, and passes every key on; the same key turns it back on. Works for tmux-over-ssh-inside-tmux too. The
+  recommended base; A can be added on top.

@@ -526,6 +526,25 @@ One config on every machine. The prefix is `Ctrl-b`; tmux also takes `Ctrl-Space
 
 `omarchy refresh tmux` (or `herdr`) puts Omarchy's stock file back; `chezmoi apply ~/.config/tmux/tmux.conf` (or `~/.config/herdr/config.toml`) restores the shared one.
 
+### Terminal Tabs and Splits (`Cmd-b` / `Super-b`)
+The terminal's own tabs and splits use tmux's letters behind a different prefix: `Cmd-b` on the Macs, `Super-b` on Omarchy (Super is Omarchy's Cmd). Press the leader, release, then the key, exactly as after `Ctrl-b` in tmux. `Ctrl-b` / `Ctrl-Space` stay tmux's and Herdr's. Any other key after the leader does nothing (it is never typed into the program); `Esc` leaves. foot has no tabs or splits, so `Super-b` does nothing there. Native keys still work: Cmd+T, Cmd+D, Cmd+1..9 on the Macs; Ctrl+Shift+T, Ctrl+Shift+W, Ctrl+Tab on Omarchy's Ghostty.
+
+| Key after the leader | Ghostty (Mac and Omarchy) | iTerm2 (Mac) |
+| :--- | :--- | :--- |
+| `c` | New tab | Not yet (iTerm2 leader still to come) |
+| `%` `v` / `"` `-` | Split right / split down | |
+| `h` `j` `k` `l` (or arrows) | Focus split left, down, up, right | |
+| `;` / `o` | Previous / next split | |
+| `x` / `&` | Close split / close tab (ask first while a program runs) | |
+| `z` | Zoom the split | |
+| `1`..`9`, `n` `p` | Go to tab, next / previous tab | |
+| `,` | Rename tab | |
+| `=` | Make splits equal (tmux `E`) | |
+| `r`, then `h` `j` `k` `l` | Resize; keep pressing, `Esc` or `Enter` to stop | |
+| `?` | Command palette | |
+
+Ghostty cannot move a split into its own tab, so `!` does nothing. Set in Ghostty's config by `dot_config/ghostty/modify_config.tmpl` (key tables `term` and `term_resize`).
+
 ### Keys the Terminal Must Not Take (macOS and Omarchy)
 A key reaches Claude Code, Herdr, tmux or zsh only if nothing before it takes it: first the desktop (Hyprland, macOS), then the terminal app, then Herdr or tmux. A key that is taken does something else instead (Ctrl-Enter in Ghostty made the window full screen, which hides Omarchy's top bar).
 
@@ -535,6 +554,8 @@ A key reaches Claude Code, Herdr, tmux or zsh only if nothing before it takes it
 | `Alt-1`..`9` | Herdr and tmux: go to tab / window | Ghostty on Omarchy (its own tabs) | Given back by chezmoi. Ghostty's tabs: `Ctrl-Tab`, `Ctrl-PgUp` / `Ctrl-PgDn` |
 | `Ctrl-Alt-arrows` | Herdr and tmux: focus pane | Ghostty on Omarchy (its own splits) | Given back by chezmoi |
 | `Ctrl-b` | Claude Code: run in the background | Herdr and tmux (the prefix) | Press it twice |
+| `Super-b` | Ghostty's terminal leader on Omarchy | Hyprland, if Omarchy ever binds Super+B | Left free on purpose; the requirement check warns if Hyprland takes it |
+| `Cmd-b` | Ghostty's (and iTerm2's) terminal leader on the Macs | Nothing on macOS | |
 | `Alt-Enter` | Claude Code: new line | Herdr and tmux (split) | `Shift-Enter` or `Ctrl-j` |
 | `Alt-t` `Alt-d` `Alt-n` `Alt-w` `Alt-g` `Alt-1`..`9` ... | Claude Code (`Alt-t` thinking), zsh (`Alt-d` delete word), Herdr | Wave on Omarchy: Wave's Mac `Cmd` keys are `Alt` on Linux, and Wave cannot change them | Run agents and Herdr in Ghostty or foot on Omarchy; Wave is fine on macOS |
 | `Alt-Space`, right `Alt`, `F9` | Programs | Omarchy's dictation (toggle; push to talk), once a dictation app is installed; `F9` comes from `~/.config/hypr/bindings.lua` | Not changed; delete the `F9` lines there to give `F9` back |
