@@ -516,6 +516,20 @@ jq '.Profiles[0].Triggers += [{"regex": "x"}]' "$it_profile" > "$it/p.json" && m
 check "iTerm2 script: a trigger without an action is named \"unnamed\"" 1 "$(iterm_after | grep -c 'not shared: trigger unnamed\.')"
 it_reset
 check "iTerm2 script: silent without iTerm2" "|exit=0" "$(it_app="$it/none" iterm_after | paste -sd'|' -)"
+# macOS's "Select the previous input source" (AppleSymbolicHotKeys 60) is Ctrl+Space, tmux's and Herdr's second prefix.
+hotkeys() { # hotkeys ENABLED: defaults' text form with entry 60 between two others
+    printf '{\n    32 =     {\n        enabled = 1;\n    };\n    60 =     {\n        enabled = %s;\n        value =         {\n            parameters =             (\n                32,\n                49,\n                262144\n            );\n            type = standard;\n        };\n    };\n    61 =     {\n        enabled = 1;\n    };\n}\n' "$1" > "$it/defaults/AppleSymbolicHotKeys"
+}
+it_reset
+hotkeys 1
+check "iTerm2 script: macOS taking Ctrl+Space is named and goes on the to-do list" "1|1" \
+    "$(iterm_after | grep -c '^NOTE: macOS takes Ctrl+Space (select the previous input source)')|$(it_todo | grep -c 'Select the previous input source')"
+it_reset
+hotkeys 0
+check "iTerm2 script: Ctrl+Space left to tmux is OK, no to-do" "1|0" \
+    "$(iterm_after | grep -c '^OK:   macOS leaves Ctrl+Space to tmux and Herdr')|$(it_todo | grep -c 'input source')"
+it_reset
+check "iTerm2 script: no stored input-source shortcut, nothing said" 0 "$(iterm_after | grep -c 'Ctrl+Space')"
 
 # Wave pane commands: only inside Wave (WAVETERM_BLOCKID set and wsh on PATH), in bash and zsh.
 check "Wave pane commands are not defined outside Wave" "" "$(bash -c 'source dot_aliases; type -t wt wr wsplit wsr wsd 2> /dev/null')"
