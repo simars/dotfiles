@@ -777,6 +777,16 @@ check "arch requirement check suggests pacman for gitleaks" 1 "$(grep -c 'sudo p
 check "omarchy requirement check suggests omarchy pkg add for gitleaks" 1 "$(grep -c 'omarchy pkg add gitleaks' "$work/omarchy.requirements")"
 check "omarchy requirement check never suggests pacman or sudo" 0 "$(grep -cE 'pacman|sudo' "$work/omarchy.requirements")"
 check "omarchy requirement check reports missing listed packages" 1 "$(grep -c 'lists packages that are not installed. Fix: omarchy pkg add ' "$work/omarchy.requirements")"
+# Ghostty's terminal leader on Omarchy needs Super+B free in Hyprland: the check warns when a SUPER-only B bind appears.
+sed -n '/^check_super_b() {/,/^}/p' "$work/omarchy.requirements" > "$work/super_b.sh"
+mkdir -p "$work/hypr-taken" "$work/hypr-free"
+printf '#!/bin/sh\necho %s\n' "'[{\"modmask\":64,\"key\":\"B\",\"description\":\"Some app\"}]'" > "$work/hypr-taken/hyprctl"
+printf '#!/bin/sh\necho %s\n' "'[{\"modmask\":65,\"key\":\"B\",\"description\":\"Browser\"}]'" > "$work/hypr-free/hyprctl"
+chmod +x "$work/hypr-taken/hyprctl" "$work/hypr-free/hyprctl"
+super_b() { PATH="$work/$1:$PATH" bash -c 'report() { echo "WARN: $2"; }; source "$0"; check_super_b' "$work/super_b.sh" 2>&1; }
+check "omarchy requirement check warns when Hyprland takes Super+B" 1 "$(super_b hypr-taken | grep -c '^WARN: Hyprland binds Super+B (Some app)')"
+check "omarchy requirement check: Super+Shift+B leaves Super+B free" "OK:   Super+B is free in Hyprland (terminal leader)" "$(super_b hypr-free)"
+check "darwin requirement check has no Hyprland check" 0 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'check_super_b')"
 check "omarchy requirement check warns when another file overrides the version-file setting" 1 "$(grep -c 'not $want_idiomatic, so projects' "$work/omarchy.requirements")"
 check "omarchy option A requirement check skips that warning" 0 "$(chezmoi --override-data "$omarchy_a" execute-template < "$requirements" | grep -c want_idiomatic)"
 for host in darwin intel arch ubuntu; do

@@ -273,6 +273,19 @@ echo "OK:   no work email on this machine (answered none at chezmoi init)"
 note "chezmoi has no work email for this machine, so work repositories get your personal email unless a repository or ~/.gitconfig.local sets one. Fix: chezmoi init --prompt (answer none if this machine never has work repositories)"
 {{- end }}
 {{- if eq (dig "osRelease" "id" "" .chezmoi) "omarchy" }}
+# Ghostty's terminal leader is Super+B (cheatsheet: "Terminal Tabs and Splits"); Hyprland must leave it to the window.
+# Silent where Hyprland or jq cannot answer (no session, over SSH).
+check_super_b() {
+    local binds taken
+    command -v jq > /dev/null 2>&1 && binds="$(hyprctl binds -j 2> /dev/null)" || return 0
+    taken="$(jq -r '[.[] | select(.modmask == 64 and (.key | ascii_downcase) == "b") | .description] | join(", ")' <<< "$binds" 2> /dev/null)" || return 0
+    if [[ -n "$taken" ]]; then
+        report warn "Hyprland binds Super+B ($taken), so Ghostty's terminal leader never sees it. Fix: unbind it in ~/.config/hypr/bindings.lua, or pick another leader in dot_config/ghostty/modify_config.tmpl"
+    else
+        echo "OK:   Super+B is free in Hyprland (terminal leader)"
+    fi
+}
+check_super_b
 # LunarVim (lunarvim-git) needs a one-time link per user; never its init-lvim.sh.
 if command -v lvim &> /dev/null; then
     if [[ -e "$HOME/.local/share/lunarvim/lvim" ]]; then
