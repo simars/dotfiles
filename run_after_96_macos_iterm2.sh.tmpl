@@ -1,0 +1,81 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# macOS only, after every apply: the same iTerm2 on every Mac (cheatsheet: "Same iTerm2 on Every Mac").
+#   1. Writes the global settings listed in .chezmoidata/macos.toml ([iterm2_globals]) where this Mac differs. iTerm2
+#      keeps them outside profiles, so the shared look profile cannot carry them, and reads them only at start.
+#      Clipboard access (OSC 52) is one of them: copies in tmux, herdr and Neovim, also over SSH, reach the clipboard.
+#   2. Checks two once-per-Mac steps chezmoi cannot do: chezmoi's profile as the default, and iTerm2's Claude Code
+#      integration.
+#   3. Names settings saved in "Default (Left Option as Alt)" on this Mac only, beyond chezmoi's own keys.
+# Steps with a fix go on the list printed at the end of the apply; local changes are only reported (a deliberate local
+# tweak may never clear). Informational: never fails the apply. ITERM2_APP (default /Applications/iTerm.app) is a test
+# hook.
+set -u
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+[[ -d "${ITERM2_APP:-/Applications/iTerm.app}" ]] || exit 0
+{{ template "after-apply.sh" . }}
+
+updated=()
+failed=()
+ensure_global() { # ensure_global KEY -bool true|false | -int N: write the key when this Mac's value differs
+    local key="$1" type="$2" value="$3" want
+    case "$type $value" in
+        "-bool true") want=1 ;;
+        "-bool false") want=0 ;;
+        *) want="$value" ;;
+    esac
+    [[ "$(defaults read com.googlecode.iterm2 "$key" 2> /dev/null)" == "$want" ]] && return 0
+    if defaults write com.googlecode.iterm2 "$key" "$type" "$value"; then
+        updated+=("$key")
+    else
+        failed+=("$key")
+    fi
+}
+{{ range $key, $value := .iterm2_globals -}}
+ensure_global {{ $key | quote }} {{ if kindIs "bool" $value }}-bool {{ $value }}{{ else }}-int {{ $value }}{{ end }}
+{{ end -}}
+join() { local IFS=,; printf '%s' "$*" | sed 's/,/, /g'; }
+if [[ ${#failed[@]} -gt 0 ]]; then
+    echo "NOTE: could not write iTerm2 global settings: $(join "${failed[@]}")"
+    todo "Set iTerm2's global settings by hand (Settings): $(join "${failed[@]}")"
+fi
+if [[ ${#updated[@]} -eq 0 ]]; then
+    [[ ${#failed[@]} -gt 0 ]] || echo "OK:   iTerm2's global settings match the repo"
+elif pgrep -xq iTerm2; then
+    echo "NOTE: iTerm2 global settings updated: $(join "${updated[@]}"); quit and reopen iTerm2 for them to take effect"
+    todo "Quit and reopen iTerm2, so its updated global settings take effect"
+else
+    echo "OK:   iTerm2 global settings updated: $(join "${updated[@]}")"
+fi
+
+# Once per Mac, by hand (cheatsheet: "Option as Alt in the Mac Terminals", "iTerm2 Shell Integration and Claude Code").
+if [[ "$(defaults read com.googlecode.iterm2 "Default Bookmark Guid" 2> /dev/null)" == chezmoi-left-option-as-alt ]]; then
+    echo "OK:   iTerm2's default profile is chezmoi's (left Option as Alt)"
+else
+    echo "NOTE: iTerm2's default profile is not chezmoi's, so new tabs lack the shared look, left Option as Alt and the Claude Code triggers"
+    todo "Make chezmoi's iTerm2 profile the default: Settings > Profiles, select \"Default (Left Option as Alt)\", Other Actions > Set as Default"
+fi
+# settings.json escapes the slashes in the hook's path, so match the hook's own argument, not "iterm2/it2".
+if [[ -x "$HOME/.config/iterm2/it2" ]] && grep -q 'handle-agent-hook' "$HOME/.claude/settings.json" 2> /dev/null; then
+    echo "OK:   iTerm2's Claude Code integration is installed"
+else
+    echo "NOTE: iTerm2's Claude Code integration is missing (its it2 helper or its hook in ~/.claude/settings.json)"
+    todo "Install iTerm2's Claude Code integration: menu iTerm2 > Install Claude Code Integration, then Mark Rewritable and Install"
+fi
+
+# Settings changed in iTerm2 on this Mac only: keys in chezmoi's rewritable profile beyond its own, and triggers beyond
+# the two Claude Code ones. Silent when the file is missing or not JSON, or there is no jq.
+profile="$HOME/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json"
+if [[ -f "$profile" ]] && command -v jq > /dev/null 2>&1 && local_changes="$(jq -r '
+    .Profiles[0] as $p
+    | [($p | keys[] | select(IN("Name", "Guid", "Dynamic Profile Parent GUID", "Option Key Sends", "Rewritable", "Triggers") | not)),
+       (($p.Triggers // [])[] | .action | select(IN("iTermEnterWorkgroupTrigger", "iTermExitWorkgroupTrigger") | not) | "trigger \(.)")]
+    | join(", ")' "$profile" 2> /dev/null)"; then
+    if [[ -z "$local_changes" ]]; then
+        echo "OK:   iTerm2 profile has no settings changed on this Mac only"
+    else
+        echo "NOTE: iTerm2 settings changed on this Mac only, not shared: $local_changes. To share them, move them into chezmoi-0-shared-look.json.tmpl; to drop them, delete them from ~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json"
+    fi
+fi
+exit 0
+{{ end -}}

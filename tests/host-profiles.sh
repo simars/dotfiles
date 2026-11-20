@@ -345,7 +345,8 @@ shared_look() { # shared_look repo|true|false: the shared look as a Mac renders 
 }
 check "darwin manages the shared iTerm2 look" yes "$(manages darwin "$shared")"
 for host in omarchy arch ubuntu; do check "$host leaves the shared iTerm2 look alone" no "$(manages "$host" "$shared")"; done
-check "shared look loads before the profile that inherits from it" yes "$([[ chezmoi-0-shared-look.json < chezmoi-option-as-alt.json ]] && echo yes)"
+check "shared look loads before the profile that inherits from it (iTerm2 loads files in name order)" "chezmoi-0-shared-look.json chezmoi-option-as-alt.json" \
+    "$(grep 'iTerm2/DynamicProfiles/' "$work/darwin.managed" | sed 's#.*/##' | LC_ALL=C sort | xargs)"
 check "shared look: identity and parent" "Shared Look (chezmoi)|chezmoi-shared-look|Default|false" \
     "$(shared_look repo | jq -r '.Profiles[0] | "\(.Name)|\(.Guid)|\(."Dynamic Profile Parent Name")|\(has("Rewritable"))"')"
 check "shared look: JetBrains Mono Nerd Font Mono, no second font, no ligatures" "JetBrainsMonoNFM-Regular 12|JetBrainsMonoNFM-Regular 12|false|false|false" \
@@ -386,12 +387,90 @@ check "darwin ~/.zshrc binds Alt+Left to backward-word" 1 "$(grep -cF "for _key 
 check "tmux unbinds Alt-Left/Right and binds nothing to them" "2 0" "$(grep -cE '^unbind -n M-(Left|Right)$' dot_config/tmux/tmux.conf) $(grep -cE '^bind .* -n M-(Left|Right) ' dot_config/tmux/tmux.conf)"
 check "herdr binds nothing to alt+left/right" 0 "$(grep -vE '^ *#' dot_config/herdr/config.toml.tmpl | grep -cE '"alt\+(left|right)"')"
 
-# iTerm2 may set the Mac clipboard (OSC 52) for copies in tmux, herdr and Neovim: macOS only.
-check "darwin turns on iTerm2 clipboard access" 1 "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | grep -c '^elif ! defaults write com.googlecode.iterm2 AllowClipboardAccess -bool true; then$')"
-check "darwin iTerm2 clipboard script is valid bash" "" "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | bash -n 2>&1)"
+# iTerm2's after-script (macOS only): the repo's global settings (clipboard access for OSC 52 copies in tmux, herdr and
+# Neovim among them), then three checks: the default profile, the Claude Code integration, and settings changed on this
+# Mac only. Run here in a stub Mac: stub defaults and pgrep, ITERM2_APP, HOME and PATH pointed at $work/it.
+it96=run_after_96_macos_iterm2.sh.tmpl
+check "darwin runs the iTerm2 after-script, not the old clipboard one" "yes no" "$(manages darwin 96_macos_iterm2.sh) $(manages darwin 96_macos_terminal_clipboard.sh)"
+check "darwin iTerm2 script turns on clipboard access with the other globals" 1 "$(render darwin "$it96" | grep -cx 'ensure_global "AllowClipboardAccess" -bool true')"
+check "darwin iTerm2 script sets 9 globals" 9 "$(render darwin "$it96" | grep -c '^ensure_global "')"
+check "darwin iTerm2 script: bool, int and spaced keys" 3 \
+    "$(render darwin "$it96" | grep -cxE 'ensure_global "Print In Black And White" -bool true|ensure_global "ShowFullScreenTabBar" -bool false|ensure_global "PasteTabToStringTabStopSize" -int 4')"
+check "darwin iTerm2 script is valid bash" "" "$(render darwin "$it96" | bash -n 2>&1)"
 for host in omarchy arch ubuntu; do
-    check "$host gets no iTerm2 clipboard script" "" "$(render "$host" run_after_96_macos_terminal_clipboard.sh.tmpl | tr -d '[:space:]')"
+    check "$host gets no iTerm2 script" "" "$(render "$host" "$it96" | tr -d '[:space:]')"
 done
+it="$work/it"
+it_profile="$it/home/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json"
+mkdir -p "$it/iTerm.app" "$it/bin" "$it/home/.claude" "$it/home/.config/iterm2" "${it_profile%/*}"
+cat > "$it/bin/defaults" << 'EOF'
+#!/bin/bash
+# Stub: defaults read|write com.googlecode.iterm2 KEY [-bool true|false | -int N], one file per key under $IT/defaults.
+case "$1" in
+    read) [[ -f "$IT/defaults/$3" ]] || exit 1; cat "$IT/defaults/$3" ;;
+    write)
+        case "$4 $5" in "-bool true") v=1 ;; "-bool false") v=0 ;; *) v="$5" ;; esac
+        printf '%s\n' "$v" > "$IT/defaults/$3"
+        printf '%s\n' "$3" >> "$IT/defaults/written" ;;
+esac
+EOF
+printf '#!/bin/sh\nexit "$(cat "$IT/running")"\n' > "$it/bin/pgrep"
+chmod +x "$it/bin/defaults" "$it/bin/pgrep"
+render darwin "$it96" > "$it/script.sh"
+it_reset() { # the all-OK state, iTerm2 not running ($it/running holds pgrep's exit code)
+    rm -rf "$it/defaults" "$it/cache"
+    mkdir -p "$it/defaults"
+    for k in AllowClipboardAccess CopySelection DoubleClickPerformsSmartSelection "Print In Black And White"; do echo 1 > "$it/defaults/$k"; done
+    for k in ShowFullScreenTabBar HapticFeedbackForEsc SoundForEsc VisualIndicatorForEsc; do echo 0 > "$it/defaults/$k"; done
+    echo 4 > "$it/defaults/PasteTabToStringTabStopSize"
+    echo chezmoi-left-option-as-alt > "$it/defaults/Default Bookmark Guid"
+    printf '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"\\"/Users/x/.config/iterm2/it2\\" handle-agent-hook"}]}]}}\n' > "$it/home/.claude/settings.json"
+    printf '#!/bin/sh\n' > "$it/home/.config/iterm2/it2"
+    chmod +x "$it/home/.config/iterm2/it2"
+    printf '' | bash "$iterm_modify" > "$it_profile"
+    echo 1 > "$it/running"
+}
+iterm_after() { # the script's output in the stub Mac, then exit=<code>
+    local out rc
+    out="$(IT="$it" HOME="$it/home" PATH="$it/bin:$PATH" ITERM2_APP="${it_app:-$it/iTerm.app}" CHEZMOI_CACHE_DIR="$it/cache" XDG_STATE_HOME="$it/state" bash "$it/script.sh" 2>&1)"
+    rc=$?
+    printf '%s\nexit=%s' "$out" "$rc"
+}
+it_todo() { cat "$it/cache"/after-apply.* 2> /dev/null; }
+ok4="OK:   iTerm2's global settings match the repo|OK:   iTerm2's default profile is chezmoi's (left Option as Alt)|OK:   iTerm2's Claude Code integration is installed|OK:   iTerm2 profile has no settings changed on this Mac only|exit=0"
+it_reset
+check "iTerm2 script: all OK on chezmoi's own profile, nothing written" "$ok4|no" "$(iterm_after | paste -sd'|' -)|$([[ -e "$it/defaults/written" ]] && echo yes || echo no)"
+it_reset
+echo 0 > "$it/defaults/DoubleClickPerformsSmartSelection"
+echo 0 > "$it/running"
+check "iTerm2 script: a changed global is written back; reopen iTerm2 goes on the to-do list" \
+    "NOTE: iTerm2 global settings updated: DoubleClickPerformsSmartSelection; quit and reopen iTerm2 for them to take effect|1|1" \
+    "$(iterm_after | head -1)|$(cat "$it/defaults/DoubleClickPerformsSmartSelection")|$(it_todo | grep -c 'reopen iTerm2')"
+it_reset
+rm "$it/defaults/PasteTabToStringTabStopSize"
+check "iTerm2 script: a missing global is written (iTerm2 not running)" "OK:   iTerm2 global settings updated: PasteTabToStringTabStopSize|4" \
+    "$(iterm_after | head -1)|$(cat "$it/defaults/PasteTabToStringTabStopSize")"
+for guid in 246D2B5F ""; do
+    it_reset
+    printf '%s\n' "$guid" > "$it/defaults/Default Bookmark Guid"
+    check "iTerm2 script: default profile [$guid] is not chezmoi's" 1 "$(iterm_after | grep -c "^NOTE: iTerm2's default profile is not chezmoi's")"
+done
+it_reset
+printf '{}\n' > "$it/home/.claude/settings.json"
+check "iTerm2 script: no hook means no Claude Code integration" 1 "$(iterm_after | grep -c "^NOTE: iTerm2's Claude Code integration is missing")"
+it_reset
+rm "$it/home/.config/iterm2/it2"
+check "iTerm2 script: no it2 helper means no Claude Code integration" 1 "$(iterm_after | grep -c "^NOTE: iTerm2's Claude Code integration is missing")"
+it_reset
+jq '.Profiles[0] += {"Font": "x", "Columns": 100} | .Profiles[0].Triggers += [{"action": "iTermHighlightLineTrigger"}]' "$it_profile" > "$it/p.json" && mv "$it/p.json" "$it_profile"
+check "iTerm2 script: names settings changed on this Mac only, off the to-do list" \
+    "NOTE: iTerm2 settings changed on this Mac only, not shared: Columns, Font, trigger iTermHighlightLineTrigger. To share them, move them into chezmoi-0-shared-look.json.tmpl; to drop them, delete them from ~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json|0" \
+    "$(iterm_after | grep '^NOTE: iTerm2 settings changed')|$(it_todo | grep -c 'this Mac only')"
+it_reset
+printf 'not json' > "$it_profile"
+check "iTerm2 script: a profile that is not JSON gives no local-changes line, exit 0" "0|exit=0" "$(iterm_after | grep -c 'changed on this Mac only')|$(iterm_after | tail -1)"
+it_reset
+check "iTerm2 script: silent without iTerm2" "|exit=0" "$(it_app="$it/none" iterm_after | paste -sd'|' -)"
 
 # Wave pane commands: only inside Wave (WAVETERM_BLOCKID set and wsh on PATH), in bash and zsh.
 check "Wave pane commands are not defined outside Wave" "" "$(bash -c 'source dot_aliases; type -t wt wr wsplit wsr wsd 2> /dev/null')"
@@ -709,7 +788,7 @@ check "darwin Ghostty reload key is Cmd+Shift+," 1 "$(render darwin run_after_99
 check "darwin checks the dotfiles-local links; omarchy does not" "1 0" \
     "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'for local_file in zshrc.local aliases.local') $(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'for local_file in')"
 check "darwin iTerm2 script checks the default profile and the Claude Code integration" 2 \
-    "$(render darwin run_after_96_macos_terminal_clipboard.sh.tmpl | grep -cE 'Default Bookmark Guid|handle-agent-hook')"
+    "$(render darwin run_after_96_macos_iterm2.sh.tmpl | grep -cE 'Default Bookmark Guid|handle-agent-hook')"
 check "omarchy stock-drift notes go on the to-do list" 2 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c '^        todo ')"
 
 # chezmoi init answers -> [data.work] (rendered as `chezmoi init` would, against throwaway configs, so this machine's

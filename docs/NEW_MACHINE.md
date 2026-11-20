@@ -92,7 +92,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
 12. **iTerm2, once:**
     - Open iTerm2, then the menu **iTerm2 > Install Claude Code Integration**; choose **Mark Rewritable and Install**.
     - Settings > Profiles, select **Default (Left Option as Alt)**, then Other Actions > **Set as Default**.
-    - Quit and reopen iTerm2.
+    - Quit and reopen iTerm2, so it loads the shared global settings chezmoi wrote (cheatsheet: "Same iTerm2 on Every
+      Mac"). New tabs then have the shared look: JetBrains Mono Nerd Font Mono, the Atom colours, a silent bell.
 13. **Warp, if you use it:** Settings > Features > Keys: Left Option is Meta on, Right Option is Meta off. Warp's
     account sync carries it to your other Macs, and chezmoi leaves it alone.
 14. **Check:** `chezmoi apply`. Repeat steps from the list until it says `Nothing to do on this machine`.
@@ -141,7 +142,7 @@ What the list at the end of `chezmoi apply` / `chezmoi update` can name:
 | Requirement warnings | gitleaks missing (fails the apply), old git or mise, SSH passphrase not saved, missing Omarchy packages, runtimes, plugins or guides | `run_after_99_assert_requirements.sh` |
 | Once-per-machine steps not done | no SSH key, `~/.cfg` not cloned, ai-tooling not set up, dotfiles-local links missing (Mac), `gh` not on SSH or not logged in, LunarVim not linked (Omarchy) | `run_after_99_assert_requirements.sh` |
 | No work email answer | `chezmoi init` never got a work email (an init with `--promptDefaults`, or a machine set up before 2026-11-19): `chezmoi init --prompt` | `run_after_99_assert_requirements.sh` |
-| iTerm2 (Mac) | reopen iTerm2 for the clipboard setting; chezmoi's profile not the default; Claude Code integration missing | `run_after_96_macos_terminal_clipboard.sh` |
+| iTerm2 (Mac) | reopen iTerm2 for updated global settings; chezmoi's profile not the default; Claude Code integration missing (settings changed on one Mac only are reported, not listed) | `run_after_96_macos_iterm2.sh` |
 | A config changed under a running app | Ghostty: `Ctrl+Shift+,` (Mac: `Cmd+Shift+,`); Herdr: `herdr server reload-config`; tmux: `Ctrl-b r`; foot: new windows; open shells: `exec zsh` | `run_after_99_assert_requirements.sh` (checksums in `~/.local/state/chezmoi-after-apply`; the first apply only records them) |
 | Omarchy stock files changed | merge the change into the chezmoi source | `run_after_95_omarchy_stock_drift.sh` |
 

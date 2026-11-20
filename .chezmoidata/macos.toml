@@ -11,3 +11,18 @@
 #   ~/.config/chezmoi/chezmoi.toml (that wins over this file until `chezmoi init` rewrites the config), then
 #   `chezmoi apply ~/Library/Application\ Support/iTerm2/DynamicProfiles`.
 iterm2_triggers_in_interactive_apps = false
+
+# iterm2_globals: iTerm2 settings kept outside profiles (com.googlecode.iterm2), written key by key by
+#   run_after_96_macos_iterm2.sh when a Mac's value differs; iTerm2 reads them only at start, so the apply then says
+#   to reopen it. Booleans become `defaults write -bool`, numbers `-int`. Everything else in iTerm2's preferences
+#   (window frames, toolbelt, update checks) stays per Mac. Cheatsheet: "Same iTerm2 on Every Mac".
+[iterm2_globals]
+AllowClipboardAccess = true                 # programs in the terminal may set the clipboard (OSC 52), never read it
+CopySelection = true                        # selecting with the mouse copies at once (iTerm2's default, pinned)
+DoubleClickPerformsSmartSelection = true    # double-click selects a whole URL, path or email address
+ShowFullScreenTabBar = false                # no tab bar in full screen
+HapticFeedbackForEsc = false                # no Touch Bar Esc feedback: no vibration,
+SoundForEsc = false                         #   no click,
+VisualIndicatorForEsc = false               #   no flash
+"Print In Black And White" = true           # print in black and white
+PasteTabToStringTabStopSize = 4             # a pasted tab becomes 4 spaces (when paste converts tabs)
