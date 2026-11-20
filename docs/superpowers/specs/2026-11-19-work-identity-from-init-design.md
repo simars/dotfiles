@@ -52,8 +52,11 @@ on works went out with the personal email (46 pushed), and nothing reported the 
   The default shown is the machine's current answer. The orgs are split on
   commas, trimmed, and empty entries are dropped. Init fails with a clear message
   if an email is given without orgs.
-- **Removed:** the unused `is_work` prompt, which today is true on works and
+- **Removed:** the `is_work` prompt, which today is true on works and
   false on the work Mac. The CI init flags and the README change with it.
+  (Correction after review: it was not unused. A work prompt symbol in
+  `starship.toml` and a placeholder SSH host read it. Neither rendered on any
+  of the three machines, so both were removed with it.)
 - **`~/.gitconfig`:** when a work email is set (not blank, not `none`), it gets
   three `includeIf` blocks per org, each pointing at `~/.gitconfig.work`:
   - `hasconfig:remote.*.url:git@github.com:<org>/**`;
