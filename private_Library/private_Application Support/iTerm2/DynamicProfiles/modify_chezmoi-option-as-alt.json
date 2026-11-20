@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# chezmoi modify script for iTerm2's dynamic profile "Default (Left Option as Alt)": your "Default" profile with left
-# Option sending Esc+ (Alt, for the zsh Alt keys). Right Option comes from "Default" (Normal: special characters);
-# iTerm2 drops keys equal to the parent when it rewrites the profile, so setting it here would flip back and forth.
-# The profile is Rewritable (iTerm2's Claude Code integration asks for that) and keeps whatever iTerm2 saves into it;
-# the integration's two workgroup triggers are added when missing, so every Mac gets them. Cheatsheet: "Option as Alt
-# in the Mac Terminals".
+# chezmoi modify script for iTerm2's dynamic profile "Default (Left Option as Alt)": the shared look ("Shared Look
+# (chezmoi)", chezmoi-0-shared-look.json, the same on every Mac) with left Option sending Esc+ (Alt, for the zsh Alt
+# keys). The look, right Option (Normal: special characters) and the trigger switch come from the shared look, so this
+# profile drops any copy of them: iTerm2 drops keys equal to the parent when it rewrites the profile, and the repo's
+# switch must win. The profile is Rewritable (iTerm2's Claude Code integration asks for that) and keeps whatever
+# iTerm2 saves into it, which the iTerm2 after-script reports as changed on this Mac only; the integration's two
+# workgroup triggers are added when missing, so every Mac gets them. Cheatsheet: "Same iTerm2 on Every Mac".
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 current="$(cat)"
@@ -14,11 +15,11 @@ if command -v jq > /dev/null 2>&1 && updated="$(printf '%s\n' "$current" | jq --
     | .Profiles[0] += {
         "Name": "Default (Left Option as Alt)",
         "Guid": "chezmoi-left-option-as-alt",
-        "Dynamic Profile Parent Name": "Default",
+        "Dynamic Profile Parent GUID": "chezmoi-shared-look",
         "Option Key Sends": 2,
         "Rewritable": true
       }
-    | .Profiles[0] |= del(."Right Option Key Sends")
+    | .Profiles[0] |= del(."Dynamic Profile Parent Name", ."Right Option Key Sends", ."Enable Triggers in Interactive Apps")
     | .Profiles[0].Triggers = ((.Profiles[0].Triggers // []) as $have | $have + ([
         { "action": "iTermEnterWorkgroupTrigger", "matchType": 113, "parameter": "builtin.claudeCode", "partial": false,
           "eventParams": { "jobName": "claude" }, "contentregex": "", "regex": "", "disabled": false },

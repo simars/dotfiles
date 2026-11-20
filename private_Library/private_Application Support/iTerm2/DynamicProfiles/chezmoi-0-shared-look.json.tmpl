@@ -1,0 +1,201 @@
+{{- /* The shared iTerm2 look for every Mac: the parent of "Default (Left Option as Alt)" (chezmoi-option-as-alt.json),
+       so every Mac gets the same font, colours, bell, scrollback and trigger switch. chezmoi owns this file entirely
+       and iTerm2 never rewrites it (no "Rewritable"), so nothing here flip-flops; a change made in iTerm2's Settings
+       lands in the child profile and the iTerm2 after-script reports it. Its name sorts before
+       chezmoi-option-as-alt.json because iTerm2 loads dynamic profiles in filename order and a parent must load
+       first. Captured once from a Mac's "Default" profile (2026-11-19) with the picks in docs/superpowers/specs/
+       2026-11-19-iterm2-same-on-every-mac-design.md; its own parent is each Mac's "Default", for keys not set here.
+       The trigger switch is .chezmoidata/macos.toml. Cheatsheet: "Same iTerm2 on Every Mac". */ -}}
+{
+  "Profiles": [
+    {
+      "Name": "Shared Look (chezmoi)",
+      "Guid": "chezmoi-shared-look",
+      "Dynamic Profile Parent Name": "Default",
+      "ASCII Anti Aliased": true,
+      "ASCII Ligatures": false,
+      "Ambiguous Double Width": false,
+      "Ansi 0 Color": {
+        "Blue Component": 0.0,
+        "Green Component": 0.0,
+        "Red Component": 0.0
+      },
+      "Ansi 1 Color": {
+        "Blue Component": 0.9450980392,
+        "Green Component": 0.3725490196,
+        "Red Component": 0.9921568627
+      },
+      "Ansi 10 Color": {
+        "Blue Component": 0.21213282644748688,
+        "Green Component": 0.9788520932197571,
+        "Red Component": 0.5818355083465576
+      },
+      "Ansi 11 Color": {
+        "Blue Component": 0.6569250226020813,
+        "Green Component": 1.0,
+        "Red Component": 0.9622171521186829
+      },
+      "Ansi 12 Color": {
+        "Blue Component": 0.996078431372549,
+        "Green Component": 0.796078431372549,
+        "Red Component": 0.5882352941176471
+      },
+      "Ansi 13 Color": {
+        "Blue Component": 0.9893276691436768,
+        "Green Component": 0.7128009796142578,
+        "Red Component": 0.7272258400917053
+      },
+      "Ansi 14 Color": {
+        "Blue Component": 0.9940510988235474,
+        "Green Component": 0.7456039786338806,
+        "Red Component": 0.5230981707572937
+      },
+      "Ansi 15 Color": {
+        "Blue Component": 0.8780484199523926,
+        "Green Component": 0.8780335187911987,
+        "Red Component": 0.8780598044395447
+      },
+      "Ansi 2 Color": {
+        "Blue Component": 0.5411764705882353,
+        "Green Component": 0.7647058823529411,
+        "Red Component": 0.5294117647058824
+      },
+      "Ansi 3 Color": {
+        "Blue Component": 0.6941176470588235,
+        "Green Component": 0.8431372549019608,
+        "Red Component": 1.0
+      },
+      "Ansi 4 Color": {
+        "Blue Component": 0.9940510988235474,
+        "Green Component": 0.7456039786338806,
+        "Red Component": 0.5230981707572937
+      },
+      "Ansi 5 Color": {
+        "Blue Component": 0.9893276691436768,
+        "Green Component": 0.7128009796142578,
+        "Red Component": 0.7272258400917053
+      },
+      "Ansi 6 Color": {
+        "Blue Component": 0.9940510988235474,
+        "Green Component": 0.7456039786338806,
+        "Red Component": 0.5230981707572937
+      },
+      "Ansi 7 Color": {
+        "Blue Component": 0.8780484795570374,
+        "Green Component": 0.8780335783958435,
+        "Red Component": 0.8780598640441895
+      },
+      "Ansi 8 Color": {
+        "Blue Component": 0.0,
+        "Green Component": 0.0,
+        "Red Component": 0.0
+      },
+      "Ansi 9 Color": {
+        "Blue Component": 0.9450980392,
+        "Green Component": 0.3725490196,
+        "Red Component": 0.9921568627
+      },
+      "BM Growl": true,
+      "Background Color": {
+        "Blue Component": 0.09770775586366653,
+        "Green Component": 0.09214270114898682,
+        "Red Component": 0.08693759888410568
+      },
+      "Background Image Location": "",
+      "Badge Color": {
+        "Alpha Component": 0.5,
+        "Blue Component": 0.0,
+        "Color Space": "sRGB",
+        "Green Component": 0.1491314172744751,
+        "Red Component": 1.0
+      },
+      "Blinking Cursor": false,
+      "Blur": false,
+      "Bold Color": {
+        "Blue Component": 0.7764705882352941,
+        "Green Component": 0.7843137254901961,
+        "Red Component": 0.7725490196078432
+      },
+      "Character Encoding": 4,
+      "Close Sessions On End": true,
+      "Columns": 80,
+      "Command": "",
+      "Cursor Color": {
+        "Blue Component": 0.8156862854957581,
+        "Green Component": 0.8156862854957581,
+        "Red Component": 0.8156862854957581
+      },
+      "Cursor Guide Color": {
+        "Alpha Component": 0.25,
+        "Blue Component": 1.0,
+        "Color Space": "sRGB",
+        "Green Component": 0.9268307089805603,
+        "Red Component": 0.7021318674087524
+      },
+      "Cursor Text Color": {
+        "Blue Component": 0.08235294371843338,
+        "Green Component": 0.08235294371843338,
+        "Red Component": 0.08235294371843338
+      },
+      "Custom Command": "No",
+      "Custom Directory": "No",
+      "Disable Window Resizing": true,
+      "Flashing Bell": true,
+      "Foreground Color": {
+        "Blue Component": 0.7764705882352941,
+        "Green Component": 0.7843137254901961,
+        "Red Component": 0.7725490196078432
+      },
+      "Horizontal Spacing": 1.0,
+      "Idle Code": 0,
+      "Jobs to Ignore": [
+        "rlogin",
+        "ssh",
+        "slogin",
+        "telnet"
+      ],
+      "Keyboard Map": {},
+      "Link Color": {
+        "Alpha Component": 1.0,
+        "Blue Component": 0.734233021736145,
+        "Color Space": "sRGB",
+        "Green Component": 0.3591606020927429,
+        "Red Component": 0.0
+      },
+      "Mouse Reporting": true,
+      "Non Ascii Font": "JetBrainsMonoNFM-Regular 12",
+      "Non-ASCII Anti Aliased": true,
+      "Non-ASCII Ligatures": false,
+      "Normal Font": "JetBrainsMonoNFM-Regular 12",
+      "Prompt Before Closing 2": false,
+      "Right Option Key Sends": 0,
+      "Rows": 25,
+      "Screen": -1,
+      "Scrollback Lines": 10000,
+      "Selected Text Color": {
+        "Blue Component": 0.7764705882352941,
+        "Green Component": 0.7843137254901961,
+        "Red Component": 0.7725490196078432
+      },
+      "Selection Color": {
+        "Blue Component": 0.26666666666666666,
+        "Green Component": 0.26666666666666666,
+        "Red Component": 0.26666666666666666
+      },
+      "Send Code When Idle": false,
+      "Silence Bell": true,
+      "Sync Title": false,
+      "Terminal Type": "xterm-256color",
+      "Transparency": 0.0,
+      "Unlimited Scrollback": false,
+      "Use Bold Font": true,
+      "Use Bright Bold": true,
+      "Use Italic Font": true,
+      "Use Non-ASCII Font": false,
+      "Vertical Spacing": 1.0,
+      "Visual Bell": true,
+      "Window Type": 0,
+      "Enable Triggers in Interactive Apps": {{ .iterm2_triggers_in_interactive_apps }}
+    }
+  ]
+}

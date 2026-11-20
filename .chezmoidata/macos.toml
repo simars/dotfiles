@@ -1,0 +1,13 @@
+# macOS-only switches, read by templates only when the host is a Mac. Cheatsheet: "Same iTerm2 on Every Mac".
+#
+# iterm2_triggers_in_interactive_apps: do iTerm2's triggers (the Claude Code workgroup ones) also run inside
+#   full-screen apps such as herdr, tmux, vim or Claude Code itself? Written into the shared look profile
+#   (chezmoi-0-shared-look.json), which every Mac's "Default (Left Option as Alt)" profile inherits.
+#   false (current since 2026-11-19): no. iTerm2 warned "triggers are pretty slow" in herdr, and the workgroup
+#         triggers only need the shell's prompt and job name, which full-screen apps hide anyway.
+#   true: yes, as iTerm2's own checkbox does.
+#   Switch for good: change the value here, commit, push, then `chezmoi update` on each Mac.
+#   Try without a commit: put `iterm2_triggers_in_interactive_apps = true` under [data] in
+#   ~/.config/chezmoi/chezmoi.toml (that wins over this file until `chezmoi init` rewrites the config), then
+#   `chezmoi apply ~/Library/Application\ Support/iTerm2/DynamicProfiles`.
+iterm2_triggers_in_interactive_apps = false

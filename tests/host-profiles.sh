@@ -329,10 +329,41 @@ check "omarchy manages foot's settings" yes "$(manages omarchy .config/foot/foot
 for host in darwin arch ubuntu; do check "$host leaves foot's settings alone" no "$(manages "$host" .config/foot/foot.ini)"; done
 for host in $hosts; do check "$host leaves Warp's settings alone" no "$(manages "$host" .warp/settings.toml)"; done
 iterm_modify="private_Library/private_Application Support/iTerm2/DynamicProfiles/modify_chezmoi-option-as-alt.json"
-check "iTerm2 profile: left Option Esc+, right Option from Default, rewritable, Claude triggers" "2 null true iTermEnterWorkgroupTrigger,iTermExitWorkgroupTrigger" \
+check "iTerm2 profile: left Option Esc+, right Option from the shared look, rewritable, Claude triggers" "2 null true iTermEnterWorkgroupTrigger,iTermExitWorkgroupTrigger" \
     "$(printf '' | bash "$iterm_modify" | jq -r '.Profiles[0] | "\(."Option Key Sends") \(."Right Option Key Sends") \(.Rewritable) \(.Triggers | map(.action) | join(","))"')"
 check "iTerm2 profile: keeps what iTerm2 wrote, adds no duplicate trigger" "x,iTermEnterWorkgroupTrigger,iTermExitWorkgroupTrigger" \
     "$(printf '{"Profiles": [{"Triggers": [{"action": "x"}, {"action": "iTermEnterWorkgroupTrigger"}], "Right Option Key Sends": 0}]}' | bash "$iterm_modify" | bash "$iterm_modify" | jq -r '.Profiles[0].Triggers | map(.action) | join(",")')"
+# The shared look: a second dynamic profile chezmoi owns entirely (iTerm2 never rewrites it), the parent of the profile
+# above, so every Mac gets the same font, colours, bell and scrollback, and the repo's trigger switch.
+shared="Library/Application Support/iTerm2/DynamicProfiles/chezmoi-0-shared-look.json"
+shared_tmpl="private_Library/private_Application Support/iTerm2/DynamicProfiles/chezmoi-0-shared-look.json.tmpl"
+shared_look() { # shared_look repo|true|false: the shared look as a Mac renders it, with the repo's trigger switch or this value
+    local data
+    data="$(host_data darwin)"
+    [[ "$1" == repo ]] || data="$(printf '%s' "$data" | jq -c ". + {iterm2_triggers_in_interactive_apps: $1}")"
+    chezmoi --override-data "$data" execute-template < "$shared_tmpl"
+}
+check "darwin manages the shared iTerm2 look" yes "$(manages darwin "$shared")"
+for host in omarchy arch ubuntu; do check "$host leaves the shared iTerm2 look alone" no "$(manages "$host" "$shared")"; done
+check "shared look loads before the profile that inherits from it" yes "$([[ chezmoi-0-shared-look.json < chezmoi-option-as-alt.json ]] && echo yes)"
+check "shared look: identity and parent" "Shared Look (chezmoi)|chezmoi-shared-look|Default|false" \
+    "$(shared_look repo | jq -r '.Profiles[0] | "\(.Name)|\(.Guid)|\(."Dynamic Profile Parent Name")|\(has("Rewritable"))"')"
+check "shared look: JetBrains Mono Nerd Font Mono, no second font, no ligatures" "JetBrainsMonoNFM-Regular 12|JetBrainsMonoNFM-Regular 12|false|false|false" \
+    "$(shared_look repo | jq -r '.Profiles[0] | "\(."Normal Font")|\(."Non Ascii Font")|\(."Use Non-ASCII Font")|\(."ASCII Ligatures")|\(."Non-ASCII Ligatures")"')"
+check "shared look: silent, flashing bell and all 16 ANSI colours" "true|true|true" \
+    "$(shared_look repo | jq -r '.Profiles[0] as $p | "\($p."Silence Bell")|\($p."Flashing Bell")|\([range(0;16) | "Ansi \(.) Color"] | all(. as $k | $p | has($k)))"')"
+check "shared look: 10000 lines of scrollback" "10000|false" \
+    "$(shared_look repo | jq -r '.Profiles[0] | "\(."Scrollback Lines")|\(."Unlimited Scrollback")"')"
+check "shared look: no per-Mac or left-Option keys" "" \
+    "$(shared_look repo | jq -r '.Profiles[0] | keys[] | select(IN("Description","Default Bookmark","Shortcut","Tags","Working Directory","Option Key Sends"))')"
+check "shared look: names no font that isn't installed (Hack)" 0 "$(shared_look repo | grep -c Hack)"
+check "shared look: triggers off in full-screen apps by default" false "$(shared_look repo | jq '.Profiles[0]."Enable Triggers in Interactive Apps"')"
+check "shared look: switch on writes true" true "$(shared_look true | jq '.Profiles[0]."Enable Triggers in Interactive Apps"')"
+check "iTerm2 profile: inherits from the shared look" "chezmoi-shared-look|false|false|false|2" \
+    "$(printf '' | bash "$iterm_modify" | jq -r '.Profiles[0] | "\(."Dynamic Profile Parent GUID")|\(has("Dynamic Profile Parent Name"))|\(has("Right Option Key Sends"))|\(has("Enable Triggers in Interactive Apps"))|\(."Option Key Sends")"')"
+check "iTerm2 profile: drops the old parent and a local trigger switch, keeps other local settings" "false|false|x" \
+    "$(printf '{"Profiles": [{"Dynamic Profile Parent Name": "Default", "Enable Triggers in Interactive Apps": true, "Font": "x"}]}' | bash "$iterm_modify" | jq -r '.Profiles[0] | "\(has("Dynamic Profile Parent Name"))|\(has("Enable Triggers in Interactive Apps"))|\(.Font)"')"
+check "iTerm2 profile: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$iterm_modify")"
 if command -v jq > /dev/null 2>&1; then
     wave() { render "$1" dot_config/waveterm/modify_settings.json.tmpl > "$work/wave.$1.sh"; printf '%s' "$2" | bash "$work/wave.$1.sh"; }
     check "Wave on macOS: copy on select, split buttons and Option as Alt, rest kept" '{"a":1,"term:copyonselect":true,"app:showsplitbuttons":true,"term:macoptionismeta":true}' "$(wave darwin '{"a": 1}' | jq -c .)"

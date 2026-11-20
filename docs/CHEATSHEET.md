@@ -165,12 +165,24 @@ Not taken over: Linux-only helpers (`a`, `rsw`/`lsw`/`dsw`, `iso2sd`, `format-dr
 
 **Claude Code integration** (iTerm2 3.7, set up once per Mac from the menu **iTerm2 > Install Claude Code Integration**; when it asks about the dynamic profile, choose **Mark Rewritable and Install**): shows each tab's Claude Code state (working, waiting for you, idle) in iTerm2's Session Status and tab indicators, through a hook it adds to `~/.claude/settings.json`. ai-tooling's settings merge keeps that hook (it merges your live settings first and owns no `hooks` key). Undo: **iTerm2 > Uninstall Claude Code Integration**. iTerm2's separate **AI Chat** needs its own model provider and API key and is not set up.
 
+### Same iTerm2 on Every Mac
+chezmoi gives every Mac the same iTerm2 look from the repo. A second dynamic profile, **"Shared Look (chezmoi)"** (`~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-0-shared-look.json`, from `chezmoi-0-shared-look.json.tmpl`), is the parent of "Default (Left Option as Alt)", so that profile shows the shared look plus left Option as Alt.
+
+| What | Where it lives |
+| :--- | :--- |
+| The look: JetBrains Mono Nerd Font Mono 12, no second font, no ligatures (iTerm2 drops GPU rendering with ligatures on), the Atom colours, silent bell with a screen flash, 10,000 lines of scrollback | `chezmoi-0-shared-look.json.tmpl`; chezmoi owns the whole file and iTerm2 never rewrites it |
+| Triggers in full-screen apps (herdr, tmux, vim, Claude Code): off, so iTerm2 stops warning that triggers are slow there | `iterm2_triggers_in_interactive_apps` in `.chezmoidata/macos.toml` |
+
+* **Change the look:** edit the template in the repo, commit, push, then `chezmoi update` on each Mac. iTerm2 reloads dynamic profiles by itself.
+* **Changes made in iTerm2's Settings** to "Default (Left Option as Alt)" stay on that Mac only; the shared look itself goes back to the repo's values when its file reloads.
+* **The profile list** shows "Shared Look (chezmoi)" too; it cannot be hidden. Use "Default (Left Option as Alt)".
+
 ### Option as Alt in the Mac Terminals
 A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to act as Meta; otherwise Option types special characters (`ƒ`, `©`, `ü`). chezmoi sets **left Option = Alt, right Option = special characters** (macOS only):
 
 | Terminal | How chezmoi sets it |
 | :--- | :--- |
-| iTerm2 | Dynamic profile "Default (Left Option as Alt)" (`~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json`): your "Default" profile with left Option `Esc+`; right Option comes from "Default" (`Normal`). chezmoi sets only its keys, adds the Claude Code workgroup triggers when missing, and keeps what iTerm2 saves there (the profile is rewritable, as the Claude Code integration asks). Make it the default once: Settings > Profiles, select it, Other Actions > Set as Default. Change looks in "Default"; this profile follows it. |
+| iTerm2 | Dynamic profile "Default (Left Option as Alt)" (`~/Library/Application Support/iTerm2/DynamicProfiles/chezmoi-option-as-alt.json`): the shared look "Shared Look (chezmoi)" (below) with left Option `Esc+`; right Option comes from the shared look (`Normal`). chezmoi sets only its keys, adds the Claude Code workgroup triggers when missing, and keeps what iTerm2 saves there (the profile is rewritable, as the Claude Code integration asks). Make it the default once: Settings > Profiles, select it, Other Actions > Set as Default. Change looks in the repo's shared look, not in "Default" or in iTerm2's Settings. |
 | Warp | **Not managed by chezmoi:** Warp syncs its settings through your Warp account and overwrote chezmoi's value. Set it once in Warp (Settings > Features > Keys: Left Option is Meta on, Right Option is Meta off); the sync carries it to the other Macs. |
 | Wave | `~/.config/waveterm/settings.json`: `"term:macoptionismeta": true` (Wave has no left/right split: both Option keys act as Alt there). Only this key is set. |
 | kitty | `~/.config/kitty/kitty.conf`: `macos_option_as_alt left` (with `copy_on_select clipboard`), appended under a chezmoi marker; the rest of the file is kept. |
