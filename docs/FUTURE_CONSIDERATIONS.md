@@ -349,3 +349,7 @@ to try the setup as it is first. Fixes considered, none made:
   Ghostty would act first and skip tmux's panes; tmux and Herdr cannot ask Ghostty to move, and over ssh never could.
 * **Resize mode**: check whether Ghostty shows that the `term_resize` key table is on; if not, the cheatsheet note is
   all there is.
+* **Resize and reload keys**: aligned on 2026-11-21 (Plan A in
+  `docs/superpowers/specs/2026-11-21-terminal-resize-keys-design.md`): `r` reloads after every prefix and leader,
+  `Alt+arrows` resize, `Shift+e` equalizes (Herdr through `herdr-equalize`). Plan B (`r` = resize mode everywhere,
+  reload on `Ctrl+r`, a custom tmux resize table) was set aside.

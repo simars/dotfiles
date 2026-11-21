@@ -527,6 +527,8 @@ One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's o
 | `Ctrl-Alt-arrows` / `Ctrl-Alt-Shift-arrows` | Focus / resize pane, no prefix | Same |
 | `b`, `Shift-o`, `Shift-s`, `Shift-g` | | Sidebar, notification target, settings, new git worktree |
 
+On the Macs `Ctrl-arrows` after the prefix never arrive (macOS switches Spaces or opens Mission Control), so tmux's 1-cell resize and Herdr's resize mode work only on Omarchy; resize with `Alt-arrows` after the prefix, or `Ctrl-Option-Shift-arrows`.
+
 tmux keys Herdr lacks: layouts (`Space`, `Alt-1`..`7` after the prefix), rotate (`Ctrl-o`), paste buffers (`]` `#` `=`), command prompt (`:`), mark (`m`), move or pick a window by number (`.` `'`), and `PageUp` into copy mode.
 
 `omarchy refresh tmux` (or `herdr`) puts Omarchy's stock file back; `chezmoi apply ~/.config/tmux/tmux.conf` (or `~/.config/herdr/config.toml`) restores the shared one.

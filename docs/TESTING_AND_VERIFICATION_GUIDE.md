@@ -763,7 +763,11 @@ Ghostty 1.4.0, foot 1.28.0, Herdr 0.9.5 client with a 0.9.1 server) unless the r
 | `Super-b` then `c`, `%`, `"`, `h`/`l`, `z`, `1`, `n`, `,`, `&`, `=`, `?` | n/a | by hand | Each does what the cheatsheet's "Terminal Tabs and Splits" table says |
 | `Super-b` then `%` splits (Omarchy) / `Cmd-b` then `%` splits (mbp) | n/a | yes, in a Ghostty started after the apply | Pressed by the user. The Ghostty running since before the apply typed `b%` even after `Ctrl-Shift-,`: a new window joins that process, so quit Ghostty and start it again |
 | `Super-b` then `q` (unbound): nothing typed; `Super-b` then `Esc`: typing works again | by hand | by hand | Review Focus 1 and 2 of the plan |
-| `Super-b r`, `l l l`, `Esc` resizes and stops | n/a | by hand | |
+| `Super-b` then `Alt-Right`, `l l l`, `Alt-Left`, `Esc` resizes and stops (Mac: `Cmd-b`, left `Option`) | n/a | by hand | Plan A, 2026-11-21: `r` reloads now |
+| `Super-b` then `r` reloads (a font size change shows); `Super-b` then `Shift-e` evens the splits | n/a | by hand | |
+| Ghostty config with `r` reload, `Alt+arrows` and `Shift+e` validates | n/a | yes | `ghostty +validate-config`, 2026-11-21 |
+| `herdr-equalize` evens a real layout | n/a | n/a | yes: a 3-column and a 7-pane mixed layout, then a 5-pane one with the final script, in a separate `herdr --session` (Herdr 0.9.5), 2026-11-21; a second run changed nothing |
+| `Ctrl-b` then `Shift-e` in Herdr runs it | by hand, after the server restart | same | `[[keys.command]]` accepted by `herdr config check` |
 | `Super-b x` with `sleep 100` running asks first | n/a | by hand | `confirm-close-surface = true` |
 | `Ctrl-Space c` makes a tmux window | by hand | by hand | |
 | `Ctrl-Space c` makes a Herdr tab | by hand, after the server restart | same | Needs a 0.9.2+ server (apply's to-do list) |
