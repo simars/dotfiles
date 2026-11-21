@@ -26,8 +26,10 @@ BLOCK+=$'\nconfirm-close-surface = true'
 # tabs and splits (cheatsheet: "Terminal Tabs and Splits"). The leader opens key table `term`; every action closes it
 # again (chain=deactivate_key_table), and any other key closes it and is swallowed, never typed into the program.
 # Ghostty matches modifiers exactly, so tmux's shifted keys are written with shift (% is shift+digit_5), and a bare
-# Shift press, itself a key event, is ignored so it cannot close the table before the shifted key arrives. r opens
-# table `term_resize`, where h j k l repeat until Esc or Enter.
+# Shift press, itself a key event, is ignored so it cannot close the table before the shifted key arrives. As after
+# tmux's and Herdr's prefix, r reloads and Alt+arrows resize (40 px, about tmux's 5 cells); Alt+arrows then open table
+# `term_resize`, where h j k l / arrows (20 px) and Alt+arrows (40 px) keep resizing until Esc or Enter. Never
+# Ctrl+arrows: macOS takes them (Spaces, Mission Control) before Ghostty sees them.
 LEADER={{ if eq .chezmoi.os "darwin" }}cmd+b{{ else }}super+b{{ end }}
 lead() { BLOCK+=$'\n'"keybind = $1=$2"; }
 act() { lead "term/$1" "$2"; BLOCK+=$'\nkeybind = chain=deactivate_key_table'; }
@@ -54,12 +56,17 @@ act p previous_tab
 act , prompt_tab_title
 act shift+digit_7 close_tab
 act equal equalize_splits
+act shift+e equalize_splits
 act shift+slash toggle_command_palette
-lead term/r deactivate_key_table
-BLOCK+=$'\nkeybind = chain=activate_key_table:term_resize'
+act r reload_config
+for dir in left down up right; do
+    act "alt+arrow_$dir" "resize_split:$dir,40"
+    BLOCK+=$'\nkeybind = chain=activate_key_table:term_resize'
+done
 for pair in h:left j:down k:up l:right; do
     lead "term_resize/${pair%%:*}" "resize_split:${pair#*:},20"
     lead "term_resize/arrow_${pair#*:}" "resize_split:${pair#*:},20"
+    lead "term_resize/alt+arrow_${pair#*:}" "resize_split:${pair#*:},40"
 done
 lead term_resize/escape deactivate_all_key_tables
 lead term_resize/enter deactivate_all_key_tables

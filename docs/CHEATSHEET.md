@@ -543,8 +543,9 @@ The terminal's own tabs and splits use tmux's letters behind a different prefix:
 | `z` | Zoom the split | |
 | `1`..`9`, `n` `p` | Go to tab, next / previous tab | |
 | `,` | Rename tab | |
-| `=` | Make splits equal (tmux `E`) | |
-| `r`, then `h` `j` `k` `l` | Resize; keep pressing, `Esc` or `Enter` to stop | |
+| `Shift-e` (or `=`) | Make splits equal (tmux `E`) | |
+| `Alt-arrows` (Mac: left `Option`) | Resize 40 px, then stay in resize mode: `h` `j` `k` `l` / arrows 20 px, `Alt-arrows` 40 px; `Esc` or `Enter` to stop | |
+| `r` | Reload Ghostty's config (as `r` reloads tmux and Herdr); new key bindings still need a restart | |
 | `?` | Command palette | |
 
 Ghostty cannot move a split into its own tab, so `!` does nothing. Set in Ghostty's config by `dot_config/ghostty/modify_config.tmpl` (key tables `term` and `term_resize`).
@@ -565,7 +566,7 @@ One key cannot carry on from tmux or Herdr into the next Ghostty split: Ghostty 
 * **`;` differs.** tmux and Herdr go to the pane last used; Ghostty has no such action, so `Super-b ;` / `Cmd-b ;` goes to the previous split in layout order. Same with two splits, not always with three.
 * **At the edge.** tmux wraps (`h` in the leftmost pane goes to the rightmost); Ghostty stays put; Herdr not checked.
 * **The wrong prefix does nothing, silently.** `Cmd-b h` inside tmux moves Ghostty's split, not tmux's pane; with no Ghostty split there, nothing happens. Cmd and Ctrl sit side by side on the Mac.
-* **Resize mode stays on.** After `Super-b r` / `Cmd-b r` every key but `h` `j` `k` `l`, arrows, `Esc` and `Enter` is ignored until `Esc` or `Enter`.
+* **Resize mode stays on.** After `Super-b` / `Cmd-b` then `Alt-arrow`, every key but `h` `j` `k` `l`, arrows, `Alt-arrows`, `Esc` and `Enter` is ignored until `Esc` or `Enter`.
 * **Neovim in tmux or Herdr.** `Ctrl+h` stops at Neovim's edge; the next pane needs `Ctrl-b h` or `Ctrl+Alt+arrows`.
 * **ssh to a host without this tmux config.** Stock tmux has no `h` `j` `k` `l` or `Ctrl+Alt+arrows`; use `Ctrl-b` arrows, `o`, `;`.
 * **Herdr inside tmux.** tmux takes `Ctrl-b` and `Ctrl+Alt+arrows` first (parked: `docs/FUTURE_CONSIDERATIONS.md` §11).

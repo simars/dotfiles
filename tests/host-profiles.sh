@@ -715,7 +715,16 @@ check "Ghostty on Omarchy: bare Shift presses keep the leader open" 4 "$(grep -c
 check "Ghostty on Omarchy: shifted tmux keys spelled with Shift (Ghostty matches modifiers exactly)" "4 0" \
     "$(grep -cE '^keybind = term/shift\+(digit_5|quote|digit_7|slash)=' <<< "$ghostty_lead") $(grep -cE '^keybind = term/[%"&?]=' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: every leader action closes the table after it" "" \
-    "$(awk '/^keybind = term\// && !/=(ignore|deactivate_key_table|deactivate_all_key_tables)$/ && !/^keybind = term\/r=/ { getline nxt; if (nxt != "keybind = chain=deactivate_key_table") print }' <<< "$ghostty_lead")"
+    "$(awk '/^keybind = term\// && !/=(ignore|deactivate_key_table|deactivate_all_key_tables)$/ { getline nxt; if (nxt != "keybind = chain=deactivate_key_table") print }' <<< "$ghostty_lead")"
+# Plan A (2026-11-21): r reloads, as after tmux's and Herdr's prefix; Alt+arrows resize a step and stay in resize mode
+# (tmux and Herdr resize on prefix Alt+arrows); Shift+e equalizes (tmux E), = kept.
+check "Ghostty on Omarchy: leader r reloads the config" "keybind = term/r=reload_config|keybind = chain=deactivate_key_table" \
+    "$(grep -A1 -xF 'keybind = term/r=reload_config' <<< "$ghostty_lead" | paste -sd'|')"
+check "Ghostty on Omarchy: leader Alt+arrows resize 40 px, then resize mode" 4 \
+    "$(for d in left down up right; do grep -A2 -xF "keybind = term/alt+arrow_$d=resize_split:$d,40" <<< "$ghostty_lead" | paste -sd'|'; done | grep -cxE 'keybind = term/alt\+arrow_[a-z]+=resize_split:[a-z]+,40\|keybind = chain=deactivate_key_table\|keybind = chain=activate_key_table:term_resize')"
+check "Ghostty on Omarchy: resize mode keeps Alt+arrows at 40 px, h j k l at 20" "4 4" \
+    "$(grep -cE '^keybind = term_resize/alt\+arrow_(left|down|up|right)=resize_split:(left|down|up|right),40$' <<< "$ghostty_lead") $(grep -cE '^keybind = term_resize/[hjkl]=resize_split:[a-z]+,20$' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: leader Shift+e and = equalize" "2" "$(grep -cE '^keybind = term/(shift\+e|equal)=equalize_splits$' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: resize table swallows the rest too" 1 "$(grep -cxF 'keybind = term_resize/catch_all=ignore' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: Omarchy's theme include and own keys kept" "1 1" "$(grep -cF 'config-file = ?' <<< "$ghostty_lead") $(grep -cxF 'keybind = shift+enter=csi:13;2u' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: closing asks first, one line" "confirm-close-surface = true" "$(grep -E '^confirm-close-surface' <<< "$ghostty_lead")"
