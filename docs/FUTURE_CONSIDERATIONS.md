@@ -353,3 +353,7 @@ to try the setup as it is first. Fixes considered, none made:
   `docs/superpowers/specs/2026-11-21-terminal-resize-keys-design.md`): `r` reloads after every prefix and leader,
   `Alt+arrows` resize, `Shift+e` equalizes (Herdr through `herdr-equalize`). Plan B (`r` = resize mode everywhere,
   reload on `Ctrl+r`, a custom tmux resize table) was set aside.
+* **Layouts and rotation**: Herdr got tmux's presets, `next` and rotation on 2026-11-21 through `herdr-layout`
+  (`docs/superpowers/specs/2026-11-21-herdr-layouts-design.md`). Ghostty cannot rearrange splits (no action, no IPC);
+  a key that opens a new tab already split was set aside, since it starts new shells. Revisit if Ghostty adds split
+  swap or move actions.

@@ -21,8 +21,11 @@ Herdr should arrange panes the way tmux does after the prefix: `Space` cycles th
 `dot_local/bin/executable_herdr-layout ACTION [PANE_ID]` (pane defaults to `$HERDR_ACTIVE_PANE_ID`, then
 `$HERDR_PANE_ID`), bash + jq, `herdr` from `$HERDR_BIN_PATH`.
 
-* Pane order is the order of `herdr pane layout`'s `panes` (the split tree, first to last, as tmux's pane index after a
-  layout). The first pane is the main pane.
+* Pane order stands in for tmux's pane numbers, which a layout never changes and a rotation does. It is kept per tab
+  (`<tab>.order`): panes that still exist in the kept order, then new panes in split-tree order (`herdr pane layout`'s
+  `panes`); with nothing kept, the split-tree order. The first pane is the main pane. (Builder's call after the real
+  run: with the split-tree order alone, a mirrored layout moved the main pane to the end, so the next layout picked a
+  different main pane, unlike tmux.)
 * `rotate-up` (tmux `C-o`, `rotate-window -U`): each pane moves one place back, the first goes last:
   `swap first second`, `swap first third`, ... `rotate-down` (`M-o`, `-D`): `swap last before-last`, ..., `swap last
   first`.
