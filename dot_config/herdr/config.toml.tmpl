@@ -118,6 +118,13 @@ type = "shell"
 command = '"${HERDR_BIN_PATH:-herdr}" pane move "$HERDR_ACTIVE_PANE_ID" --new-tab --focus'
 description = "break pane into new tab"
 
+# Make panes equal (tmux `prefix + E`); Herdr has no such action, so a script evens the split ratios
+[[keys.command]]
+key = "prefix+shift+e"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-equalize" "$HERDR_ACTIVE_PANE_ID"'
+description = "make panes equal"
+
 [ui]
 # set -g mouse on
 mouse_capture = true

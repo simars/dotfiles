@@ -235,6 +235,43 @@ for host in darwin omarchy; do
         "$(grep -c '^previous_workspace = \["prefix+(",' "$work/$host.herdr") $(grep -c '^next_workspace = \["prefix+)",' "$work/$host.herdr") $(grep -c '^goto = .*"prefix+f"' "$work/$host.herdr")"
 done
 check "requirement check names a stale Herdr server" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'server_binary_stale')"
+# Herdr has no equalize: prefix Shift+e runs herdr-equalize (tmux's E, Ghostty's equalize_splits), on every host.
+for host in darwin omarchy; do
+    check "$host herdr: prefix Shift+e runs herdr-equalize" 1 \
+        "$(grep -A3 -xF 'key = "prefix+shift+e"' "$work/$host.herdr" | grep -c '^command = .*/\.local/bin/herdr-equalize')"
+done
+if command -v jq > /dev/null 2>&1; then
+    # A stub herdr: `pane layout` prints layout.<n>.json, `pane resize` logs its arguments and, unless the state dir
+    # has a file named stuck, moves on to the next layout.
+    eq="$work/herdr-eq"; mkdir -p "$eq"
+    cat > "$eq/herdr" <<'STUB'
+#!/usr/bin/env bash
+d=$(dirname "$0"); n=$(cat "$d/n")
+case "$1 $2" in
+    "pane layout") printf '{"result":{"layout":%s}}\n' "$(cat "$d/layout.$n.json")" ;;
+    "pane resize") shift 2; echo "$*" >> "$d/calls"; [ -e "$d/stuck" ] || echo $((n + 1)) > "$d/n"; echo '{}' ;;
+    *) exit 2 ;;
+esac
+STUB
+    chmod +x "$eq/herdr"
+    eq_run() { echo 0 > "$eq/n"; : > "$eq/calls"; HERDR_BIN_PATH="$eq/herdr" bash dot_local/bin/executable_herdr-equalize p1 2> "$eq/err"; echo "exit $?"; }
+    pane() { printf '{"pane_id":"%s","rect":{"x":%s,"y":0,"width":%s,"height":40}}' "$@"; }
+    # Three columns at 60/30/30 (two nested right splits at 0.5): the root split is fixed through p1, by -1/6.
+    printf '{"panes":[%s,%s,%s],"splits":[{"id":"split_0_root","direction":"right","ratio":0.5,"rect":{"x":0,"y":0,"width":120,"height":40}},{"id":"split_1_1","direction":"right","ratio":0.5,"rect":{"x":60,"y":0,"width":60,"height":40}}]}' \
+        "$(pane p1 0 60)" "$(pane p2 60 30)" "$(pane p3 90 30)" > "$eq/layout.0.json"
+    printf '{"panes":[%s,%s,%s],"splits":[{"id":"split_0_root","direction":"right","ratio":0.33333334,"rect":{"x":0,"y":0,"width":120,"height":40}},{"id":"split_1_1","direction":"right","ratio":0.5,"rect":{"x":40,"y":0,"width":80,"height":40}}]}' \
+        "$(pane p1 0 40)" "$(pane p2 40 40)" "$(pane p3 80 40)" > "$eq/layout.1.json"
+    rm -f "$eq/stuck"
+    check "herdr-equalize: evens three columns with one resize" "exit 0" "$(eq_run)"
+    check "herdr-equalize: moves the root split's boundary pane left by a sixth" "1 --pane p1 --direction left --amount 0.1666" \
+        "$(wc -l < "$eq/calls" | tr -d ' ') $(cut -c1-42 "$eq/calls")"
+    touch "$eq/stuck"
+    check "herdr-equalize: a split that will not move fails, no loop" "exit 1 1 1" \
+        "$(eq_run) $(wc -l < "$eq/calls" | tr -d ' ') $(grep -c 'stayed at' "$eq/err")"
+    rm -f "$eq/stuck"
+    printf '{"panes":[%s],"splits":[]}' "$(pane p1 0 120)" > "$eq/layout.0.json"
+    check "herdr-equalize: one pane, nothing to do" "exit 0 0" "$(eq_run) $(wc -l < "$eq/calls" | tr -d ' ')"
+fi
 check "requirement check wants Herdr 0.9.2 or later (multiple prefixes)" 1 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'version_ge "$herdr_version" 0.9.2')"
 # The stock-drift report runs on Omarchy only and never fails.
 drift=run_after_95_omarchy_stock_drift.sh.tmpl

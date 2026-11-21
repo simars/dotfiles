@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# herdr-equalize [PANE_ID]: make the splits in a Herdr tab even, like tmux's `E` and Ghostty's equalize_splits.
+# Herdr has no such action. Bound to prefix Shift+e in ~/.config/herdr/config.toml (cheatsheet: "tmux and Herdr Keys").
+# Each split's ratio becomes its first side's share of the panes across that axis (a split the other way counts its
+# wider side), outermost split first, so every column and row ends up the same size. Herdr's `pane resize --amount`
+# moves the ratio of the split at that edge of a pane, so the script resizes the pane just inside each split's
+# boundary and checks the ratio moved. Split ids carry their place in the tree (split_<n>_<path>: root, then 0 for the
+# first child and 1 for the second), as in Herdr 0.9.5. Needs jq.
+set -euo pipefail
+herdr=${HERDR_BIN_PATH:-herdr}
+pane=${1:-${HERDR_ACTIVE_PANE_ID:-${HERDR_PANE_ID:-}}}
+[ -n "$pane" ] || { echo "herdr-equalize: no pane id" >&2; exit 1; }
+layout() { "$herdr" pane layout --pane "$pane" | jq '.result.layout'; }
+# Next split to fix: shallowest whose ratio is off target. Prints "pane dir amount id target" or nothing.
+next_fix() {
+  jq -r '
+    def path: (.id | split("_")[2]) | if . == "root" then "" else . end;
+    . as $L
+    | def node($p): first($L.splits[] | select(path == $p)) // null;
+      def w($p; $axis): node($p) as $n
+        | if $n == null then 1
+          elif $n.direction == $axis then w($p + "0"; $axis) + w($p + "1"; $axis)
+          else ([w($p + "0"; $axis), w($p + "1"; $axis)] | max) end;
+    [ $L.splits[] | path as $p
+      | (w($p + "0"; .direction)) as $a | (w($p + "1"; .direction)) as $b
+      | . + {depth: ($p | length), target: ($a / ($a + $b))}
+      | select(((.ratio - .target) | fabs) > 0.01) ]
+    | sort_by(.depth) | first // empty
+    | . as $s
+    | (if $s.direction == "right"
+         then {x: ($s.rect.x + (($s.ratio * $s.rect.width) | floor) - 1), y: $s.rect.y}
+         else {x: $s.rect.x, y: ($s.rect.y + (($s.ratio * $s.rect.height) | floor) - 1)} end) as $pt
+    | first($L.panes[] | select(.rect.x <= $pt.x and $pt.x < .rect.x + .rect.width
+                                and .rect.y <= $pt.y and $pt.y < .rect.y + .rect.height)) as $leaf
+    | ($s.target - $s.ratio) as $d
+    | [$leaf.pane_id,
+       (if $s.direction == "right" then (if $d > 0 then "right" else "left" end)
+        else (if $d > 0 then "down" else "up" end) end),
+       ($d | fabs), $s.id, $s.target] | @tsv'
+}
+for _ in $(seq 1 32); do
+  fix=$(layout | next_fix)
+  [ -n "$fix" ] || exit 0
+  read -r p dir amount id target <<<"$fix"
+  "$herdr" pane resize --pane "$p" --direction "$dir" --amount "$amount" >/dev/null
+  now=$(layout | jq -r --arg id "$id" '.splits[] | select(.id == $id) | .ratio')
+  awk -v a="$now" -v t="$target" 'BEGIN { exit !((a - t) ^ 2 < 0.0001) }' \
+    || { echo "herdr-equalize: split $id stayed at $now (wanted $target)" >&2; exit 1; }
+done
+echo "herdr-equalize: gave up after 32 splits" >&2; exit 1

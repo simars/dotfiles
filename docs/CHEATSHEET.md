@@ -508,6 +508,7 @@ One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's o
 | `%` `v` (or `Alt-Shift-Enter`) | Split, new pane to the right | Same |
 | `x` (or `Alt-Esc`) | Kill pane (asks first) | Close pane (asks first) |
 | `z` / `;` / `o` | Zoom / last pane / next pane | Same |
+| `Shift-e` | Make panes equal (tmux `E`) | Same, by `herdr-equalize` (Herdr has no such action; the script evens each split's ratio) |
 | `!` | Break pane into a new window | Move pane into a new tab |
 | `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab (asks first) |
 | `1`..`9` (or `Alt-1`..`9`), `n` `p` | Go to window | Go to tab |
@@ -526,7 +527,7 @@ One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's o
 | `Ctrl-Alt-arrows` / `Ctrl-Alt-Shift-arrows` | Focus / resize pane, no prefix | Same |
 | `b`, `Shift-o`, `Shift-s`, `Shift-g` | | Sidebar, notification target, settings, new git worktree |
 
-tmux keys Herdr lacks: layouts (`Space`, `Alt-1`..`5` after the prefix, `E`), rotate (`Ctrl-o`), paste buffers (`]` `#` `=`), command prompt (`:`), mark (`m`), move or pick a window by number (`.` `'`), and `PageUp` into copy mode.
+tmux keys Herdr lacks: layouts (`Space`, `Alt-1`..`7` after the prefix), rotate (`Ctrl-o`), paste buffers (`]` `#` `=`), command prompt (`:`), mark (`m`), move or pick a window by number (`.` `'`), and `PageUp` into copy mode.
 
 `omarchy refresh tmux` (or `herdr`) puts Omarchy's stock file back; `chezmoi apply ~/.config/tmux/tmux.conf` (or `~/.config/herdr/config.toml`) restores the shared one.
 
