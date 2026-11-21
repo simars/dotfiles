@@ -549,6 +549,31 @@ The terminal's own tabs and splits use tmux's letters behind a different prefix:
 
 Ghostty cannot move a split into its own tab, so `!` does nothing. Set in Ghostty's config by `dot_config/ghostty/modify_config.tmpl` (key tables `term` and `term_resize`).
 
+### Moving Between Panes (and Where It Can Trip You)
+Each layer has its own keys; the letters are the same, the prefix says which layer moves.
+
+| Layer | Omarchy | Mac |
+| :--- | :--- | :--- |
+| Desktop windows | `Super+arrows` (Hyprland) | |
+| Ghostty splits | `Super-b` then `h` `j` `k` `l` / arrows; `Super+Ctrl+[` `]` previous / next | `Cmd-b` then `h` `j` `k` `l` / arrows; `Cmd+Opt+arrows`; `Cmd+[` `]` |
+| iTerm2 panes | | `Cmd+Opt+arrows` (iTerm2's own; no leader yet) |
+| tmux and Herdr panes | `Ctrl-b` then `h` `j` `k` `l` / arrows; `Ctrl+Alt+arrows` | Same (left Option only) |
+| Neovim windows | `Ctrl+h` `j` `k` `l` (LazyVim) | Same |
+
+One key cannot carry on from tmux or Herdr into the next Ghostty split: Ghostty can be told to pass a split key on when it has no split that way (`performable:`), but then Ghostty moves first and skips tmux's panes, and tmux has no way to tell Ghostty to move. Where it can trip you (seen in the configs and sources, not yet in use):
+
+* **`;` differs.** tmux and Herdr go to the pane last used; Ghostty has no such action, so `Super-b ;` / `Cmd-b ;` goes to the previous split in layout order. Same with two splits, not always with three.
+* **At the edge.** tmux wraps (`h` in the leftmost pane goes to the rightmost); Ghostty stays put; Herdr not checked.
+* **The wrong prefix does nothing, silently.** `Cmd-b h` inside tmux moves Ghostty's split, not tmux's pane; with no Ghostty split there, nothing happens. Cmd and Ctrl sit side by side on the Mac.
+* **Resize mode stays on.** After `Super-b r` / `Cmd-b r` every key but `h` `j` `k` `l`, arrows, `Esc` and `Enter` is ignored until `Esc` or `Enter`.
+* **Neovim in tmux or Herdr.** `Ctrl+h` stops at Neovim's edge; the next pane needs `Ctrl-b h` or `Ctrl+Alt+arrows`.
+* **ssh to a host without this tmux config.** Stock tmux has no `h` `j` `k` `l` or `Ctrl+Alt+arrows`; use `Ctrl-b` arrows, `o`, `;`.
+* **Herdr inside tmux.** tmux takes `Ctrl-b` and `Ctrl+Alt+arrows` first (parked: `docs/FUTURE_CONSIDERATIONS.md` §11).
+* **Omarchy: `Super+arrows` moves windows**, never Ghostty's splits.
+* **Mac: right Option is not Alt**, so `Ctrl+right Option+arrows` does not reach tmux or Herdr; iTerm2 has no `Cmd-b` leader yet.
+
+Possible fixes, not made: `docs/FUTURE_CONSIDERATIONS.md` §12.
+
 ### Keys the Terminal Must Not Take (macOS and Omarchy)
 A key reaches Claude Code, Herdr, tmux or zsh only if nothing before it takes it: first the desktop (Hyprland, macOS), then the terminal app, then Herdr or tmux. A key that is taken does something else instead (Ctrl-Enter in Ghostty made the window full screen, which hides Omarchy's top bar).
 

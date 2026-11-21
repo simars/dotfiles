@@ -331,3 +331,21 @@ sees them. Today `Ctrl-b Ctrl-b` reaches Herdr (tmux's send-prefix). Parked by t
   and against macOS media keys and Hyprland) switches the outer tmux to an empty key table, greys its status bar with
   `OFF`, and passes every key on; the same key turns it back on. Works for tmux-over-ssh-inside-tmux too. The
   recommended base; A can be added on top.
+
+## 12. Moving Between Panes Across Ghostty, tmux, Herdr and Neovim (assessed 2026-11-20, left as is)
+
+The trip points are listed in `docs/CHEATSHEET.md`, "Moving Between Panes (and Where It Can Trip You)". The user chose
+to try the setup as it is first. Fixes considered, none made:
+
+* **`;`**: drop it from Ghostty's leader, or keep "previous split in layout order" (Ghostty has no last-split action).
+* **Edges**: make tmux stop at the edge like Ghostty (`if -F '#{pane_at_left}' '' 'select-pane -L'`, one per
+  direction), or leave tmux wrapping. Check Herdr's edge behaviour first.
+* **Neovim to tmux / Herdr**: one key that moves through Neovim windows and carries on into tmux or Herdr panes
+  (vim-tmux-navigator style), on the existing `Ctrl+Alt+arrows` so `Ctrl+l` still clears the screen. tmux checks
+  whether the pane runs Neovim; Herdr has `herdr pane process-info`, `pane edges` and `pane focus --direction`.
+  Worth it only if windows get split inside Neovim.
+* **Ruled out**: one key that crosses from tmux or Herdr into Ghostty's splits. `performable:` on Ghostty's
+  `goto_split` passes the key on when no split lies that way (checked in Ghostty 1.4.0's GTK and macOS sources), but
+  Ghostty would act first and skip tmux's panes; tmux and Herdr cannot ask Ghostty to move, and over ssh never could.
+* **Resize mode**: check whether Ghostty shows that the `term_resize` key table is on; if not, the cheatsheet note is
+  all there is.
