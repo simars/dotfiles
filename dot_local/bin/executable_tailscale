@@ -1,0 +1,17 @@
+#!/bin/sh
+# tailscale: Tailscale's CLI on every Mac, whichever Tailscale variant is installed (chezmoi, macOS only).
+# Homebrew's open-source tailscale or the Standalone app's launcher (Settings > CLI integration) are used when
+# present. The App Store app has no installer for its CLI; Tailscale's docs say to run the binary inside the app,
+# with TAILSCALE_BE_CLI=1 so a script never opens the app's window instead.
+self=$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")
+for candidate in /opt/homebrew/bin/tailscale /usr/local/bin/tailscale; do
+    if [ -x "$candidate" ] && [ "$candidate" != "$self" ]; then
+        exec "$candidate" "$@"
+    fi
+done
+app=/Applications/Tailscale.app/Contents/MacOS/Tailscale
+if [ -x "$app" ]; then
+    TAILSCALE_BE_CLI=1 exec "$app" "$@"
+fi
+echo "tailscale: Tailscale is not installed (no Homebrew tailscale, CLI launcher or /Applications/Tailscale.app)" >&2
+exit 127

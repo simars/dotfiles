@@ -1000,6 +1000,15 @@ for host in $hosts; do
 done
 check "omarchy ~/.ssh/config has no work stanza" 0 "$(render omarchy private_dot_ssh/private_config.tmpl | grep -c 'internal')"
 
+# tailscale wrapper: the Macs only (finds the CLI of whichever Tailscale variant is installed); Linux has the real one.
+for host in darwin intel; do
+    check "$host gets the tailscale wrapper" yes "$(manages "$host" .local/bin/tailscale)"
+done
+for host in omarchy arch ubuntu debian; do
+    check "$host gets no tailscale wrapper (it would shadow /usr/bin/tailscale)" no "$(manages "$host" .local/bin/tailscale)"
+done
+check "tailscale wrapper is valid sh" "" "$(sh -n dot_local/bin/executable_tailscale 2>&1)"
+
 # The requirement check suggests fixes from the host's own package manager, and leaves Omarchy's mise alone.
 requirements=run_after_99_assert_requirements.sh.tmpl
 for host in $hosts; do

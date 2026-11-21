@@ -42,6 +42,8 @@ Library/**
 {{ if ne .chezmoi.os "darwin" }}
 .config/herdr-app
 .config/herdr-app/**
+# tailscale: finds the CLI of whichever Mac variant is installed; Linux has the real one in /usr/bin.
+.local/bin/tailscale
 {{ end }}
 # foot's settings (selection-target=both): Omarchy only, whose default terminal it is.
 {{ if ne (dig "osRelease" "id" "" .chezmoi) "omarchy" }}

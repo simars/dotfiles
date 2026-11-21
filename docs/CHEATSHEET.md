@@ -456,6 +456,15 @@ Aliases follow `<machine>[-unlock].<how>`, where the suffix says how the name is
 
 Agent forwarding is on for your own machines only, so `git pull`, `chezmoi update` and other GitHub access in an SSH session there use the key of the machine you connect from (a Mac's Keychain is locked to SSH sessions, and Omarchy sets its agent only for the desktop session). Never under `Host *`: while a session is open, an admin of the remote machine could use the key. A `-unlock` alias reaches a machine's disk-unlock screen while it boots (root on port 2222, its own host key alias, no agent; see `~/guides/omarchy/remote-disk-unlock`).
 
+### Tailscale CLI on the Macs (`tailscale`)
+`~/.local/bin/tailscale` (macOS only) runs Tailscale's CLI whichever variant is installed: Homebrew's open-source `tailscale` or the Standalone app's launcher in `/usr/local/bin` when present, otherwise the CLI inside the App Store app (`/Applications/Tailscale.app/Contents/MacOS/Tailscale`, which has no installer of its own). Omarchy and other Linux hosts use the packaged `/usr/bin/tailscale`. Over a plain `ssh host 'cmd'`, macOS's PATH is only `/usr/bin:/bin:/usr/sbin:/sbin`, so use `ssh host '~/.local/bin/tailscale status'` or a login shell (`ssh host zsh -lc 'tailscale status'`).
+
+| Command | Use |
+| :--- | :--- |
+| `tailscale status` | Peers, and how each is reached (`direct` or `relay`) |
+| `tailscale ping <host>` | Whether a peer answers through Tailscale, and by which path |
+| `tailscale debug prefs` | This machine's settings (Tailscale SSH, exit node, auto-update) |
+
 ### SSH Key Passphrase (`ssh-key-remember`)
 `ssh-key-remember` (`~/.local/bin`, every host) saves the `~/.ssh/id_rsa` passphrase in the machine's own keyring once, so the SSH agent unlocks the key by itself after every login and reboot instead of asking. On Omarchy it stores the entry GNOME keyring's SSH agent (`gcr-ssh-agent`) looks up, after checking the passphrase against the key; on macOS it runs `ssh-add --apple-use-keychain`, and `UseKeychain yes` plus `ssh-add --apple-load-keychain` in `~/.zprofile` read it back. Nothing goes into this repository. Run it in a terminal on the machine itself: macOS's Keychain is locked to SSH sessions. After every `chezmoi apply` the requirement check runs `--check` and warns while the passphrase is not saved.
 
