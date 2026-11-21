@@ -187,6 +187,13 @@ type = "shell"
 command = '"$HOME/.local/bin/herdr-equalize" "$HERDR_ACTIVE_PANE_ID"'
 description = "make panes equal"
 
+# Move the pane into another tab (tmux join-pane, prefix J in tmux.conf): a popup lists the tabs, herdr-join moves it.
+[[keys.command]]
+key = "prefix+shift+j"
+type = "popup"
+command = '"$HOME/.local/bin/herdr-join" "$HERDR_ACTIVE_PANE_ID"'
+description = "move pane to another tab"
+
 [ui]
 # set -g mouse on
 mouse_capture = true

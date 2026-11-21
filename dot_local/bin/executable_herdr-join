@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# herdr-join [PANE_ID]: tmux's join-pane for Herdr. Lists every other tab, in every workspace, and moves the pane into the
+# one picked: to the right of that tab's focused pane, half of it, focus following; the program keeps running. A tab
+# left without panes closes. Bound to prefix Shift+j as a popup in ~/.config/herdr/config.toml (tmux.conf binds J to
+# the same thing; cheatsheet: "tmux and Herdr Keys").
+#
+# Picks with fzf when it is installed and stdin is a terminal, else from a numbered list (a number on stdin). An empty
+# choice cancels. Needs jq. Design: docs/superpowers/specs/2026-11-21-herdr-join-design.md in the dotfiles repository.
+set -euo pipefail
+herdr=${HERDR_BIN_PATH:-herdr}
+
+fail() { # print the message; in a popup, wait so it can be read before the popup closes
+    echo "herdr-join: $*" >&2
+    if [ -t 0 ] && [ -t 2 ]; then
+        printf 'Press Enter to close. ' >&2
+        read -r _ || true
+    fi
+    exit 1
+}
+
+pane=${1:-${HERDR_ACTIVE_PANE_ID:-${HERDR_PANE_ID:-}}}
+[ -n "$pane" ] || fail "no pane id"
+
+here=$("$herdr" pane layout --pane "$pane" | jq -r '.result.layout.tab_id // empty' 2> /dev/null) || true
+[ -n "$here" ] || fail "cannot find the tab of pane $pane"
+tabs=$("$herdr" tab list) || fail "herdr tab list failed"
+workspaces=$("$herdr" workspace list) || fail "herdr workspace list failed"
+
+# One line per other tab: TAB_ID<TAB>workspace label  number[: label]  (n panes)
+lines=$(jq -r --arg here "$here" --argjson ws "$workspaces" '
+    ($ws.result.workspaces | map({key: .workspace_id, value: .label}) | from_entries) as $label
+    | .result.tabs[] | select(.tab_id != $here)
+    | "\(.tab_id)\t\($label[.workspace_id] // .workspace_id)  \(.number)\(if .label != (.number | tostring) then ": \(.label)" else "" end)  (\(.pane_count) pane\(if .pane_count == 1 then "" else "s" end))"' <<< "$tabs") \
+    || fail "cannot read Herdr's tab list"
+[ -n "$lines" ] || fail "no other tab to move the pane to"
+
+if [ -t 0 ] && command -v fzf > /dev/null 2>&1; then
+    target=$(fzf --delimiter='\t' --with-nth=2 --reverse --no-multi --prompt='Move pane to tab> ' <<< "$lines" | cut -f1) || true
+else
+    i=0
+    while IFS= read -r line; do
+        i=$((i + 1))
+        printf '%s) %s\n' "$i" "${line#*$'\t'}" >&2
+    done <<< "$lines"
+    printf 'Move pane to tab (number, Enter cancels): ' >&2
+    choice=
+    read -r choice || true
+    target=
+    if [ -n "$choice" ]; then
+        case "$choice" in *[!0-9]*) fail "'$choice' is not a number on the list" ;; esac
+        [ "$choice" -ge 1 ] && [ "$choice" -le "$i" ] || fail "'$choice' is not a number on the list"
+        target=$(sed -n "${choice}p" <<< "$lines" | cut -f1)
+    fi
+fi
+[ -n "$target" ] || exit 0
+
+reply=$("$herdr" pane move "$pane" --tab "$target" --split right --focus 2>&1) || true
+jq -e . > /dev/null 2>&1 <<< "$reply" || fail "Herdr did not move the pane: ${reply:-no answer}"
+error=$(jq -r '.error.message // empty' <<< "$reply")
+[ -z "$error" ] || fail "$error"
+[ "$(jq -r '.result.move_result.changed' <<< "$reply")" = true ] \
+    || fail "Herdr did not move the pane ($(jq -r '.result.move_result.reason // "no reason given"' <<< "$reply"))"

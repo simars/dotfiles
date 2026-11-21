@@ -246,6 +246,13 @@ for host in darwin omarchy; do
     check "$host herdr: prefix Shift+e runs herdr-equalize" 1 \
         "$(grep -A3 -xF 'key = "prefix+shift+e"' "$work/$host.herdr" | grep -c '^command = .*/\.local/bin/herdr-equalize')"
 done
+# tmux's join-pane: prefix Shift+j picks another tab and moves the pane there (tmux J, Herdr through herdr-join).
+for host in darwin omarchy; do
+    check "$host herdr: prefix Shift+j opens herdr-join in a popup" "type = \"popup\" 1" \
+        "$(grep -A3 -xF 'key = "prefix+shift+j"' "$work/$host.herdr" | grep '^type') $(grep -A3 -xF 'key = "prefix+shift+j"' "$work/$host.herdr" | grep -c '^command = .*/\.local/bin/herdr-join" "$HERDR_ACTIVE_PANE_ID"')"
+done
+check "tmux: prefix J picks a window and joins the pane to it, on the right" 1 \
+    "$(grep -cxF 'bind -N "Move pane into another window" J choose-tree -Zw "join-pane -h -t '"'%%'"'"' dot_config/tmux/tmux.conf)"
 if command -v jq > /dev/null 2>&1; then
     # A stub herdr: `pane layout` prints layout.<n>.json, `pane resize` logs its arguments and, unless the state dir
     # has a file named stuck, moves on to the next layout.
@@ -392,6 +399,48 @@ STUB
     check "herdr-layout: a second run at once is refused" "exit 1 1" "$(lay_run tiled) $(grep -c 'already running' "$lay/err")"
     kill "$live" 2> /dev/null; wait "$live" 2> /dev/null
     check "herdr-layout: a lock left by a run that died is taken over" "exit 0 0" "$(lay_run tiled) $(ls -d "$lay/state/herdr-layout/default_w1_t1.lock" 2> /dev/null | wc -l | tr -d ' ')"
+    # herdr-join: tmux's join-pane. The stub serves the pane's layout (tab w1:t1), tabs.json and workspaces.json, logs
+    # a move and answers it with move.json. Not a terminal here, so the script reads a number from stdin.
+    join="$work/herdr-join"; mkdir -p "$join"
+    cat > "$join/herdr" <<'STUB'
+#!/usr/bin/env bash
+d=$(dirname "$0")
+case "$1 $2" in
+    "pane layout") echo '{"result":{"layout":{"tab_id":"w1:t1","focused_pane_id":"p1","panes":[{"pane_id":"p1"},{"pane_id":"p2"}]}}}' ;;
+    "tab list") printf '{"result":{"tabs":%s}}\n' "$(cat "$d/tabs.json")" ;;
+    "workspace list") echo '{"result":{"workspaces":[{"workspace_id":"w1","label":"chezmoi"},{"workspace_id":"w2","label":"other"}]}}' ;;
+    "pane move") shift; echo "$*" >> "$d/calls"; cat "$d/move.json" ;;
+    *) exit 2 ;;
+esac
+STUB
+    chmod +x "$join/herdr"
+    join_tabs() { # join_tabs TAB_ID:LABEL:PANES...
+        local t
+        for t in "$@"; do
+            jq -nc --arg t "$(cut -d: -f1,2 <<< "$t")" --arg l "$(cut -d: -f3 <<< "$t")" --argjson n "${t##*:}" \
+                '{tab_id: $t, workspace_id: ($t | split(":")[0]), number: ($t | split(":t")[1] | tonumber), label: $l, pane_count: $n}'
+        done | jq -sc . > "$join/tabs.json"
+    }
+    join_run() { : > "$join/calls"; printf '%s\n' "$1" | HERDR_BIN_PATH="$join/herdr" bash dot_local/bin/executable_herdr-join ${2-p1} 2> "$join/err"; echo "exit $?"; }
+    join_calls() { paste -sd'|' "$join/calls"; }
+    echo '{"result":{"move_result":{"changed":true}}}' > "$join/move.json"
+    join_tabs w1:t1:1:2 w1:t2:2:1 w2:t1:logs:3
+    check "herdr-join lists every other tab, in every workspace, numbered" \
+        "1) chezmoi  2  (1 pane)|2) other  1: logs  (3 panes)" "$(join_run '' > /dev/null; grep -E '^[0-9]+\) ' "$join/err" | paste -sd'|')"
+    check "herdr-join moves the pane right of the picked tab's focused pane, focus following (tmux join-pane -h)" \
+        "exit 0 move p1 --tab w2:t1 --split right --focus" "$(join_run 2) $(join_calls)"
+    check "herdr-join: an empty choice cancels" "exit 0 " "$(join_run '') $(join_calls)"
+    check "herdr-join: a number not on the list is refused" "exit 1 " "$(join_run 9) $(join_calls)"
+    check "herdr-join: a choice that is not a number is refused" "exit 1 " "$(join_run x) $(join_calls)"
+    echo '{"error":{"code":"tab_not_found","message":"tab w1:t2 not found"}}' > "$join/move.json"
+    check "herdr-join shows Herdr's refusal" "exit 1 1" "$(join_run 1) $(grep -c 'tab w1:t2 not found' "$join/err")"
+    echo 'oops' > "$join/move.json"
+    check "herdr-join: an answer that is not JSON fails" "exit 1" "$(join_run 1)"
+    echo '{"result":{"move_result":{"changed":false,"reason":"same_tab"}}}' > "$join/move.json"
+    check "herdr-join: a move Herdr did not make fails" "exit 1 1" "$(join_run 1) $(grep -c 'same_tab' "$join/err")"
+    join_tabs w1:t1:1:2
+    check "herdr-join: no other tab, no move" "exit 1 1 " "$(join_run 1) $(grep -c 'no other tab' "$join/err") $(join_calls)"
+    check "herdr-join: no pane id" "exit 1" "$(HERDR_ACTIVE_PANE_ID='' HERDR_PANE_ID='' join_run 1 '')"
 fi
 check "requirement check wants Herdr 0.9.2 or later (multiple prefixes)" 1 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'version_ge "$herdr_version" 0.9.2')"
 # The stock-drift report runs on Omarchy only and never fails.

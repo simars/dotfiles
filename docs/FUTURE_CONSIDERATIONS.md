@@ -357,3 +357,5 @@ to try the setup as it is first. Fixes considered, none made:
   (`docs/superpowers/specs/2026-11-21-herdr-layouts-design.md`). Ghostty cannot rearrange splits (no action, no IPC);
   a key that opens a new tab already split was set aside, since it starts new shells. Revisit if Ghostty adds split
   swap or move actions.
+* **Move a pane into another tab**: `Ctrl-b Shift-j` in tmux (`choose-tree` + `join-pane -h`) and Herdr (popup +
+  `herdr-join`) since 2026-11-21 (`docs/superpowers/specs/2026-11-21-herdr-join-design.md`). Ghostty cannot move a split.

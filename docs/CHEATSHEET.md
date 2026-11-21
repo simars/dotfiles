@@ -495,6 +495,7 @@ Claude Code runs its Bash tool in bash, not zsh. Claude writes bash, and zsh dif
 | `tm` | Attach to, or create, one fixed session called `main` | Alias for `tmux new-session -A -s main` (in `~/.aliases`, so bash has it too) |
 | `Ctrl-b d` | Detach and leave the session running | `tmux ls` lists sessions, `tat` re-attaches |
 | `Ctrl-b !` | Break the current pane out into its own window | Press `Ctrl-b`, release, then `Shift-1`. herdr binds the same keys to move the pane into a new tab |
+| `Ctrl-b J` | Move the current pane into another window you pick | Press `Ctrl-b`, release, then `Shift-j`. The program keeps running; a window left empty closes. herdr binds the same keys for its tabs |
 
 ### tmux and Herdr Keys (macOS and Omarchy)
 One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's old prefix) in both; Herdr needs 0.9.2 or later for `Ctrl-Space`, in its running server too (the apply's to-do list says when the server is older). Press the prefix, release, then the key. `Alt` chords need Option-as-Meta in a Mac terminal. On Omarchy, Super+Alt+K and Super+Ctrl+K list every key. New panes open zsh in both (tmux `default-shell`, Herdr `default_shell`), whatever shell started the server.
@@ -510,6 +511,7 @@ One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's o
 | `z` / `;` / `o` | Zoom / last pane / next pane | Same |
 | `Shift-e` | Spread the current pane and its neighbours evenly (tmux `E`) | Make every pane in the tab equal, by `herdr-equalize` (Herdr has no such action; the script evens each split's ratio), as Ghostty's leader `Shift-e` does |
 | `!` | Break pane into a new window | Move pane into a new tab |
+| `Shift-j` | Move the pane into another window: pick it in `choose-tree`, the pane joins on the right (`join-pane -h`) | Same, in a popup that lists every other tab of every workspace (fzf, or a numbered list without it), by `herdr-join`; `Esc` or Enter alone cancels |
 | `Space` / `Alt-1`..`7` | Next preset layout / pick one: side by side, stacked, main on top, main on the left, tiled, main at the bottom, main on the right | Same, by `herdr-layout` (it rebuilds the tab through a temporary tab; programs keep running) |
 | `Ctrl-o` / `Alt-o` | Rotate the panes forward / back (the next pane becomes the main pane; focus stays on the place) | Same, by `herdr-layout` |
 | `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab (asks first) |
