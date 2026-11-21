@@ -406,7 +406,10 @@ STUB
 #!/usr/bin/env bash
 d=$(dirname "$0")
 case "$1 $2" in
-    "pane layout") echo '{"result":{"layout":{"tab_id":"w1:t1","focused_pane_id":"p1","panes":[{"pane_id":"p1"},{"pane_id":"p2"}]}}}' ;;
+    "pane layout") if [ -e "$d/layout.$4.json" ]; then cat "$d/layout.$4.json"
+                   else echo '{"result":{"layout":{"tab_id":"w1:t1","focused_pane_id":"p1","zoomed":false}}}'; fi ;;
+    "pane list") echo '{"result":{"panes":[{"pane_id":"p1","tab_id":"w1:t1"},{"pane_id":"q1","tab_id":"w2:t1"},{"pane_id":"q2","tab_id":"w2:t1"}]}}' ;;
+    "pane zoom") shift; echo "$*" >> "$d/calls"; echo '{}' ;;
     "tab list") printf '{"result":{"tabs":%s}}\n' "$(cat "$d/tabs.json")" ;;
     "workspace list") echo '{"result":{"workspaces":[{"workspace_id":"w1","label":"chezmoi"},{"workspace_id":"w2","label":"other"}]}}' ;;
     "pane move") shift; echo "$*" >> "$d/calls"; cat "$d/move.json" ;;
@@ -430,6 +433,17 @@ STUB
     check "herdr-join moves the pane right of the picked tab's focused pane, focus following (tmux join-pane -h)" \
         "exit 0 move p1 --tab w2:t1 --split right --focus" "$(join_run 2) $(join_calls)"
     check "herdr-join: an empty choice cancels" "exit 0 " "$(join_run '') $(join_calls)"
+    # Herdr refuses a move into or out of a zoomed tab (reason zoomed_tab); tmux's join-pane unzooms. Unzoom through the
+    # tab's focused pane, so focus stays where it was.
+    echo '{"result":{"layout":{"tab_id":"w2:t1","focused_pane_id":"q2","zoomed":true}}}' > "$join/layout.q1.json"
+    check "herdr-join unzooms the picked tab through its focused pane first" \
+        "exit 0 zoom --pane q2 --off|move p1 --tab w2:t1 --split right --focus" "$(join_run 2) $(join_calls)"
+    rm "$join/layout.q1.json"
+    echo '{"result":{"layout":{"tab_id":"w1:t1","focused_pane_id":"p1","zoomed":true}}}' > "$join/layout.p1.json"
+    check "herdr-join unzooms the pane's own tab first" "exit 0 zoom --pane p1 --off|move p1 --tab w2:t1 --split right --focus" \
+        "$(join_run 2) $(join_calls)"
+    check "herdr-join: a cancel leaves the zoom alone" "exit 0 " "$(join_run '') $(join_calls)"
+    rm "$join/layout.p1.json"
     check "herdr-join: a number not on the list is refused" "exit 1 " "$(join_run 9) $(join_calls)"
     check "herdr-join: a choice that is not a number is refused" "exit 1 " "$(join_run x) $(join_calls)"
     echo '{"error":{"code":"tab_not_found","message":"tab w1:t2 not found"}}' > "$join/move.json"

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # herdr-join [PANE_ID]: tmux's join-pane for Herdr. Lists every other tab, in every workspace, and moves the pane into the
-# one picked: to the right of that tab's focused pane, half of it, focus following; the program keeps running. A tab
-# left without panes closes. Bound to prefix Shift+j as a popup in ~/.config/herdr/config.toml (tmux.conf binds J to
-# the same thing; cheatsheet: "tmux and Herdr Keys").
+# one picked: to the right of that tab's focused pane, half of it, focus following; the program keeps running. Either
+# tab is unzoomed first, as tmux does. A tab left without panes closes, and so does a workspace left without tabs.
+# Bound to prefix Shift+j as a popup in ~/.config/herdr/config.toml (tmux.conf binds J to the same thing; cheatsheet:
+# "tmux and Herdr Keys").
 #
 # Picks with fzf when it is installed and stdin is a terminal, else from a numbered list (a number on stdin). An empty
-# choice cancels. Needs jq. Design: docs/superpowers/specs/2026-11-21-herdr-join-design.md in the dotfiles repository.
+# choice (fzf: Esc; the list: Enter alone) cancels. Needs jq. Design:
+# docs/superpowers/specs/2026-11-21-herdr-join-design.md in the dotfiles repository.
 set -euo pipefail
 herdr=${HERDR_BIN_PATH:-herdr}
 
@@ -53,6 +55,18 @@ else
     fi
 fi
 [ -n "$target" ] || exit 0
+
+# Herdr refuses a move into or out of a zoomed tab (reason zoomed_tab); tmux's join-pane unzooms both. Unzoom through
+# the tab's focused pane: --off on another pane would also move the focus to it.
+unzoom() { # unzoom PANE: unzoom the tab holding PANE, if it is zoomed
+    local layout
+    layout=$("$herdr" pane layout --pane "$1" 2> /dev/null) || return 0
+    [ "$(jq -r '.result.layout.zoomed' <<< "$layout" 2> /dev/null)" = true ] || return 0
+    "$herdr" pane zoom --pane "$(jq -r '.result.layout.focused_pane_id' <<< "$layout")" --off > /dev/null 2>&1 || true
+}
+unzoom "$pane"
+in_target=$("$herdr" pane list | jq -r --arg t "$target" '[.result.panes[] | select(.tab_id == $t)][0].pane_id // empty' 2> /dev/null) || true
+[ -z "$in_target" ] || unzoom "$in_target"
 
 reply=$("$herdr" pane move "$pane" --tab "$target" --split right --focus 2>&1) || true
 jq -e . > /dev/null 2>&1 <<< "$reply" || fail "Herdr did not move the pane: ${reply:-no answer}"

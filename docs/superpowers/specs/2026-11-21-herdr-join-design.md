@@ -21,7 +21,7 @@ key at all.
 * Key: `Ctrl-b Shift-j` (or `Ctrl-Space Shift-j`) in both; free in both configs. "j" for join.
 * Placement, both: to the right of the target tab's focused pane, half of it (tmux `join-pane -h`; Herdr `--split
   right`, Herdr's default ratio 0.5), focus follows the pane into its tab. A tab left without panes closes (tmux closes
-  the window, Herdr the tab; seen in Herdr 0.9.5).
+  the window, Herdr the tab, and the workspace when it has no tab left; seen in Herdr 0.9.5).
 * tmux: `bind -N "Move pane into another window" J choose-tree -Zw "join-pane -h -t '%%'"`. Picking the pane's own
   window is tmux's own error message.
 * Herdr: `dot_local/bin/executable_herdr-join [PANE_ID]` (pane defaults to `$HERDR_ACTIVE_PANE_ID`, then
@@ -43,3 +43,16 @@ key at all.
 ## Left to the builder
 
 Popup size (Herdr's default), the fzf prompt and colours, the cheatsheet and testing-guide wording.
+
+## Changed after the final review
+
+* **Zoomed tabs (Important).** Herdr 0.9.5 refuses a move into or out of a zoomed tab (`changed: false, reason:
+  zoomed_tab`); tmux's `join-pane` unzooms. `herdr-join` now unzooms both tabs after the pick, through each tab's
+  focused pane (`pane zoom --off` on another pane also moves the focus to it); the target tab's pane comes from
+  `herdr pane list`, which covers every workspace. A cancel leaves the zoom alone.
+* **Docs:** in fzf, Enter picks; only `Esc` cancels there (Enter alone cancels the numbered list). A workspace left
+  without tabs closes too.
+
+Deferred minors: a tab or newline in a tab or workspace label garbles that line in the list (the move still targets
+the right id, except for a newline's extra line); stderr is read together with stdout, so a non-JSON warning beside a
+good reply would be reported as a failure; no automated test drives the fzf path (checked by pressing the keys).
