@@ -23,7 +23,8 @@ bash + jq script driven by Herdr's CLI and bound as a `[[keys.command]]`.
 - Multiple `chain=` lines after one binding must survive the kv awk (kept with their binding, idempotent).
 - Mac and Omarchy leader blocks stay identical apart from the leader key.
 - `herdr-equalize` on a tab with one pane (no splits) exits 0 and does nothing.
-- `herdr-equalize` when a resize does not move the ratio (zoomed tab) fails with a message, no loop.
+- `herdr-equalize` when a resize does not move the ratio (Herdr keeps ratios within 0.1..0.9) fails with a message, no
+  loop. (A zoomed tab is no such case: Herdr 0.9.5 resizes the hidden layout while zoomed, found in the final review.)
 - Herdr's custom command runs on the server: use `$HOME/.local/bin/herdr-equalize`, `HERDR_BIN_PATH` for herdr.
 
 ---

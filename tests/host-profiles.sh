@@ -263,11 +263,27 @@ STUB
         "$(pane p1 0 40)" "$(pane p2 40 40)" "$(pane p3 80 40)" > "$eq/layout.1.json"
     rm -f "$eq/stuck"
     check "herdr-equalize: evens three columns with one resize" "exit 0" "$(eq_run)"
-    check "herdr-equalize: moves the root split's boundary pane left by a sixth" "1 --pane p1 --direction left --amount 0.1666" \
+    check "herdr-equalize: shrinks the root split through the pane after it, by a sixth" "1 --pane p2 --direction left --amount 0.1666" \
         "$(wc -l < "$eq/calls" | tr -d ' ') $(cut -c1-42 "$eq/calls")"
     touch "$eq/stuck"
     check "herdr-equalize: a split that will not move fails, no loop" "exit 1 1 1" \
         "$(eq_run) $(wc -l < "$eq/calls" | tr -d ' ') $(grep -c 'stayed at' "$eq/err")"
+    rm -f "$eq/stuck"
+    # A|(B|C) at 1/3 and 0.6: the inner split must shrink. Herdr moves the split at the named edge of the pane, so the
+    # pane after the boundary (p3) moves left; p2 moving left would move the root split instead.
+    printf '{"panes":[%s,%s,%s],"splits":[{"id":"split_0_root","direction":"right","ratio":0.33333334,"rect":{"x":0,"y":0,"width":120,"height":40}},{"id":"split_1_1","direction":"right","ratio":0.6,"rect":{"x":40,"y":0,"width":80,"height":40}}]}' \
+        "$(pane p1 0 40)" "$(pane p2 40 48)" "$(pane p3 88 32)" > "$eq/layout.0.json"
+    check "herdr-equalize: a shrinking inner split moves through the pane after it" "exit 0 --pane p3 --direction left" \
+        "$(eq_run) $(cut -c1-26 "$eq/calls")"
+    # Herdr moves a ratio at most 0.5 per call: 0.9 to 1/3 goes in steps, and stops when the ratio arrives.
+    printf '{"panes":[%s,%s,%s],"splits":[{"id":"split_0_root","direction":"right","ratio":0.9,"rect":{"x":0,"y":0,"width":120,"height":40}},{"id":"split_1_1","direction":"right","ratio":0.5,"rect":{"x":108,"y":0,"width":12,"height":40}}]}' \
+        "$(pane p1 0 108)" "$(pane p2 108 6)" "$(pane p3 114 6)" > "$eq/layout.0.json"
+    printf '{"panes":[%s,%s,%s],"splits":[{"id":"split_0_root","direction":"right","ratio":0.45,"rect":{"x":0,"y":0,"width":120,"height":40}},{"id":"split_1_1","direction":"right","ratio":0.5,"rect":{"x":54,"y":0,"width":66,"height":40}}]}' \
+        "$(pane p1 0 54)" "$(pane p2 54 33)" "$(pane p3 87 33)" > "$eq/layout.1.json"
+    printf '{"panes":[%s,%s,%s],"splits":[{"id":"split_0_root","direction":"right","ratio":0.33333334,"rect":{"x":0,"y":0,"width":120,"height":40}},{"id":"split_1_1","direction":"right","ratio":0.5,"rect":{"x":40,"y":0,"width":80,"height":40}}]}' \
+        "$(pane p1 0 40)" "$(pane p2 40 40)" "$(pane p3 80 40)" > "$eq/layout.2.json"
+    check "herdr-equalize: a big change goes in steps of at most 0.45" "exit 0 2 0.45" \
+        "$(eq_run) $(wc -l < "$eq/calls" | tr -d ' ') $(head -1 "$eq/calls" | awk '{print $NF}')"
     rm -f "$eq/stuck"
     printf '{"panes":[%s],"splits":[]}' "$(pane p1 0 120)" > "$eq/layout.0.json"
     check "herdr-equalize: one pane, nothing to do" "exit 0 0" "$(eq_run) $(wc -l < "$eq/calls" | tr -d ' ')"
@@ -749,6 +765,7 @@ check "Ghostty on Omarchy: Super-b opens the term table" 1 "$(grep -cxF 'keybind
 check "Ghostty on Omarchy: any other key after the leader closes it, swallowed" 1 "$(grep -cxF 'keybind = term/catch_all=deactivate_key_table' <<< "$ghostty_lead")"
 # A bare Shift press is a key event too: it must not reach catch_all and close the table before Shift+5 (%) arrives.
 check "Ghostty on Omarchy: bare Shift presses keep the leader open" 4 "$(grep -cxE 'keybind = term/(shift\+)?shift_(left|right)=ignore' <<< "$ghostty_lead")"
+check "Ghostty on Omarchy: bare Alt / Option presses keep the leader open for Alt+arrows" 4 "$(grep -cxE 'keybind = term/(alt\+)?alt_(left|right)=ignore' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: shifted tmux keys spelled with Shift (Ghostty matches modifiers exactly)" "4 0" \
     "$(grep -cE '^keybind = term/shift\+(digit_5|quote|digit_7|slash)=' <<< "$ghostty_lead") $(grep -cE '^keybind = term/[%"&?]=' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: every leader action closes the table after it" "" \

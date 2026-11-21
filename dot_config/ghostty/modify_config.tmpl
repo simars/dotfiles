@@ -26,7 +26,7 @@ BLOCK+=$'\nconfirm-close-surface = true'
 # tabs and splits (cheatsheet: "Terminal Tabs and Splits"). The leader opens key table `term`; every action closes it
 # again (chain=deactivate_key_table), and any other key closes it and is swallowed, never typed into the program.
 # Ghostty matches modifiers exactly, so tmux's shifted keys are written with shift (% is shift+digit_5), and a bare
-# Shift press, itself a key event, is ignored so it cannot close the table before the shifted key arrives. As after
+# Shift or Alt press, itself a key event, is ignored so it cannot close the table before Shift+5 or Alt+arrow arrives. As after
 # tmux's and Herdr's prefix, r reloads and Alt+arrows resize (40 px, about tmux's 5 cells); Alt+arrows then open table
 # `term_resize`, where h j k l / arrows (20 px) and Alt+arrows (40 px) keep resizing until Esc or Enter. Never
 # Ctrl+arrows: macOS takes them (Spaces, Mission Control) before Ghostty sees them.
@@ -34,7 +34,9 @@ LEADER={{ if eq .chezmoi.os "darwin" }}cmd+b{{ else }}super+b{{ end }}
 lead() { BLOCK+=$'\n'"keybind = $1=$2"; }
 act() { lead "term/$1" "$2"; BLOCK+=$'\nkeybind = chain=deactivate_key_table'; }
 lead "$LEADER" activate_key_table:term
-for shift_key in shift_left shift+shift_left shift_right shift+shift_right; do lead "term/$shift_key" ignore; done
+for mod_key in shift_left shift+shift_left shift_right shift+shift_right alt_left alt+alt_left alt_right alt+alt_right; do
+    lead "term/$mod_key" ignore
+done
 lead term/catch_all deactivate_key_table
 lead term/escape deactivate_key_table
 act c new_tab

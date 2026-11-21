@@ -3,15 +3,15 @@
 # Herdr has no such action. Bound to prefix Shift+e in ~/.config/herdr/config.toml (cheatsheet: "tmux and Herdr Keys").
 # Each split's ratio becomes its first side's share of the panes across that axis (a split the other way counts its
 # wider side), outermost split first, so every column and row ends up the same size. Herdr's `pane resize --amount`
-# moves the ratio of the split at that edge of a pane, so the script resizes the pane just inside each split's
-# boundary and checks the ratio moved. Split ids carry their place in the tree (split_<n>_<path>: root, then 0 for the
-# first child and 1 for the second), as in Herdr 0.9.5. Needs jq.
+# moves the ratio of the split at that edge of a pane, so the script resizes a pane beside each split's boundary
+# (before it to grow, after it to shrink) and checks the ratio moved. Split ids carry their place in the tree
+# (split_<n>_<path>: root, then 0 for the first child and 1 for the second), as in Herdr 0.9.5. Needs jq.
 set -euo pipefail
 herdr=${HERDR_BIN_PATH:-herdr}
 pane=${1:-${HERDR_ACTIVE_PANE_ID:-${HERDR_PANE_ID:-}}}
 [ -n "$pane" ] || { echo "herdr-equalize: no pane id" >&2; exit 1; }
 layout() { "$herdr" pane layout --pane "$pane" | jq '.result.layout'; }
-# Next split to fix: shallowest whose ratio is off target. Prints "pane dir amount id target" or nothing.
+# Next split to fix: shallowest whose ratio is off target. Prints "pane dir amount id ratio" or nothing.
 next_fix() {
   jq -r '
     def path: (.id | split("_")[2]) | if . == "root" then "" else . end;
@@ -27,24 +27,32 @@ next_fix() {
       | select(((.ratio - .target) | fabs) > 0.01) ]
     | sort_by(.depth) | first // empty
     | . as $s
-    | (if $s.direction == "right"
-         then {x: ($s.rect.x + (($s.ratio * $s.rect.width) | floor) - 1), y: $s.rect.y}
-         else {x: $s.rect.x, y: ($s.rect.y + (($s.ratio * $s.rect.height) | floor) - 1)} end) as $pt
-    | first($L.panes[] | select(.rect.x <= $pt.x and $pt.x < .rect.x + .rect.width
-                                and .rect.y <= $pt.y and $pt.y < .rect.y + .rect.height)) as $leaf
+    # Herdr moves the split at the named edge of a pane: grow through a pane before the boundary (right / down), shrink
+    # through a pane after it (left / up). Panes are found by their centres, so gaps between panes do not matter.
     | ($s.target - $s.ratio) as $d
+    | (if $s.direction == "right"
+         then {lo: "x", len: "width", across: "y", at: $s.rect.y, b: ($s.rect.x + $s.ratio * $s.rect.width)}
+         else {lo: "y", len: "height", across: "x", at: $s.rect.x, b: ($s.rect.y + $s.ratio * $s.rect.height)} end) as $ax
+    | [ $L.panes[] | .rect as $r
+        | select($r.x >= $s.rect.x and $r.x + $r.width <= $s.rect.x + $s.rect.width
+                 and $r.y >= $s.rect.y and $r.y + $r.height <= $s.rect.y + $s.rect.height)
+        | select($r[$ax.across] <= $ax.at and $ax.at < $r[$ax.across] + $r[if $ax.across == "x" then "width" else "height" end])
+        | . + {mid: ($r[$ax.lo] + $r[$ax.len] / 2)} ] as $row
+    | (if $d > 0 then ($row | map(select(.mid < $ax.b)) | max_by(.mid))
+       else ($row | map(select(.mid > $ax.b)) | min_by(.mid)) end) as $leaf
     | [$leaf.pane_id,
        (if $s.direction == "right" then (if $d > 0 then "right" else "left" end)
         else (if $d > 0 then "down" else "up" end) end),
-       ($d | fabs), $s.id, $s.target] | @tsv'
+       ([($d | fabs), 0.45] | min), $s.id, $s.ratio] | @tsv'
 }
-for _ in $(seq 1 32); do
+# Herdr moves a ratio at most 0.5 per call, so a big change takes several passes; each pass must move its split.
+for _ in $(seq 1 64); do
   fix=$(layout | next_fix)
   [ -n "$fix" ] || exit 0
-  read -r p dir amount id target <<<"$fix"
+  read -r p dir amount id before <<<"$fix"
   "$herdr" pane resize --pane "$p" --direction "$dir" --amount "$amount" >/dev/null
   now=$(layout | jq -r --arg id "$id" '.splits[] | select(.id == $id) | .ratio')
-  awk -v a="$now" -v t="$target" 'BEGIN { exit !((a - t) ^ 2 < 0.0001) }' \
-    || { echo "herdr-equalize: split $id stayed at $now (wanted $target)" >&2; exit 1; }
+  awk -v a="$now" -v b="$before" 'BEGIN { exit !((a - b) ^ 2 > 0.00000001) }' \
+    || { echo "herdr-equalize: split $id stayed at $now (Herdr keeps a ratio between 0.1 and 0.9)" >&2; exit 1; }
 done
-echo "herdr-equalize: gave up after 32 splits" >&2; exit 1
+echo "herdr-equalize: gave up after 64 resizes" >&2; exit 1

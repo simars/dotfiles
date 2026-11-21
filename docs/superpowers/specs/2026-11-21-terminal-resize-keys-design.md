@@ -32,7 +32,9 @@ leader has no `Alt+arrows` step resize, and only tmux and Ghostty can make panes
   first, sets its ratio to the share of panes across that axis on its first side (a split along the other axis counts
   its wider side), so every column and row is the same size, like Ghostty's equalize. It sets a ratio with
   `herdr pane resize --amount <delta>` on the pane at the split's boundary, checks the ratio moved, and fails with a
-  message otherwise. Bound as a Herdr `[[keys.command]]` on `prefix+shift+e`.
+  message otherwise. Herdr moves the split at the named edge of the pane, so a split grows through a pane before its
+  boundary (`right` / `down`) and shrinks through one after it (`left` / `up`); Herdr moves a ratio at most 0.5 per
+  call, so steps are capped at 0.45 (both found in the final review). Bound as a Herdr `[[keys.command]]` on `prefix+shift+e`.
 * Spike (2026-11-21, Herdr 0.9.5, a separate `--session`): `--amount` is a ratio delta on the split at that edge of
   the pane; a 3-column and a 7-pane mixed layout became even; a second run changed nothing. Split ids encode the tree
   path (`split_<n>_<path>`, `root`, then `0` first child / `1` second); the script depends on that, and on jq.

@@ -508,7 +508,7 @@ One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's o
 | `%` `v` (or `Alt-Shift-Enter`) | Split, new pane to the right | Same |
 | `x` (or `Alt-Esc`) | Kill pane (asks first) | Close pane (asks first) |
 | `z` / `;` / `o` | Zoom / last pane / next pane | Same |
-| `Shift-e` | Make panes equal (tmux `E`) | Same, by `herdr-equalize` (Herdr has no such action; the script evens each split's ratio) |
+| `Shift-e` | Spread the current pane and its neighbours evenly (tmux `E`) | Make every pane in the tab equal, by `herdr-equalize` (Herdr has no such action; the script evens each split's ratio), as Ghostty's leader `Shift-e` does |
 | `!` | Break pane into a new window | Move pane into a new tab |
 | `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab (asks first) |
 | `1`..`9` (or `Alt-1`..`9`), `n` `p` | Go to window | Go to tab |
