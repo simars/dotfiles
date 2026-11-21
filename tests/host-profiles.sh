@@ -984,42 +984,19 @@ check "omarchy requirement check leaves the zsh plugins to the package check" 0 
 check "darwin requirement check warns about missing zsh plugins" 1 \
     "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'for zsh_plugin in zsh-autosuggestions zsh-syntax-highlighting')"
 
-# ssh: every host gets the own machines under <machine>[-unlock].<how> (bare name = .tailnet; works-unlock = .ddns).
+# ssh: the public config names no own machine. They come from ~/.ssh/config.d/*.conf in the private ~/.cfg repo
+# (checked there by ~/guides/ssh-reachability/check.sh); this one only includes that folder, first.
 for host in $hosts; do
     render "$host" private_dot_ssh/private_config.tmpl > "$work/$host.ssh_config"
-    # ssh -G here may not know macOS's UseKeychain; resolve from a copy without it.
     cfg="$work/$host.ssh_config.resolve"
-    grep -v 'UseKeychain' "$work/$host.ssh_config" > "$cfg"
-    # Resolve an alias the way ssh does (first value wins), from the rendered file only.
-    for pair in works=simars-works works.tailnet=simars-works works.local=simars-works.local works.lan=192.168.68.146 \
-        works.ddns=simars.ddns.net works.tplink=simars.tplinkdns.com \
-        works-unlock=simars.ddns.net works-unlock.ddns=simars.ddns.net works-unlock.tplink=simars.tplinkdns.com \
-        works-unlock.lan=192.168.68.146 mbp-work=simars-macbook-work mbp-work.tailnet=simars-macbook-work \
-        mbp-work.local=simars-macbook-work.local mbp=simar-mbp mbp.tailnet=simar-mbp mbp.local=simar-mbp.local \
-        macstudio=macstudio macstudio.tailnet=macstudio macstudio.local=macstudio.local; do
-        alias=${pair%%=*}
-        check "$host ssh $alias reaches ${pair#*=}" "${pair#*=}" "$(ssh -G -F "$cfg" "$alias" 2> /dev/null | awk '$1=="hostname"{print $2}')"
-    done
-    # One host key per machine, whichever path; the unlock screen has its own.
-    for pair in works.lan=works works.tplink=works mbp-work.local=mbp-work mbp=mbp macstudio.local=macstudio \
-        works-unlock.tplink=works-unlock; do
-        check "$host ssh ${pair%%=*} checks host key ${pair#*=}" "${pair#*=}" "$(ssh -G -F "$cfg" "${pair%%=*}" 2> /dev/null | awk '$1=="hostkeyalias"{print $2}')"
-    done
-    check "$host ~/.ssh/config has no unlock path that can't exist at boot" 0 "$(grep -cE '^Host .*works-unlock\.(tailnet|local)' "$cfg")"
-    check "$host ~/.ssh/config keeps none of the old simar- names" 0 "$(grep -cE '^Host .*(simar-works|simar-mbp)' "$cfg")"
-done
-# Agent forwarding goes to the own machines only, never to every host, GitHub or the work stanza.
-for host in $hosts; do
-    check "$host ~/.ssh/config forwards the agent to the four own machines" 4 "$(grep -c '^    ForwardAgent yes$' "$work/$host.ssh_config")"
-    check "$host ~/.ssh/config never forwards the agent to every host or GitHub" 0 \
-        "$(awk '/^Host /{h=$2} /ForwardAgent yes/ && (h=="*" || h=="github.com" || h ~ /internal/)' "$work/$host.ssh_config" | wc -l | tr -d ' ')"
-done
-# works' disk-unlock screen: root on port 2222, its own host key alias, never the agent, on every path.
-for host in $hosts; do
-    for alias in works-unlock works-unlock.ddns works-unlock.tplink works-unlock.lan; do
-        check "$host $alias connects as root on 2222 with no agent and a tty" "root 2222 no true" \
-            "$(ssh -G -F "$work/$host.ssh_config.resolve" "$alias" 2> /dev/null | awk '$1=="user"{u=$2} $1=="port"{p=$2} $1=="forwardagent"{f=$2} $1=="requesttty"{t=$2} END{print u, p, f, t}')"
-    done
+    grep -v 'UseKeychain' "$work/$host.ssh_config" > "$cfg" # ssh -G here may not know macOS's UseKeychain
+    check "$host ~/.ssh/config includes config.d/*.conf before any Host block" "Include config.d/*.conf" \
+        "$(grep -m1 -E '^(Include|Host) ' "$work/$host.ssh_config")"
+    check "$host ~/.ssh/config names no own machine, tailnet, DDNS name or home address" 0 \
+        "$(grep -ciE 'ts\.net|ddns|tplinkdns|192\.168\.|\.local\b|HostKeyAlias|ProxyJump|^Host .*(works|mbp|macstudio)' "$work/$host.ssh_config")"
+    check "$host ~/.ssh/config never forwards the agent" 0 "$(grep -ci 'ForwardAgent yes' "$work/$host.ssh_config")"
+    check "$host ssh github.com goes to ssh.github.com:443 as git" "ssh.github.com 443 git" \
+        "$(ssh -G -F "$cfg" github.com 2> /dev/null | awk '$1=="hostname"{h=$2} $1=="port"{p=$2} $1=="user"{u=$2} END{print h, p, u}')"
 done
 check "omarchy ~/.ssh/config has no work stanza" 0 "$(render omarchy private_dot_ssh/private_config.tmpl | grep -c 'internal')"
 
