@@ -511,7 +511,7 @@ One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's o
 | `Shift-e` | Spread the current pane and its neighbours evenly (tmux `E`) | Make every pane in the tab equal, by `herdr-equalize` (Herdr has no such action; the script evens each split's ratio), as Ghostty's leader `Shift-e` does |
 | `!` | Break pane into a new window | Move pane into a new tab |
 | `Space` / `Alt-1`..`7` | Next preset layout / pick one: side by side, stacked, main on top, main on the left, tiled, main at the bottom, main on the right | Same, by `herdr-layout` (it rebuilds the tab through a temporary tab; programs keep running) |
-| `Ctrl-o` / `Alt-o` | Rotate the panes forward / back (the next pane becomes the main pane) | Same, by `herdr-layout` |
+| `Ctrl-o` / `Alt-o` | Rotate the panes forward / back (the next pane becomes the main pane; focus stays on the place) | Same, by `herdr-layout` |
 | `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab (asks first) |
 | `1`..`9` (or `Alt-1`..`9`), `n` `p` | Go to window | Go to tab |
 | `Alt-Left` / `Alt-Right` | Not bound (Omarchy's stock: previous / next window); passed to the pane, where zsh jumps a word | Same, for tabs |

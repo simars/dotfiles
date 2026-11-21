@@ -320,18 +320,24 @@ STUB
     lay_calls() { paste -sd'|' "$lay/calls"; }
     rm -rf "$lay/state" "$lay/fail-move"
     lay_set 160 p1 false p1 p2 p3
-    check "herdr-layout rotate-up: each pane one place back, the first goes last (tmux C-o)" \
-        "exit 0 swap --source-pane p1 --target-pane p2|swap --source-pane p1 --target-pane p3" "$(lay_run rotate-up) $(lay_calls)"
+    # Herdr focuses a swap's source pane; tmux keeps focus on the place, so the pane rotated into it gets focus: a pair
+    # of swaps with that pane as source puts the panes back and focuses it.
+    check "herdr-layout rotate-up: each pane one place back, the first goes last, focus stays on the place (tmux C-o)" \
+        "exit 0 swap --source-pane p1 --target-pane p2|swap --source-pane p1 --target-pane p3|swap --source-pane p2 --target-pane p3|swap --source-pane p2 --target-pane p3" "$(lay_run rotate-up) $(lay_calls)"
+    rm -rf "$lay/state"; lay_set 160 p2 false p1 p2 p3
+    check "herdr-layout rotate-up: focus goes to the pane rotated into the focused place" \
+        "swap --source-pane p3 --target-pane p2|swap --source-pane p3 --target-pane p2" "$(lay_run rotate-up >/dev/null; sed -n '3,4p' "$lay/calls" | paste -sd'|')"
+    lay_set 160 p1 false p1 p2 p3
     rm -rf "$lay/state"
-    check "herdr-layout rotate-down: the last pane comes first (tmux M-o)" \
+    check "herdr-layout rotate-down: the last pane comes first, already focused (tmux M-o)" \
         "exit 0 swap --source-pane p3 --target-pane p2|swap --source-pane p3 --target-pane p1" "$(lay_run rotate-down) $(lay_calls)"
     rm -rf "$lay/state"
     check "herdr-layout even-horizontal: out to a temporary tab, back side by side, equal" \
         "exit 0 move p2 --new-tab --no-focus|move p3 --tab w1:t9 --split right --target-pane p2 --no-focus|move p2 --tab w1:t1 --split right --target-pane p1 --ratio 0.3333 --no-focus|move p3 --tab w1:t1 --split right --target-pane p2 --ratio 0.5000 --no-focus" \
         "$(lay_run even-horizontal) $(lay_calls)"
-    check "herdr-layout remembers the preset for next" "even-horizontal" "$(cat "$lay/state/herdr-layout/w1_t1.layout")"
+    check "herdr-layout remembers the preset for next" "even-horizontal" "$(cat "$lay/state/herdr-layout/default_w1_t1.layout")"
     check "herdr-layout next: the preset after the last one (even-vertical stacks)" "exit 0 2 even-vertical" \
-        "$(lay_run next) $(grep -c -- '--split down' "$lay/calls") $(cat "$lay/state/herdr-layout/w1_t1.layout")"
+        "$(lay_run next) $(grep -c -- '--split down' "$lay/calls") $(cat "$lay/state/herdr-layout/default_w1_t1.layout")"
     lay_set 160 p3 false p1 p2 p3 p4
     check "herdr-layout main-vertical: main 80 of 160 columns, the rest stacked, focus kept" \
         "exit 0 move p2 --tab w1:t1 --split right --target-pane p1 --ratio 0.5000 --no-focus|move p3 --tab w1:t1 --split down --target-pane p2 --ratio 0.3333 --focus|move p4 --tab w1:t1 --split down --target-pane p3 --ratio 0.5000 --no-focus" \
@@ -341,22 +347,29 @@ STUB
         "exit 0 move p3 --new-tab --no-focus|move p1 --tab w1:t9 --split right --target-pane p3 --no-focus|move p1 --tab w1:t1 --split right --target-pane p2 --ratio 0.6000 --focus|move p3 --tab w1:t1 --split down --target-pane p2 --ratio 0.5000 --no-focus" \
         "$(lay_run main-vertical-mirrored) $(lay_calls)"
     lay_set 160 p1 false p1 p2 p3 p4 p5
-    check "herdr-layout tiled: 5 panes in rows of 3 and 2" \
-        "exit 0 move p4 --tab w1:t1 --split down --target-pane p1 --ratio 0.5000 --no-focus|move p2 --tab w1:t1 --split right --target-pane p1 --ratio 0.3333 --no-focus|move p3 --tab w1:t1 --split right --target-pane p2 --ratio 0.5000 --no-focus|move p5 --tab w1:t1 --split right --target-pane p4 --ratio 0.5000 --no-focus" \
+    check "herdr-layout tiled: 5 panes in rows of 2, 2 and 1, as tmux 3.8" \
+        "exit 0 move p3 --tab w1:t1 --split down --target-pane p1 --ratio 0.3333 --no-focus|move p5 --tab w1:t1 --split down --target-pane p3 --ratio 0.5000 --no-focus|move p2 --tab w1:t1 --split right --target-pane p1 --ratio 0.5000 --no-focus|move p4 --tab w1:t1 --split right --target-pane p3 --ratio 0.5000 --no-focus" \
         "$(lay_run tiled) $(sed -n '5,$p' "$lay/calls" | paste -sd'|')"
-    check "herdr-layout next after tiled wraps to even-horizontal" "exit 0 even-horizontal" "$(lay_run next) $(cat "$lay/state/herdr-layout/w1_t1.layout")"
+    check "herdr-layout next after tiled wraps to even-horizontal" "exit 0 even-horizontal" "$(lay_run next) $(cat "$lay/state/herdr-layout/default_w1_t1.layout")"
+    rm -rf "$lay/state"; lay_set 160 p1 false p1 p2
+    check "herdr-layout tiled: 2 panes stacked, as tmux" "move p2 --tab w1:t1 --split down --target-pane p1 --ratio 0.5000 --no-focus" "$(lay_run tiled >/dev/null; sed -n 2p "$lay/calls")"
+    lay_set 160 p1 false p1 p2 p3
+    check "herdr-layout: each Herdr session keeps its own state" "exit 0 even-vertical tiled" \
+        "$( (export HERDR_SESSION=s2; lay_run even-vertical) ) $(cat "$lay/state/herdr-layout/s2_w1_t1.layout") $(cat "$lay/state/herdr-layout/default_w1_t1.layout")"
+    rm -rf "$lay/state"
     lay_set 160 p2 true p1 p2 p3
     check "herdr-layout unzooms first, as tmux does" "zoom --pane p2 --off" "$(lay_run rotate-up >/dev/null; head -1 "$lay/calls")"
     # tmux's pane numbers do not change with a layout, only with a rotation: herdr-layout keeps the order per tab.
     rm -rf "$lay/state"; lay_set 160 p1 false p1 p2 p3
-    check "herdr-layout keeps the pane order it used" "p1 p2 p3" "$(lay_run main-horizontal-mirrored >/dev/null; cat "$lay/state/herdr-layout/w1_t1.order")"
+    check "herdr-layout keeps the pane order it used" "p1 p2 p3" "$(lay_run main-horizontal-mirrored >/dev/null; cat "$lay/state/herdr-layout/default_w1_t1.order")"
     lay_set 160 p1 false p2 p3 p1
+    echo "p2 p3 p1" > "$lay/state/herdr-layout/default_w1_t1.tree" # the split tree that layout left (the stub cannot)
     check "herdr-layout: after a mirrored layout the main pane is still the first one (tmux numbering)" \
         "exit 0 move p2 --tab w1:t1 --split right --target-pane p1 --ratio 0.5000 --no-focus" "$(lay_run main-vertical) $(sed -n 3p "$lay/calls")"
     check "herdr-layout rotate-up rotates the kept order, so the next pane becomes main" \
-        "swap --source-pane p1 --target-pane p2|swap --source-pane p1 --target-pane p3 p2 p3 p1" "$(lay_run rotate-up >/dev/null; lay_calls) $(cat "$lay/state/herdr-layout/w1_t1.order")"
+        "swap --source-pane p1 --target-pane p2|swap --source-pane p1 --target-pane p3|swap --source-pane p2 --target-pane p3|swap --source-pane p2 --target-pane p3 p2 p3 p1" "$(lay_run rotate-up >/dev/null; lay_calls) $(cat "$lay/state/herdr-layout/default_w1_t1.order")"
     lay_set 160 p1 false p4 p2 p3 p1
-    check "herdr-layout: a new pane joins the order at the end" "p2 p3 p1 p4" "$(lay_run tiled >/dev/null; cat "$lay/state/herdr-layout/w1_t1.order")"
+    check "herdr-layout: a new pane joins the order at the end" "p2 p3 p1 p4" "$(lay_run tiled >/dev/null; cat "$lay/state/herdr-layout/default_w1_t1.order")"
     rm -rf "$lay/state"
     lay_set 160 p1 false p1
     check "herdr-layout: one pane, nothing to do" "exit 0 0" "$(lay_run tiled) $(wc -l < "$lay/calls" | tr -d ' ')"
@@ -365,6 +378,20 @@ STUB
     check "herdr-layout: a failed move names the tab still holding panes" "exit 1 1" "$(lay_run even-vertical) $(grep -c 'w1:t9' "$lay/err")"
     rm -f "$lay/fail-move"
     check "herdr-layout: an unknown layout is refused" "exit 2" "$(lay_run sideways)"
+    check "herdr-layout: no action prints the usage" "exit 2 1" "$(lay_run '') $(grep -c '^usage: herdr-layout' "$lay/err")"
+    # Herdr's own swaps (prefix { } H L) change which pane sits in each place; like tmux's swap-pane, they change the
+    # pane numbers, so the main pane is whichever now sits in the first one's place.
+    rm -rf "$lay/state"; mkdir -p "$lay/state/herdr-layout"
+    echo "p1 p2 p3" > "$lay/state/herdr-layout/default_w1_t1.order"; echo "p1 p2 p3" > "$lay/state/herdr-layout/default_w1_t1.tree"
+    lay_set 160 p1 false p2 p1 p3
+    check "herdr-layout: after Herdr swapped p1 and p2, p2 is the main pane" \
+        "exit 0 move p1 --tab w1:t1 --split right --target-pane p2 --ratio 0.5000 --focus" "$(lay_run main-vertical) $(sed -n 3p "$lay/calls")"
+    rm -rf "$lay/state"; mkdir -p "$lay/state/herdr-layout/default_w1_t1.lock"
+    sleep 30 & live=$!
+    echo "$live" > "$lay/state/herdr-layout/default_w1_t1.lock/pid"
+    check "herdr-layout: a second run at once is refused" "exit 1 1" "$(lay_run tiled) $(grep -c 'already running' "$lay/err")"
+    kill "$live" 2> /dev/null; wait "$live" 2> /dev/null
+    check "herdr-layout: a lock left by a run that died is taken over" "exit 0 0" "$(lay_run tiled) $(ls -d "$lay/state/herdr-layout/default_w1_t1.lock" 2> /dev/null | wc -l | tr -d ' ')"
 fi
 check "requirement check wants Herdr 0.9.2 or later (multiple prefixes)" 1 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'version_ge "$herdr_version" 0.9.2')"
 # The stock-drift report runs on Omarchy only and never fails.

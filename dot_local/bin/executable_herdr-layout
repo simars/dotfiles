@@ -19,8 +19,9 @@ presets="even-horizontal even-vertical main-horizontal main-horizontal-mirrored 
 
 action=${1:-}
 pane=${2:-${HERDR_ACTIVE_PANE_ID:-${HERDR_PANE_ID:-}}}
+[ -n "$action" ] || { echo "usage: herdr-layout ACTION [PANE_ID]; ACTION: $presets next rotate-up rotate-down" >&2; exit 2; }
 case " $presets next rotate-up rotate-down " in
-    *" $action "*) [ -n "$action" ] || { echo "usage: herdr-layout ACTION [PANE_ID]" >&2; exit 2; } ;;
+    *" $action "*) ;;
     *) echo "herdr-layout: unknown action '$action' (one of: $presets next rotate-up rotate-down)" >&2; exit 2 ;;
 esac
 [ -n "$pane" ] || { echo "herdr-layout: no pane id" >&2; exit 1; }
@@ -37,28 +38,72 @@ n=$#
 [ "$n" -ge 2 ] || exit 0
 [ "$(field .zoomed)" != true ] || "$herdr" pane zoom --pane "$focused" --off > /dev/null
 
-# tmux numbers panes, and a layout never renumbers them; only a rotation does. The order kept for this tab (panes
-# that still exist), then any new pane in tree order, stands in for those numbers.
+# State per Herdr session and tab (every session starts at w1:t1): <key>.order, <key>.tree, <key>.layout, and a lock
+# so two runs never rebuild one tab at once.
 state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/herdr-layout
-state=$state_dir/$(tr -c 'A-Za-z0-9.\n-' '_' <<< "$tab" | tr -d '\n')
-order=
-for p in $(cat "$state.order" 2> /dev/null || true) $tree; do
-    case " $tree " in *" $p "*) ;; *) continue ;; esac
-    case " $order " in *" $p "*) ;; *) order="${order:+$order }$p" ;; esac
-done
-set -- $order
-save() { mkdir -p "$state_dir"; echo "$1" > "$state.order"; [ -z "${2:-}" ] || echo "$2" > "$state.layout"; }
-
-if [ "$action" = rotate-up ] || [ "$action" = rotate-down ]; then
-    if [ "$action" = rotate-up ]; then
-        first=$1; shift
-        for p in "$@"; do "$herdr" pane swap --source-pane "$first" --target-pane "$p" > /dev/null; done
-        save "$* $first"
-    else
-        last=${!n}
-        for ((i = n - 1; i >= 1; i--)); do "$herdr" pane swap --source-pane "$last" --target-pane "${!i}" > /dev/null; done
-        save "$last ${*:1:n-1}"
+state=$state_dir/$(printf '%s_%s' "${HERDR_SESSION:-default}" "$tab" | tr -c 'A-Za-z0-9.-' '_')
+mkdir -p "$state_dir"
+if ! mkdir "$state.lock" 2> /dev/null; then
+    holder=$(cat "$state.lock/pid" 2> /dev/null || true)
+    if [ -n "$holder" ] && kill -0 "$holder" 2> /dev/null; then
+        echo "herdr-layout: already running for this tab (pid $holder)" >&2
+        exit 1
     fi
+    rm -rf "$state.lock"
+    mkdir "$state.lock"
+fi
+echo $$ > "$state.lock/pid"
+trap 'rm -rf "$state.lock"' EXIT
+
+# tmux numbers panes; a layout never renumbers them, a rotation or a swap does. The kept order stands in for those
+# numbers. If the tab still has the same panes, each kept pane is replaced by whichever pane now sits where it sat after
+# the last run (so Herdr's own swaps count, as tmux's swap-pane does); otherwise kept panes that still exist come first
+# and new panes join at the end, in tree order.
+kept=$(cat "$state.order" 2> /dev/null || true)
+last_tree=$(cat "$state.tree" 2> /dev/null || true)
+order=
+if [ -n "$kept" ] && [ "$(tr ' ' '\n' <<< "$last_tree" | sort | xargs)" = "$(tr ' ' '\n' <<< "$tree" | sort | xargs)" ]; then
+    for p in $kept; do
+        i=0
+        for q in $last_tree; do i=$((i + 1)); [ "$q" != "$p" ] || break; done
+        order="${order:+$order }$(cut -d' ' -f"$i" <<< "$tree")"
+    done
+else
+    for p in $kept $tree; do
+        case " $tree " in *" $p "*) ;; *) continue ;; esac
+        case " $order " in *" $p "*) ;; *) order="${order:+$order }$p" ;; esac
+    done
+fi
+set -- $order
+save() { # save ORDER [PRESET]: also records the split tree the run left, for the next run's swap check
+    echo "$1" > "$state.order"
+    "$herdr" pane layout --pane "$pane" | jq -r '.result.layout.panes[].pane_id' | xargs > "$state.tree"
+    [ -z "${2:-}" ] || echo "$2" > "$state.layout"
+}
+
+# Rotation: swaps in place. Herdr focuses a swap's source pane, but tmux keeps focus on the place, so the pane rotated
+# into the focused place gets it: a pair of swaps with that pane as source leaves the panes where they are.
+if [ "$action" = rotate-up ] || [ "$action" = rotate-down ]; then
+    k=0
+    for p in "$@"; do k=$((k + 1)); [ "$p" != "$focused" ] || break; done
+    if [ "$action" = rotate-up ]; then
+        source=$1; shift
+        for p in "$@"; do "$herdr" pane swap --source-pane "$source" --target-pane "$p" > /dev/null; done
+        set -- "$@" "$source"
+        target=${!k} # the place of the k-th pane now holds the (k+1)-th, which is now k-th in the rotated order
+    else
+        source=${!n}
+        for ((i = n - 1; i >= 1; i--)); do "$herdr" pane swap --source-pane "$source" --target-pane "${!i}" > /dev/null; done
+        set -- "$source" "${@:1:n-1}"
+        target=${!k}
+    fi
+    if [ "$target" != "$source" ]; then
+        other=$1
+        [ "$other" != "$target" ] || other=$2
+        "$herdr" pane swap --source-pane "$target" --target-pane "$other" > /dev/null
+        "$herdr" pane swap --source-pane "$target" --target-pane "$other" > /dev/null
+    fi
+    save "$*"
     exit 0
 fi
 
@@ -87,7 +132,8 @@ case $action in
     main-vertical | main-horizontal) groups=$(printf '%s\n%s\n' "$main" "$rest"); shares=$(printf '%s\n1 - %s\n' "$m" "$m") ;;
     *-mirrored) groups=$(printf '%s\n%s\n' "$rest" "$main"); shares=$(printf '1 - %s\n%s\n' "$m" "$m") ;;
     tiled) outer=down; inner=right
-        cols=$(awk -v n="$n" 'BEGIN { c = int(sqrt(n)); if (c * c < n) c++; print c }')
+        # tmux 3.8: add a row, then a column, until rows x columns holds every pane (5 panes: rows of 2, 2, 1)
+        cols=$(awk -v n="$n" 'BEGIN { r = c = 1; while (r * c < n) { r++; if (r * c < n) c++ } print c }')
         groups=$(printf '%s\n' "$main" $rest | paste -d' ' $(for ((i = 0; i < cols; i++)); do printf -- '- '; done))
         rows=$(wc -l <<< "$groups" | tr -d ' ')
         shares=$(for ((i = 0; i < rows; i++)); do echo "1 / $rows"; done) ;;

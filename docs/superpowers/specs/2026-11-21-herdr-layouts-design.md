@@ -66,3 +66,20 @@ No change to tmux; no new key without the prefix; never close or restart a pane'
 ## Left to the builder
 
 Test wording; the stub `herdr` (logs commands, serves a layout, answers moves).
+
+## Changed after the final review (2026-11-21)
+
+* **Rotation focus:** `herdr pane swap` focuses its source pane. tmux 3.8 keeps focus on the place, so the pane rotated
+  into the focused place gets focus; the script ends with a pair of swaps whose source is that pane (a pair puts the
+  panes back).
+* **tiled:** tmux's rule, a row then a column until rows x columns holds every pane (2 panes stacked; 5 in rows of
+  2, 2, 1; 10 in rows of 3, 3, 3, 1), not ceil(sqrt(n)) columns.
+* **State per session:** every Herdr session starts at `w1:t1`, so the state key is `$HERDR_SESSION` (set for key
+  commands; `default` when unset) plus the tab id.
+* **Herdr's own swaps count:** the split-tree order a run leaves is kept too (`<key>.tree`); when the tab has the same
+  panes next time, each kept pane is replaced by the pane now in its place, as tmux's swap-pane renumbers panes.
+* **Lock:** `<key>.lock` (a directory holding the pid) stops two runs rebuilding one tab at once; a lock whose process
+  is gone is taken over.
+* Deferred (minor): ids from move replies are not used for focus and the saved order (ids do not change on a move in
+  0.9.5); a reply that is not JSON exits without a message; with 11 or more panes the 0.1 ratio floor makes even
+  layouts slightly uneven; panes moved into the temporary tab keep halving the first one there (cosmetic).
