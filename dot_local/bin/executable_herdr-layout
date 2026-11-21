@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# herdr-layout ACTION [PANE_ID]: tmux's preset layouts, next-layout and rotate-window for the Herdr tab holding the pane.
+# Herdr has none of these. Bound after the prefix in ~/.config/herdr/config.toml (cheatsheet: "tmux and Herdr Keys"):
+# Space next, Alt+1..7 a preset, Ctrl+o rotate-up, Alt+o rotate-down.
+#
+# ACTION: even-horizontal even-vertical main-horizontal main-vertical tiled main-horizontal-mirrored
+#         main-vertical-mirrored (tmux's M-1..M-7), next, rotate-up, rotate-down.
+#
+# Pane order stands in for tmux's pane numbers: kept per tab, changed only by a rotation (new panes join at the end;
+# with none kept, the split tree's order). The first pane is the main pane, as in tmux. Rotation swaps panes in place (`herdr pane swap`). A preset rebuilds the tab: every pane but one moves to a
+# temporary tab and comes back beside another with `herdr pane move --ratio` (the share the target pane keeps). A move
+# within the same tab does nothing in Herdr 0.9.5, hence the detour; panes keep running, and the temporary tab closes
+# when empty. Main size is tmux's default main-pane-width 80 / main-pane-height 24. Per tab, ${XDG_STATE_HOME:-~/.local/state}/herdr-layout/
+# keeps the pane order (<tab>.order) and the preset applied last (<tab>.layout, for `next`). Needs jq. Design:
+# docs/superpowers/specs/2026-11-21-herdr-layouts-design.md in the dotfiles repository.
+set -euo pipefail
+herdr=${HERDR_BIN_PATH:-herdr}
+presets="even-horizontal even-vertical main-horizontal main-horizontal-mirrored main-vertical main-vertical-mirrored tiled"
+
+action=${1:-}
+pane=${2:-${HERDR_ACTIVE_PANE_ID:-${HERDR_PANE_ID:-}}}
+case " $presets next rotate-up rotate-down " in
+    *" $action "*) [ -n "$action" ] || { echo "usage: herdr-layout ACTION [PANE_ID]" >&2; exit 2; } ;;
+    *) echo "herdr-layout: unknown action '$action' (one of: $presets next rotate-up rotate-down)" >&2; exit 2 ;;
+esac
+[ -n "$pane" ] || { echo "herdr-layout: no pane id" >&2; exit 1; }
+
+layout=$("$herdr" pane layout --pane "$pane" | jq -c '.result.layout')
+field() { jq -r "$1" <<< "$layout"; }
+tab=$(field .tab_id)
+focused=$(field .focused_pane_id)
+width=$(field .area.width)
+height=$(field .area.height)
+tree=$(field '.panes[].pane_id' | xargs)
+set -- $tree
+n=$#
+[ "$n" -ge 2 ] || exit 0
+[ "$(field .zoomed)" != true ] || "$herdr" pane zoom --pane "$focused" --off > /dev/null
+
+# tmux numbers panes, and a layout never renumbers them; only a rotation does. The order kept for this tab (panes
+# that still exist), then any new pane in tree order, stands in for those numbers.
+state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/herdr-layout
+state=$state_dir/$(tr -c 'A-Za-z0-9.\n-' '_' <<< "$tab" | tr -d '\n')
+order=
+for p in $(cat "$state.order" 2> /dev/null || true) $tree; do
+    case " $tree " in *" $p "*) ;; *) continue ;; esac
+    case " $order " in *" $p "*) ;; *) order="${order:+$order }$p" ;; esac
+done
+set -- $order
+save() { mkdir -p "$state_dir"; echo "$1" > "$state.order"; [ -z "${2:-}" ] || echo "$2" > "$state.layout"; }
+
+if [ "$action" = rotate-up ] || [ "$action" = rotate-down ]; then
+    if [ "$action" = rotate-up ]; then
+        first=$1; shift
+        for p in "$@"; do "$herdr" pane swap --source-pane "$first" --target-pane "$p" > /dev/null; done
+        save "$* $first"
+    else
+        last=${!n}
+        for ((i = n - 1; i >= 1; i--)); do "$herdr" pane swap --source-pane "$last" --target-pane "${!i}" > /dev/null; done
+        save "$last ${*:1:n-1}"
+    fi
+    exit 0
+fi
+
+if [ "$action" = next ]; then
+    last=$(cat "$state.layout" 2> /dev/null || true)
+    action=${presets%% *}
+    found=
+    for p in $presets $presets; do
+        if [ -n "$found" ]; then action=$p; break; fi
+        [ "$p" != "$last" ] || found=1
+    done
+fi
+
+ratio() { awk -v r="$1" 'BEGIN { if (r < 0.1) r = 0.1; if (r > 0.9) r = 0.9; printf "%.4f", r }'; }
+# Groups along the outer split, one per line, panes in order; shares of the outer split, one per group (bash 3.2
+# on a Mac: no `;;&`, no mapfile).
+main=$1; shift
+rest="$*"
+case $action in
+    main-vertical*) outer=right; inner=down; m=$(ratio "$(awk -v w="$width" 'BEGIN { print 80 / w }')") ;;
+    main-horizontal*) outer=down; inner=right; m=$(ratio "$(awk -v h="$height" 'BEGIN { print 24 / h }')") ;;
+esac
+case $action in
+    even-horizontal | even-vertical) outer=right; [ "$action" = even-horizontal ] || outer=down; inner=$outer
+        groups=$(printf '%s\n' "$main" $rest); shares=$(for _ in $main $rest; do echo "1 / $n"; done) ;;
+    main-vertical | main-horizontal) groups=$(printf '%s\n%s\n' "$main" "$rest"); shares=$(printf '%s\n1 - %s\n' "$m" "$m") ;;
+    *-mirrored) groups=$(printf '%s\n%s\n' "$rest" "$main"); shares=$(printf '1 - %s\n%s\n' "$m" "$m") ;;
+    tiled) outer=down; inner=right
+        cols=$(awk -v n="$n" 'BEGIN { c = int(sqrt(n)); if (c * c < n) c++; print c }')
+        groups=$(printf '%s\n' "$main" $rest | paste -d' ' $(for ((i = 0; i < cols; i++)); do printf -- '- '; done))
+        rows=$(wc -l <<< "$groups" | tr -d ' ')
+        shares=$(for ((i = 0; i < rows; i++)); do echo "1 / $rows"; done) ;;
+esac
+shares=$(while read -r expr; do awk "BEGIN { print $expr }"; done <<< "$shares")
+groups=$(sed 's/ *$//' <<< "$groups") # paste leaves a trailing space on a short last row
+
+anchor=$(head -1 <<< "$groups" | cut -d' ' -f1)
+temp=
+move() { # move PANE ARGS...: prints the pane's id after the move
+    local p=$1 focus=--no-focus reply
+    shift
+    [ "$p" != "$focused" ] || [ -z "$temp" ] || [[ " $* " != *" --tab $tab "* ]] || focus=--focus
+    if ! reply=$("$herdr" pane move "$p" "$@" "$focus"); then
+        echo "herdr-layout: moving $p failed${temp:+; panes still in tab $temp keep running there}" >&2
+        exit 1
+    fi
+    jq -r '.result.move_result.pane.pane_id // empty' <<< "$reply"
+}
+id_of() { sed -n "s/^$1 //p" <<< "$ids" | tail -1; }
+ids=
+first_out=
+for p in $(tr '\n' ' ' <<< "$groups"); do
+    [ "$p" != "$anchor" ] || continue
+    if [ -z "$first_out" ]; then
+        reply=$("$herdr" pane move "$p" --new-tab --no-focus) || { echo "herdr-layout: moving $p out failed" >&2; exit 1; }
+        new=$(jq -r '.result.move_result.pane.pane_id // empty' <<< "$reply")
+        temp=$(jq -r '.result.move_result.created_tab.tab_id // empty' <<< "$reply")
+        [ -n "$new" ] && [ -n "$temp" ] || { echo "herdr-layout: Herdr's move reply lacks the pane or tab id" >&2; exit 1; }
+        first_out=$new
+    else
+        new=$(move "$p" --tab "$temp" --split right --target-pane "$first_out")
+    fi
+    ids+="$p ${new:-$p}"$'\n'
+done
+cur() { if [ "$1" = "$anchor" ]; then echo "$1"; else id_of "$1"; fi; }
+
+# Group leaders along the outer split, then each group's other panes along the inner split.
+k=$(wc -l <<< "$groups" | tr -d ' ')
+prev=
+left=1
+for ((j = 1; j <= k; j++)); do
+    leader=$(sed -n "${j}p" <<< "$groups" | cut -d' ' -f1)
+    share=$(sed -n "${j}p" <<< "$shares")
+    if [ -n "$prev" ]; then
+        new=$(move "$(cur "$leader")" --tab "$tab" --split "$outer" --target-pane "$(cur "$prev")" --ratio "$(ratio "$(awk -v s="$prev_share" -v l="$left" 'BEGIN { print s / l }')")")
+        ids+="$leader ${new:-$(cur "$leader")}"$'\n'
+        left=$(awk -v l="$left" -v s="$prev_share" 'BEGIN { print l - s }')
+    fi
+    prev=$leader
+    prev_share=$share
+done
+for ((j = 1; j <= k; j++)); do
+    set -- $(sed -n "${j}p" <<< "$groups")
+    count=$#
+    before=$1; shift
+    for p in "$@"; do
+        new=$(move "$(cur "$p")" --tab "$tab" --split "$inner" --target-pane "$(cur "$before")" --ratio "$(ratio "$(awk -v c="$count" 'BEGIN { print 1 / c }')")")
+        ids+="$p ${new:-$(cur "$p")}"$'\n'
+        before=$p
+        count=$((count - 1))
+    done
+done
+save "$order" "$action"

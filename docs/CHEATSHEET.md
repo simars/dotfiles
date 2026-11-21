@@ -510,6 +510,8 @@ One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's o
 | `z` / `;` / `o` | Zoom / last pane / next pane | Same |
 | `Shift-e` | Spread the current pane and its neighbours evenly (tmux `E`) | Make every pane in the tab equal, by `herdr-equalize` (Herdr has no such action; the script evens each split's ratio), as Ghostty's leader `Shift-e` does |
 | `!` | Break pane into a new window | Move pane into a new tab |
+| `Space` / `Alt-1`..`7` | Next preset layout / pick one: side by side, stacked, main on top, main on the left, tiled, main at the bottom, main on the right | Same, by `herdr-layout` (it rebuilds the tab through a temporary tab; programs keep running) |
+| `Ctrl-o` / `Alt-o` | Rotate the panes forward / back (the next pane becomes the main pane) | Same, by `herdr-layout` |
 | `c` / `,` / `&` | New / rename / kill window (asks first) | New / rename / close tab (asks first) |
 | `1`..`9` (or `Alt-1`..`9`), `n` `p` | Go to window | Go to tab |
 | `Alt-Left` / `Alt-Right` | Not bound (Omarchy's stock: previous / next window); passed to the pane, where zsh jumps a word | Same, for tabs |
@@ -529,7 +531,7 @@ One config on every machine. The prefix is `Ctrl-b` or `Ctrl-Space` (Omarchy's o
 
 On the Macs `Ctrl-arrows` after the prefix never arrive (macOS switches Spaces or opens Mission Control), so tmux's 1-cell resize and Herdr's resize mode work only on Omarchy; resize with `Alt-arrows` after the prefix, or `Ctrl-Option-Shift-arrows`.
 
-tmux keys Herdr lacks: layouts (`Space`, `Alt-1`..`7` after the prefix), rotate (`Ctrl-o`), paste buffers (`]` `#` `=`), command prompt (`:`), mark (`m`), move or pick a window by number (`.` `'`), and `PageUp` into copy mode.
+tmux keys Herdr lacks: paste buffers (`]` `#` `=`), command prompt (`:`), mark (`m`), move or pick a window by number (`.` `'`), and `PageUp` into copy mode.
 
 `omarchy refresh tmux` (or `herdr`) puts Omarchy's stock file back; `chezmoi apply ~/.config/tmux/tmux.conf` (or `~/.config/herdr/config.toml`) restores the shared one.
 

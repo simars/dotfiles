@@ -118,6 +118,68 @@ type = "shell"
 command = '"${HERDR_BIN_PATH:-herdr}" pane move "$HERDR_ACTIVE_PANE_ID" --new-tab --focus'
 description = "break pane into new tab"
 
+# tmux's layouts after the prefix: Space next, Alt+1..7 a preset (tmux M-1..M-7), Ctrl+o / Alt+o rotate. Herdr has
+# none, so herdr-layout rebuilds the tab through a temporary tab (panes keep running).
+[[keys.command]]
+key = "prefix+space"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" next "$HERDR_ACTIVE_PANE_ID"'
+description = "next layout"
+
+[[keys.command]]
+key = "prefix+alt+1"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" even-horizontal "$HERDR_ACTIVE_PANE_ID"'
+description = "layout: side by side"
+
+[[keys.command]]
+key = "prefix+alt+2"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" even-vertical "$HERDR_ACTIVE_PANE_ID"'
+description = "layout: stacked"
+
+[[keys.command]]
+key = "prefix+alt+3"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" main-horizontal "$HERDR_ACTIVE_PANE_ID"'
+description = "layout: main pane on top"
+
+[[keys.command]]
+key = "prefix+alt+4"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" main-vertical "$HERDR_ACTIVE_PANE_ID"'
+description = "layout: main pane on the left"
+
+[[keys.command]]
+key = "prefix+alt+5"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" tiled "$HERDR_ACTIVE_PANE_ID"'
+description = "layout: tiled"
+
+[[keys.command]]
+key = "prefix+alt+6"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" main-horizontal-mirrored "$HERDR_ACTIVE_PANE_ID"'
+description = "layout: main pane at the bottom"
+
+[[keys.command]]
+key = "prefix+alt+7"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" main-vertical-mirrored "$HERDR_ACTIVE_PANE_ID"'
+description = "layout: main pane on the right"
+
+[[keys.command]]
+key = "prefix+ctrl+o"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" rotate-up "$HERDR_ACTIVE_PANE_ID"'
+description = "rotate panes"
+
+[[keys.command]]
+key = "prefix+alt+o"
+type = "shell"
+command = '"$HOME/.local/bin/herdr-layout" rotate-down "$HERDR_ACTIVE_PANE_ID"'
+description = "rotate panes back"
+
 # Make panes equal (tmux `prefix + E`); Herdr has no such action, so a script evens the split ratios
 [[keys.command]]
 key = "prefix+shift+e"
