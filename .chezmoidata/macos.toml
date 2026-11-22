@@ -41,6 +41,8 @@ PasteTabToStringTabStopSize = 4             # a pasted tab becomes 4 spaces (whe
 #                    in text becomes this Mac's home directory)
 #   Left to each Mac on purpose: the Dock's apps, the clock's format (macOS's "when space allows"), which Control Center
 #   items show in the menu bar (except battery %), hot corners. Checked on macOS 27.2 (2026-11-22).
+#   Not settable here: Finder's iCloud-removal warning (FXEnableRemoveFromICloudDriveWarning): Finder 27.2 deletes
+#   the key each time it starts, so every apply would write it again and restart Finder.
 
 [[macos_defaults]]
 domains = ["com.apple.dock"]
@@ -96,7 +98,6 @@ ShowPathbar = true                          # path bar
 ShowStatusBar = true                        # status bar
 FXDefaultSearchScope = "SCcf"               # search the current folder ("This Mac" is one click away)
 FXEnableExtensionChangeWarning = false      # no warning when changing a file's extension
-FXEnableRemoveFromICloudDriveWarning = false # no warning when moving a file out of iCloud Drive
 _FXSortFoldersFirst = true                  # folders on top when sorting by name
 NewWindowTarget = "PfLo"                    # new Finder windows open
 NewWindowTargetPath = "file://$HOME/Downloads/" #   in Downloads

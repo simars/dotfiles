@@ -729,7 +729,7 @@ for host in omarchy arch ubuntu; do
     check "$host gets no macOS settings script" "" "$(render "$host" "$md97" | tr -d '[:space:]')"
 done
 check "darwin macOS settings script is valid bash" "" "$(render darwin "$md97" | bash -n 2>&1)"
-check "darwin macOS settings script sets 38 keys" 38 "$(render darwin "$md97" | grep -c "^ensure_default '")"
+check "darwin macOS settings script sets 37 keys" 37 "$(render darwin "$md97" | grep -c "^ensure_default '")"
 check "darwin macOS settings: bool, float, string, int and per-machine keys" 5 "$(render darwin "$md97" | grep -cxE \
     "ensure_default 'Dock' - 0 'com.apple.dock' 'autohide' -bool true|ensure_default 'Dock' - 0 'com.apple.dock' 'autohide-time-modifier' -float 0.15|ensure_default 'Finder' - 0 'com.apple.finder' 'FXDefaultSearchScope' -string 'SCcf'|ensure_default 'logout' - 1 'com.apple.AppleMultitouchTrackpad' 'TrackpadFiveFingerPinchGesture' -int 2|ensure_default 'ControlCenter' -currentHost 0 'com.apple.controlcenter' 'BatteryShowPercentage' -bool true")"
 check "darwin macOS settings: new Finder windows open in this Mac's Downloads" 1 \
@@ -763,7 +763,7 @@ md_todo() { cat "$md/cache"/after-apply.* 2> /dev/null; }
 md_set() { mkdir -p "$md/prefs/$1/$2" && printf '%s\n' "$4" > "$md/prefs/$1/$2/$3"; } # SCOPE DOMAIN KEY VALUE
 md_reset
 md_run > "$md/out"
-check "macOS settings on a new Mac: writes every key whose unset value differs (27 of 38)" 27 "$(wc -l < "$md/written" | tr -d ' ')"
+check "macOS settings on a new Mac: writes every key whose unset value differs (26 of 37)" 26 "$(wc -l < "$md/written" | tr -d ' ')"
 check "macOS settings on a new Mac: leaves keys that are already right when unset" 0 \
     "$(grep -cE ' (Dragging|DragLock|TrackpadThreeFingerDrag|TrackpadFiveFingerPinchGesture|AppleInterfaceStyleSwitchesAutomatically|com.apple.swipescrolldirection|ShowExternalHardDrivesOnDesktop)$' "$md/written")"
 check "macOS settings on a new Mac: restarts the Dock, Finder and Control Center" "Dock|Finder|ControlCenter" "$(paste -sd'|' - < "$md/killed")"

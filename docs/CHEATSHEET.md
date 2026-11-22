@@ -190,7 +190,7 @@ chezmoi writes macOS's own settings from `[[macos_defaults]]` in `.chezmoidata/m
 | Windows | double-clicking a title bar fills the screen; clicking the scroll bar jumps there |
 | Appearance | Dark, never Auto (the terminals' colours are dark) |
 | Trackpad | natural scrolling (mouse too), tracking speed 2.5, tap to click; no tap-to-drag, drag lock or three-finger drag, so three-finger swipes stay for spaces and Mission Control |
-| Finder | list view, path bar, status bar, folders first, search the current folder, new windows in Downloads, no extension-change or iCloud-removal warnings, external drives on the desktop |
+| Finder | list view, path bar, status bar, folders first, search the current folder, new windows in Downloads, no extension-change warning, external drives on the desktop |
 | Menu bar | battery percentage on, Spotlight icon off (Cmd-Space still works); both keys are older macOS's and were not yet seen working on macOS 27: check the menu bar after the first apply |
 
 * **Left to each Mac:** the Dock's apps, hot corners, the clock (macOS's "date when space allows"), which Control Center items show in the menu bar.
