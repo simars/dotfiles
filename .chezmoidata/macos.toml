@@ -26,3 +26,91 @@ SoundForEsc = false                         #   no click,
 VisualIndicatorForEsc = false               #   no flash
 "Print In Black And White" = true           # print in black and white
 PasteTabToStringTabStopSize = 4             # a pasted tab becomes 4 spaces (when paste converts tabs)
+
+# macos_defaults: macOS's own settings (Dock, Mission Control, Finder, trackpad, appearance, menu bar), the same on
+#   every Mac. run_after_97_macos_defaults.sh writes each key where this Mac's value differs, on every apply, so a change
+#   made in System Settings goes back at the next apply: change it here instead. Cheatsheet: "Same macOS Settings on
+#   Every Mac". Each group:
+#     domains        the `defaults` domains its keys are written to (the trackpad keys go to the built-in and the
+#                    Bluetooth trackpad's domain alike)
+#     current_host   true: per-machine settings (`defaults -currentHost`, ~/Library/Preferences/ByHost)
+#     takes_effect   Dock, Finder or ControlCenter: that process is restarted when one of its keys was written;
+#                    logout: the apply lists "log out and back in"; reopen: apps pick it up when reopened
+#     same_when_unset keys whose unset (macOS default) value is already the one below, so an unset key is left unset
+#     set            the keys: true/false -> -bool, whole numbers -> -int, decimals -> -float, text -> -string ($HOME
+#                    in text becomes this Mac's home directory)
+#   Left to each Mac on purpose: the Dock's apps, the clock's format (macOS's "when space allows"), which Control Center
+#   items show in the menu bar (except battery %), hot corners. Checked on macOS 27.2 (2026-11-22).
+
+[[macos_defaults]]
+domains = ["com.apple.dock"]
+takes_effect = "Dock"
+[macos_defaults.set]
+autohide = true                             # hide the Dock and show it on hover,
+"autohide-delay" = 0.0                      #   at once,
+"autohide-time-modifier" = 0.15             #   with a quick slide
+"minimize-to-application" = true            # minimize a window into its app's icon
+mineffect = "scale"                         # minimize with Scale, not Genie
+launchanim = false                          # no bouncing icon while an app opens
+"show-recents" = false                      # no suggested and recent apps in the Dock
+"expose-group-apps" = true                  # Mission Control groups windows by app
+enterMissionControlByTopWindowDrag = false  # dragging a window to the top edge does not open Mission Control
+showDesktopGestureEnabled = true            # spread thumb and three fingers to show the desktop
+
+[[macos_defaults]]
+domains = ["NSGlobalDomain"]
+takes_effect = "reopen"
+[macos_defaults.set]
+AppleActionOnDoubleClick = "Fill"           # double-clicking a title bar fills the screen (Fill, Maximize, Minimize, None)
+AppleScrollerPagingBehavior = true          # clicking the scroll bar jumps to that spot
+
+[[macos_defaults]]
+domains = ["NSGlobalDomain"]
+takes_effect = "logout"
+same_when_unset = ["AppleInterfaceStyleSwitchesAutomatically", "com.apple.swipescrolldirection"]
+[macos_defaults.set]
+AppleInterfaceStyle = "Dark"                # Dark appearance (the terminals' colours are dark too),
+AppleInterfaceStyleSwitchesAutomatically = false #   never Auto
+"com.apple.swipescrolldirection" = true     # natural scrolling (trackpad and mouse alike)
+"com.apple.trackpad.scaling" = 2.5          # trackpad tracking speed (0 to 3)
+
+[[macos_defaults]]
+domains = ["com.apple.AppleMultitouchTrackpad", "com.apple.driver.AppleBluetoothMultitouch.trackpad"]
+takes_effect = "logout"
+same_when_unset = ["Dragging", "DragLock", "TrackpadThreeFingerDrag", "TrackpadFiveFingerPinchGesture"]
+[macos_defaults.set]
+Clicking = true                             # tap to click
+Dragging = false                            # no tap-to-drag (Accessibility > Pointer Control > Dragging style: none),
+DragLock = false                            #   no drag lock,
+TrackpadThreeFingerDrag = false             #   no three-finger drag, so three-finger swipes stay for spaces and Mission Control
+TrackpadFiveFingerPinchGesture = 2          # the show-desktop gesture's trackpad side (with showDesktopGestureEnabled)
+
+[[macos_defaults]]
+domains = ["com.apple.finder"]
+takes_effect = "Finder"
+same_when_unset = ["ShowExternalHardDrivesOnDesktop"]
+[macos_defaults.set]
+ShowExternalHardDrivesOnDesktop = true      # external drives on the desktop
+FXPreferredViewStyle = "Nlsv"               # list view (folders that saved their own view keep it)
+ShowPathbar = true                          # path bar
+ShowStatusBar = true                        # status bar
+FXDefaultSearchScope = "SCcf"               # search the current folder ("This Mac" is one click away)
+FXEnableExtensionChangeWarning = false      # no warning when changing a file's extension
+FXEnableRemoveFromICloudDriveWarning = false # no warning when moving a file out of iCloud Drive
+_FXSortFoldersFirst = true                  # folders on top when sorting by name
+NewWindowTarget = "PfLo"                    # new Finder windows open
+NewWindowTargetPath = "file://$HOME/Downloads/" #   in Downloads
+
+[[macos_defaults]]
+domains = ["com.apple.controlcenter"]
+current_host = true
+takes_effect = "ControlCenter"
+[macos_defaults.set]
+BatteryShowPercentage = true                # battery percentage in the menu bar
+
+[[macos_defaults]]
+domains = ["com.apple.Spotlight"]
+current_host = true
+takes_effect = "logout"
+[macos_defaults.set]
+MenuItemHidden = 1                          # no Spotlight icon in the menu bar (Cmd-Space still opens Spotlight)

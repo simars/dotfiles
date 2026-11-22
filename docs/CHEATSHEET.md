@@ -180,6 +180,23 @@ chezmoi gives every Mac the same iTerm2 look from the repo. A second dynamic pro
 * **After every apply** `run_after_96_macos_iterm2.sh` prints, with `OK:` or `NOTE:`: whether the global settings match, whether chezmoi's profile is the default, whether the Claude Code integration is installed, and which settings were saved in "Default (Left Option as Alt)" on this Mac only (keys beyond chezmoi's own whose value differs from the shared look, since iTerm2 keeps some keys it saves even with the shared look's value; and triggers beyond the two Claude Code ones). The first three put their fix on the to-do list; local changes are only reported, since a deliberate local tweak may stay.
 * **Still by hand, once per Mac:** install the Claude Code integration (iTerm2 > Install Claude Code Integration), make chezmoi's profile the default, reopen iTerm2 after the first apply, and Warp's Option setting if you use Warp.
 
+### Same macOS Settings on Every Mac
+chezmoi writes macOS's own settings from `[[macos_defaults]]` in `.chezmoidata/macos.toml`, key by key where a Mac differs, after every apply (`run_after_97_macos_defaults.sh`, every Mac, Intel too). A change made in System Settings goes back at the next apply: change the repo instead (commit, push, `chezmoi update` on each Mac).
+
+| Area | Settings |
+| :--- | :--- |
+| Dock | hidden, shown on hover at once with a quick slide; minimize into the app's icon with Scale; no bouncing; no recent apps |
+| Mission Control | windows grouped by app; dragging a window to the top edge does nothing; thumb and three fingers spread shows the desktop |
+| Windows | double-clicking a title bar fills the screen; clicking the scroll bar jumps there |
+| Appearance | Dark, never Auto (the terminals' colours are dark) |
+| Trackpad | natural scrolling (mouse too), tracking speed 2.5, tap to click; no tap-to-drag, drag lock or three-finger drag, so three-finger swipes stay for spaces and Mission Control |
+| Finder | list view, path bar, status bar, folders first, search the current folder, new windows in Downloads, no extension-change or iCloud-removal warnings, external drives on the desktop |
+| Menu bar | battery percentage on, Spotlight icon off (Cmd-Space still works); both keys are older macOS's and were not yet seen working on macOS 27: check the menu bar after the first apply |
+
+* **Left to each Mac:** the Dock's apps, hot corners, the clock (macOS's "date when space allows"), which Control Center items show in the menu bar.
+* **When it changes something** the apply restarts the Dock, Finder or Control Center (only while they run), says which keys it wrote, and puts **log out and back in** on the to-do list for the trackpad, scrolling, appearance and Spotlight keys, which macOS reads at login. Apps pick up the title-bar and scroll-bar settings when reopened.
+* **List view** applies to folders that never saved their own view; others keep theirs (View > as List, then View > Show View Options > Use as Defaults).
+
 ### Option as Alt in the Mac Terminals
 A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to act as Meta; otherwise Option types special characters (`ƒ`, `©`, `ü`). chezmoi sets **left Option = Alt, right Option = special characters** (macOS only):
 

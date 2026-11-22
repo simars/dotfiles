@@ -45,6 +45,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
      them later: `chezmoi init --prompt`, then `chezmoi apply`.
    - It then installs the Homebrew tools and apps in `.chezmoidata/packages.toml` (iTerm2, Ghostty, kitty, Wave, Warp,
      the Herdr app, the 1Password CLI, the Nerd Font), LunarVim and the mise runtimes.
+   - It sets macOS's own settings (Dock, Mission Control, Finder, trackpad, appearance, menu bar; cheatsheet: "Same
+     macOS Settings on Every Mac"), restarts the Dock and Finder, and lists a log out for the trackpad settings.
    - It ends with the to-do list. Most of it is the steps below.
 5. **Open a new terminal tab.** zsh now loads the new setup: Homebrew, `~/.local/bin` (chezmoi, `ssh-key-remember`)
    and `config` (the `~/.cfg` helper) are on `PATH`.
@@ -147,6 +149,7 @@ What the list at the end of `chezmoi apply` / `chezmoi update` can name:
 | Once-per-machine steps not done | no SSH key, `~/.cfg` not cloned, ai-tooling not set up, dotfiles-local links missing (Mac), `gh` not on SSH or not logged in, LunarVim not linked (Omarchy) | `run_after_99_assert_requirements.sh` |
 | No work email answer | `chezmoi init` never got a work email (an init with `--promptDefaults`, or a machine set up before 2026-11-19): `chezmoi init --prompt` | `run_after_99_assert_requirements.sh` |
 | iTerm2 (Mac) | reopen iTerm2 for updated global settings; chezmoi's profile not the default; Claude Code integration missing; macOS still takes Ctrl+Space (settings changed on one Mac only are reported, not listed) | `run_after_96_macos_iterm2.sh` |
+| macOS settings (Mac) | log out and back in after trackpad, scrolling, appearance or Spotlight settings were written; a key `defaults` could not write | `run_after_97_macos_defaults.sh` |
 | A config changed under a running app | Ghostty: `Ctrl+Shift+,` (Mac: `Cmd+Shift+,`); Herdr: `herdr server reload-config`; tmux: `Ctrl-b r`; foot: new windows; open shells: `exec zsh` | `run_after_99_assert_requirements.sh` (checksums in `~/.local/state/chezmoi-after-apply`; the first apply only records them) |
 | Omarchy stock files changed | merge the change into the chezmoi source | `run_after_95_omarchy_stock_drift.sh` |
 

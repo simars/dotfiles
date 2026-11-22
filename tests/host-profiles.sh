@@ -718,6 +718,78 @@ check "iTerm2 script: without the shared look file, every extra setting counts" 
 it_reset
 printf 'not json' > "$it_profile"
 check "iTerm2 script: a profile that is not JSON gives no local-changes line, exit 0" "0|exit=0" "$(iterm_after | grep -c 'changed on this Mac only')|$(iterm_after | tail -1)"
+
+# macOS settings (run_after_97_macos_defaults.sh, every Mac): the keys in [[macos_defaults]] of .chezmoidata/macos.toml,
+# written where a Mac differs. Run here in a stub Mac: stub defaults (-currentHost too), pgrep and killall.
+md97=run_after_97_macos_defaults.sh.tmpl
+for host in darwin intel; do
+    check "$host runs the macOS settings script" yes "$(manages "$host" 97_macos_defaults.sh)"
+done
+for host in omarchy arch ubuntu; do
+    check "$host gets no macOS settings script" "" "$(render "$host" "$md97" | tr -d '[:space:]')"
+done
+check "darwin macOS settings script is valid bash" "" "$(render darwin "$md97" | bash -n 2>&1)"
+check "darwin macOS settings script sets 38 keys" 38 "$(render darwin "$md97" | grep -c "^ensure_default '")"
+check "darwin macOS settings: bool, float, string, int and per-machine keys" 5 "$(render darwin "$md97" | grep -cxE \
+    "ensure_default 'Dock' - 0 'com.apple.dock' 'autohide' -bool true|ensure_default 'Dock' - 0 'com.apple.dock' 'autohide-time-modifier' -float 0.15|ensure_default 'Finder' - 0 'com.apple.finder' 'FXDefaultSearchScope' -string 'SCcf'|ensure_default 'logout' - 1 'com.apple.AppleMultitouchTrackpad' 'TrackpadFiveFingerPinchGesture' -int 2|ensure_default 'ControlCenter' -currentHost 0 'com.apple.controlcenter' 'BatteryShowPercentage' -bool true")"
+check "darwin macOS settings: new Finder windows open in this Mac's Downloads" 1 \
+    "$(render darwin "$md97" | grep -cxF "ensure_default 'Finder' - 0 'com.apple.finder' 'NewWindowTargetPath' -string 'file://$HOME/Downloads/'")"
+check "darwin macOS settings: three-finger drag and tap-to-drag off on both trackpads" 6 \
+    "$(render darwin "$md97" | grep -cE "'(TrackpadThreeFingerDrag|Dragging|DragLock)' -bool false$")"
+md="$work/md"
+mkdir -p "$md/bin"
+cat > "$md/bin/defaults" << 'EOF'
+#!/bin/bash
+# Stub: defaults [-currentHost] read DOMAIN KEY | write DOMAIN KEY TYPE VALUE, one file per key under $MD/prefs.
+scope=user
+[[ "$1" == -currentHost ]] && { scope=host; shift; }
+f="$MD/prefs/$scope/$2/$3"
+case "$1" in
+    read) [[ -f "$f" ]] || exit 1; cat "$f" ;;
+    write)
+        grep -qxF "$3" "$MD/fail_write" 2> /dev/null && exit 1
+        case "$4 $5" in "-bool true") v=1 ;; "-bool false") v=0 ;; *) v="$5" ;; esac
+        mkdir -p "${f%/*}" && printf '%s\n' "$v" > "$f"
+        printf '%s %s %s\n' "$scope" "$2" "$3" >> "$MD/written" ;;
+esac
+EOF
+printf '#!/bin/sh\nexit "$(cat "$MD/running")"\n' > "$md/bin/pgrep"
+printf '#!/bin/sh\necho "$1" >> "$MD/killed"\n' > "$md/bin/killall"
+chmod +x "$md/bin/defaults" "$md/bin/pgrep" "$md/bin/killall"
+render darwin "$md97" > "$md/script.sh"
+md_reset() { rm -rf "$md/prefs" "$md/written" "$md/killed" "$md/fail_write" "$md/cache"; echo 0 > "$md/running"; }
+md_run() { MD="$md" PATH="$md/bin:$PATH" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1; echo "exit=$?"; }
+md_todo() { cat "$md/cache"/after-apply.* 2> /dev/null; }
+md_set() { mkdir -p "$md/prefs/$1/$2" && printf '%s\n' "$4" > "$md/prefs/$1/$2/$3"; } # SCOPE DOMAIN KEY VALUE
+md_reset
+md_run > "$md/out"
+check "macOS settings on a new Mac: writes every key whose unset value differs (27 of 38)" 27 "$(wc -l < "$md/written" | tr -d ' ')"
+check "macOS settings on a new Mac: leaves keys that are already right when unset" 0 \
+    "$(grep -cE ' (Dragging|DragLock|TrackpadThreeFingerDrag|TrackpadFiveFingerPinchGesture|AppleInterfaceStyleSwitchesAutomatically|com.apple.swipescrolldirection|ShowExternalHardDrivesOnDesktop)$' "$md/written")"
+check "macOS settings on a new Mac: restarts the Dock, Finder and Control Center" "Dock|Finder|ControlCenter" "$(paste -sd'|' - < "$md/killed")"
+check "macOS settings on a new Mac: says what it updated, and log out goes on the to-do list" "1|1|1|exit=0" \
+    "$(grep -c '^OK:   macOS settings updated: autohide, autohide-delay, ' "$md/out")|$(grep -c '; restarted Dock, Finder, ControlCenter; apps pick up' "$md/out")|$(md_todo | grep -c '^Log out of macOS and back in')|$(tail -1 "$md/out")"
+check "macOS settings: per-machine keys go to -currentHost" "host com.apple.controlcenter BatteryShowPercentage|host com.apple.Spotlight MenuItemHidden" \
+    "$(grep '^host ' "$md/written" | paste -sd'|' -)"
+rm -f "$md/written" "$md/killed" "$md/cache"/after-apply.*
+check "macOS settings: a second apply writes nothing and restarts nothing" "OK:   macOS settings match the repo|exit=0|no|no|0" \
+    "$(md_run | paste -sd'|' -)|$([[ -e "$md/written" ]] && echo yes || echo no)|$([[ -e "$md/killed" ]] && echo yes || echo no)|$(md_todo | wc -l | tr -d ' ')"
+md_set user com.apple.AppleMultitouchTrackpad Dragging 1
+md_set user com.apple.dock autohide-time-modifier 0.150
+check "macOS settings: tap-to-drag turned on is turned off again; a float equal as a number is left; no restart" \
+    "user com.apple.AppleMultitouchTrackpad Dragging|0|no|1" \
+    "$(md_run > /dev/null; cat "$md/written")|$(cat "$md/prefs/user/com.apple.AppleMultitouchTrackpad/Dragging")|$([[ -e "$md/killed" ]] && echo yes || echo no)|$(md_todo | grep -c '^Log out')"
+rm -f "$md/written" "$md/cache"/after-apply.*
+md_set user NSGlobalDomain com.apple.trackpad.scaling 2
+md_set user com.apple.dock autohide 0
+echo 1 > "$md/running"
+check "macOS settings: a different value is written; nothing restarted while the Dock is not running" "2.5|1|no" \
+    "$(md_run > /dev/null; cat "$md/prefs/user/NSGlobalDomain/com.apple.trackpad.scaling")|$(cat "$md/prefs/user/com.apple.dock/autohide")|$([[ -e "$md/killed" ]] && echo yes || echo no)"
+md_reset
+printf 'mineffect\n' > "$md/fail_write"
+md_run > "$md/out"
+check "macOS settings: a key that cannot be written is named and goes on the to-do list" "1|1|exit=0" \
+    "$(grep -c '^NOTE: macOS settings could not be written: com.apple.dock mineffect$' "$md/out")|$(md_todo | grep -c 'com.apple.dock mineffect')|$(tail -1 "$md/out")"
 it_reset
 echo 0 > "$it/defaults/DoubleClickPerformsSmartSelection"
 echo DoubleClickPerformsSmartSelection > "$it/fail_write"

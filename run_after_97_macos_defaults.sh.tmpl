@@ -1,0 +1,70 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# macOS only, after every apply: the same macOS settings on every Mac (cheatsheet: "Same macOS Settings on Every Mac").
+# Writes each key listed in .chezmoidata/macos.toml ([[macos_defaults]]) where this Mac's value differs, so a change
+# made in System Settings goes back at the next apply. Then restarts the Dock, Finder or Control Center when one of
+# their keys was written (only while they run, so never before someone logs in), and lists "log out and back in" for
+# keys macOS reads only at login (trackpad, scrolling, appearance, Spotlight's menu-bar icon). Informational: never
+# fails the apply. Runs under bash 3.2 (Intel Macs without Homebrew's bash).
+set -u
+{{ template "after-apply.sh" . }}
+
+updated=()
+failed=()
+effects=" "
+ensure_default() { # ensure_default EFFECT -currentHost|- SAME_WHEN_UNSET(1|0) DOMAIN KEY TYPE VALUE
+    local effect="$1" host="$2" unset_ok="$3" domain="$4" key="$5" type="$6" value="$7" want have
+    [[ "$host" == "-" ]] && host=""
+    case "$type $value" in
+        "-bool true") want=1 ;;
+        "-bool false") want=0 ;;
+        *) want="$value" ;;
+    esac
+    if have="$(defaults ${host:+"$host"} read "$domain" "$key" 2> /dev/null)"; then
+        [[ "$have" == "$want" ]] && return 0
+        # defaults prints a decimal its own way (2.5, 0.15): compare floats as numbers.
+        [[ "$type" == "-float" ]] && awk -v a="$have" -v b="$want" 'BEGIN { exit !(a + 0 == b + 0) }' && return 0
+    else
+        [[ "$unset_ok" == 1 ]] && return 0
+    fi
+    if defaults ${host:+"$host"} write "$domain" "$key" "$type" "$value"; then
+        updated+=("$key")
+        effects="$effects$effect "
+    else
+        failed+=("$domain $key")
+    fi
+}
+{{ range $group := .macos_defaults -}}
+{{   $host := ternary "-currentHost" "-" (dig "current_host" false $group) -}}
+{{   $unset := dig "same_when_unset" list $group -}}
+{{   range $domain := $group.domains -}}
+{{     range $key, $value := $group.set -}}
+ensure_default {{ $group.takes_effect | squote }} {{ $host }} {{ if has $key $unset }}1{{ else }}0{{ end }} {{ $domain | squote }} {{ $key | squote }} {{ if kindIs "bool" $value }}-bool {{ $value }}{{ else if kindIs "float64" $value }}-float {{ $value }}{{ else if kindIs "string" $value }}-string {{ $value | replace "$HOME" $.chezmoi.homeDir | squote }}{{ else }}-int {{ $value }}{{ end }}
+{{     end -}}
+{{   end -}}
+{{ end -}}
+join() { printf '%s\n' "$@" | awk '!seen[$0]++' | paste -sd, - | sed 's/,/, /g'; } # unique, in order
+
+if [[ ${#failed[@]} -gt 0 ]]; then
+    echo "NOTE: macOS settings could not be written: $(join "${failed[@]}")"
+    todo "Set these macOS settings by hand (System Settings), or find why defaults could not write them: $(join "${failed[@]}")"
+fi
+if [[ ${#updated[@]} -eq 0 ]]; then
+    [[ ${#failed[@]} -gt 0 ]] || echo "OK:   macOS settings match the repo"
+    exit 0
+fi
+restarted=()
+for process in Dock Finder ControlCenter; do
+    [[ "$effects" == *" $process "* ]] || continue
+    pgrep -xq "$process" && killall "$process" 2> /dev/null && restarted+=("$process")
+done
+message="OK:   macOS settings updated: $(join "${updated[@]}")"
+[[ ${#restarted[@]} -eq 0 ]] || message="$message; restarted $(join "${restarted[@]}")"
+[[ "$effects" == *" reopen "* ]] && message="$message; apps pick up the title-bar and scroll-bar settings when reopened"
+echo "$message"
+if [[ "$effects" == *" logout "* ]]; then
+    echo "NOTE: some of these macOS settings take effect only after you log out and back in"
+    todo "Log out of macOS and back in, so the updated trackpad, scrolling, appearance and menu-bar settings take effect"
+fi
+exit 0
+{{ end -}}
