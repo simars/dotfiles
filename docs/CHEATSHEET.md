@@ -185,16 +185,17 @@ chezmoi writes macOS's own settings from `[[macos_defaults]]` in `.chezmoidata/m
 
 | Area | Settings |
 | :--- | :--- |
-| Dock | hidden, shown on hover at once with a quick slide; minimize into the app's icon with Scale; no bouncing; no recent apps |
+| Dock | hidden, shown on hover at once with a quick slide; small icons (16) magnified to 128 on hover; minimize into the app's icon with Scale; no bouncing; no recent apps |
 | Mission Control | windows grouped by app; dragging a window to the top edge does nothing; thumb and three fingers spread shows the desktop |
-| Windows | double-clicking a title bar fills the screen; clicking the scroll bar jumps there |
+| Windows and keys | double-clicking a title bar fills the screen; clicking the scroll bar jumps there; holding a key repeats it (no accent pop-up: Option+key still types accents) |
 | Appearance | Dark, never Auto (the terminals' colours are dark) |
 | Trackpad | natural scrolling (mouse too), tracking speed 2.5, tap to click; no tap-to-drag, drag lock or three-finger drag, so three-finger swipes stay for spaces and Mission Control |
 | Finder | list view, path bar, status bar, folders first, search the current folder, new windows in Downloads, no extension-change warning, external drives on the desktop |
 | Menu bar | battery percentage on, Spotlight icon off (Cmd-Space still works); both keys are older macOS's and were not yet seen working on macOS 27: check the menu bar after the first apply |
 
 * **Left to each Mac:** the Dock's apps, hot corners, the clock (macOS's "date when space allows"), which Control Center items show in the menu bar.
-* **When it changes something** the apply restarts the Dock, Finder or Control Center (only while they run), says which keys it wrote, and puts **log out and back in** on the to-do list for the trackpad, scrolling, appearance and Spotlight keys, which macOS reads at login. Apps pick up the title-bar and scroll-bar settings when reopened.
+* **When it changes something** the apply restarts the Dock, Finder or Control Center (only while they run), says which keys it wrote, and puts **log out and back in** on the to-do list for the trackpad, scrolling, appearance and Spotlight keys, which macOS reads at login. Apps pick up the title-bar, scroll-bar and key-repeat settings when reopened.
+* **Remote access is checked, not set:** the same script reports Remote Login (SSH), Screen Sharing and wake for network access on AC, and puts any that is off on the to-do list with its fix (`OK:   remote access: ...` when all are on). Turning them on needs System Settings or sudo, so chezmoi never does it.
 * **List view** applies to folders that never saved their own view; others keep theirs (View > as List, then View > Show View Options > Use as Defaults).
 
 ### Option as Alt in the Mac Terminals

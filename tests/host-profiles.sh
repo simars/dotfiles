@@ -720,7 +720,8 @@ printf 'not json' > "$it_profile"
 check "iTerm2 script: a profile that is not JSON gives no local-changes line, exit 0" "0|exit=0" "$(iterm_after | grep -c 'changed on this Mac only')|$(iterm_after | tail -1)"
 
 # macOS settings (run_after_97_macos_defaults.sh, every Mac): the keys in [[macos_defaults]] of .chezmoidata/macos.toml,
-# written where a Mac differs. Run here in a stub Mac: stub defaults (-currentHost too), pgrep and killall.
+# written where a Mac differs, then the remote-access check. Run here in a stub Mac: stub defaults (-currentHost too),
+# pgrep, killall, launchctl (a loaded job = a file under $MD/launchd) and pmset (prints $MD/pmset).
 md97=run_after_97_macos_defaults.sh.tmpl
 for host in darwin intel; do
     check "$host runs the macOS settings script" yes "$(manages "$host" 97_macos_defaults.sh)"
@@ -729,7 +730,7 @@ for host in omarchy arch ubuntu; do
     check "$host gets no macOS settings script" "" "$(render "$host" "$md97" | tr -d '[:space:]')"
 done
 check "darwin macOS settings script is valid bash" "" "$(render darwin "$md97" | bash -n 2>&1)"
-check "darwin macOS settings script sets 37 keys" 37 "$(render darwin "$md97" | grep -c "^ensure_default '")"
+check "darwin macOS settings script sets 41 keys" 41 "$(render darwin "$md97" | grep -c "^ensure_default '")"
 check "darwin macOS settings: bool, float, string, int and per-machine keys" 5 "$(render darwin "$md97" | grep -cxE \
     "ensure_default 'Dock' - 0 'com.apple.dock' 'autohide' -bool true|ensure_default 'Dock' - 0 'com.apple.dock' 'autohide-time-modifier' -float 0.15|ensure_default 'Finder' - 0 'com.apple.finder' 'FXDefaultSearchScope' -string 'SCcf'|ensure_default 'logout' - 1 'com.apple.AppleMultitouchTrackpad' 'TrackpadFiveFingerPinchGesture' -int 2|ensure_default 'ControlCenter' -currentHost 0 'com.apple.controlcenter' 'BatteryShowPercentage' -bool true")"
 check "darwin macOS settings: new Finder windows open in this Mac's Downloads" 1 \
@@ -755,24 +756,30 @@ esac
 EOF
 printf '#!/bin/sh\nexit "$(cat "$MD/running")"\n' > "$md/bin/pgrep"
 printf '#!/bin/sh\necho "$1" >> "$MD/killed"\n' > "$md/bin/killall"
-chmod +x "$md/bin/defaults" "$md/bin/pgrep" "$md/bin/killall"
+printf '#!/bin/sh\n[ "$1" = print ] && [ -e "$MD/launchd/${2#system/}" ]\n' > "$md/bin/launchctl"
+printf '#!/bin/sh\ncat "$MD/pmset"\n' > "$md/bin/pmset"
+chmod +x "$md/bin/defaults" "$md/bin/pgrep" "$md/bin/killall" "$md/bin/launchctl" "$md/bin/pmset"
 render darwin "$md97" > "$md/script.sh"
-md_reset() { rm -rf "$md/prefs" "$md/written" "$md/killed" "$md/fail_write" "$md/cache"; echo 0 > "$md/running"; }
+md_reset() { # a Mac with Remote Login, Screen Sharing and wake for network access on AC
+    rm -rf "$md/prefs" "$md/written" "$md/killed" "$md/fail_write" "$md/cache" "$md/launchd"; echo 0 > "$md/running"
+    mkdir -p "$md/launchd" && touch "$md/launchd/com.openssh.sshd" "$md/launchd/com.apple.screensharing"
+    printf 'Battery Power:\n sleep                1\n womp                 0\nAC Power:\n sleep                1\n womp                 1\n' > "$md/pmset"
+}
 md_run() { MD="$md" PATH="$md/bin:$PATH" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1; echo "exit=$?"; }
 md_todo() { cat "$md/cache"/after-apply.* 2> /dev/null; }
 md_set() { mkdir -p "$md/prefs/$1/$2" && printf '%s\n' "$4" > "$md/prefs/$1/$2/$3"; } # SCOPE DOMAIN KEY VALUE
 md_reset
 md_run > "$md/out"
-check "macOS settings on a new Mac: writes every key whose unset value differs (26 of 37)" 26 "$(wc -l < "$md/written" | tr -d ' ')"
+check "macOS settings on a new Mac: writes every key whose unset value differs (30 of 41)" 30 "$(wc -l < "$md/written" | tr -d ' ')"
 check "macOS settings on a new Mac: leaves keys that are already right when unset" 0 \
     "$(grep -cE ' (Dragging|DragLock|TrackpadThreeFingerDrag|TrackpadFiveFingerPinchGesture|AppleInterfaceStyleSwitchesAutomatically|com.apple.swipescrolldirection|ShowExternalHardDrivesOnDesktop)$' "$md/written")"
 check "macOS settings on a new Mac: restarts the Dock, Finder and Control Center" "Dock|Finder|ControlCenter" "$(paste -sd'|' - < "$md/killed")"
 check "macOS settings on a new Mac: says what it updated, and log out goes on the to-do list" "1|1|1|exit=0" \
-    "$(grep -c '^OK:   macOS settings updated: autohide, autohide-delay, ' "$md/out")|$(grep -c '; restarted Dock, Finder, ControlCenter; apps pick up' "$md/out")|$(md_todo | grep -c '^Log out of macOS and back in')|$(tail -1 "$md/out")"
+    "$(grep -c '^OK:   macOS settings updated: autohide, autohide-delay, ' "$md/out")|$(grep -c '; restarted Dock, Finder, ControlCenter; apps pick up the title-bar, scroll-bar and key-repeat settings' "$md/out")|$(md_todo | grep -c '^Log out of macOS and back in')|$(tail -1 "$md/out")"
 check "macOS settings: per-machine keys go to -currentHost" "host com.apple.controlcenter BatteryShowPercentage|host com.apple.Spotlight MenuItemHidden" \
     "$(grep '^host ' "$md/written" | paste -sd'|' -)"
 rm -f "$md/written" "$md/killed" "$md/cache"/after-apply.*
-check "macOS settings: a second apply writes nothing and restarts nothing" "OK:   macOS settings match the repo|exit=0|no|no|0" \
+check "macOS settings: a second apply writes nothing and restarts nothing" "OK:   macOS settings match the repo|OK:   remote access: Remote Login, Screen Sharing, wake for network access on AC|exit=0|no|no|0" \
     "$(md_run | paste -sd'|' -)|$([[ -e "$md/written" ]] && echo yes || echo no)|$([[ -e "$md/killed" ]] && echo yes || echo no)|$(md_todo | wc -l | tr -d ' ')"
 md_set user com.apple.AppleMultitouchTrackpad Dragging 1
 md_set user com.apple.dock autohide-time-modifier 0.150
@@ -790,6 +797,22 @@ printf 'mineffect\n' > "$md/fail_write"
 md_run > "$md/out"
 check "macOS settings: a key that cannot be written is named and goes on the to-do list" "1|1|exit=0" \
     "$(grep -c '^NOTE: macOS settings could not be written: com.apple.dock mineffect$' "$md/out")|$(md_todo | grep -c 'com.apple.dock mineffect')|$(tail -1 "$md/out")"
+check "macOS settings: Dock size and key repeat are set" 4 "$(grep -cE ' (tilesize|magnification|largesize|ApplePressAndHoldEnabled)$' "$md/written")"
+check "macOS remote access: all on gives one OK line and no remote-access to-do" "1|0" \
+    "$(grep -c '^OK:   remote access: Remote Login, Screen Sharing, wake for network access on AC$' "$md/out")|$(md_todo | grep -cE 'Remote Login|Screen Sharing|womp')"
+md_reset
+rm "$md/launchd/com.openssh.sshd"
+sed -i.bak '/^AC Power:/,$ s/womp                 1/womp                 0/' "$md/pmset"
+md_run > "$md/out"
+check "macOS remote access: Remote Login off and no wake on AC are named and go on the to-do list, exit 0" \
+    "1|1|1|0|exit=0" \
+    "$(grep -c '^NOTE: remote access off on this Mac: Remote Login, wake for network access on AC$' "$md/out")|$(md_todo | grep -c 'System Settings > General > Sharing > Remote Login')|$(md_todo | grep -c 'sudo pmset -c womp 1')|$(md_todo | grep -c 'Screen Sharing')|$(tail -1 "$md/out")"
+md_reset
+rm "$md/launchd/com.apple.screensharing"
+printf 'Battery Power:\n sleep                1\n' > "$md/pmset"
+md_run > "$md/out"
+check "macOS remote access: Screen Sharing off is listed; a Mac with no AC section is not judged on wake" "1|1|0" \
+    "$(grep -c '^NOTE: remote access off on this Mac: Screen Sharing$' "$md/out")|$(md_todo | grep -c 'Remote Management (or Screen Sharing)')|$(md_todo | grep -c womp)"
 it_reset
 echo 0 > "$it/defaults/DoubleClickPerformsSmartSelection"
 echo DoubleClickPerformsSmartSelection > "$it/fail_write"

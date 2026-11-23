@@ -4,8 +4,10 @@
 # Writes each key listed in .chezmoidata/macos.toml ([[macos_defaults]]) where this Mac's value differs, so a change
 # made in System Settings goes back at the next apply. Then restarts the Dock, Finder or Control Center when one of
 # their keys was written (only while they run, so never before someone logs in), and lists "log out and back in" for
-# keys macOS reads only at login (trackpad, scrolling, appearance, Spotlight's menu-bar icon). Informational: never
-# fails the apply. Runs under bash 3.2 (Intel Macs without Homebrew's bash).
+# keys macOS reads only at login (trackpad, scrolling, appearance, Spotlight's menu-bar icon). Then checks, read-only,
+# the remote access a script can't turn on without sudo or System Settings (Remote Login, Screen Sharing, wake for
+# network access on AC) and lists what is off. Informational: never fails the apply. Runs under bash 3.2 (Intel Macs
+# without Homebrew's bash).
 set -u
 {{ template "after-apply.sh" . }}
 
@@ -51,20 +53,45 @@ if [[ ${#failed[@]} -gt 0 ]]; then
 fi
 if [[ ${#updated[@]} -eq 0 ]]; then
     [[ ${#failed[@]} -gt 0 ]] || echo "OK:   macOS settings match the repo"
-    exit 0
+else
+    restarted=()
+    for process in Dock Finder ControlCenter; do
+        [[ "$effects" == *" $process "* ]] || continue
+        pgrep -xq "$process" && killall "$process" 2> /dev/null && restarted+=("$process")
+    done
+    message="OK:   macOS settings updated: $(join "${updated[@]}")"
+    [[ ${#restarted[@]} -eq 0 ]] || message="$message; restarted $(join "${restarted[@]}")"
+    [[ "$effects" == *" reopen "* ]] && message="$message; apps pick up the title-bar, scroll-bar and key-repeat settings when reopened"
+    echo "$message"
+    if [[ "$effects" == *" logout "* ]]; then
+        echo "NOTE: some of these macOS settings take effect only after you log out and back in"
+        todo "Log out of macOS and back in, so the updated trackpad, scrolling, appearance and menu-bar settings take effect"
+    fi
 fi
-restarted=()
-for process in Dock Finder ControlCenter; do
-    [[ "$effects" == *" $process "* ]] || continue
-    pgrep -xq "$process" && killall "$process" 2> /dev/null && restarted+=("$process")
-done
-message="OK:   macOS settings updated: $(join "${updated[@]}")"
-[[ ${#restarted[@]} -eq 0 ]] || message="$message; restarted $(join "${restarted[@]}")"
-[[ "$effects" == *" reopen "* ]] && message="$message; apps pick up the title-bar and scroll-bar settings when reopened"
-echo "$message"
-if [[ "$effects" == *" logout "* ]]; then
-    echo "NOTE: some of these macOS settings take effect only after you log out and back in"
-    todo "Log out of macOS and back in, so the updated trackpad, scrolling, appearance and menu-bar settings take effect"
+
+# Remote access (docs/NEW_MACHINE.md): reported only, because turning these on needs sudo or System Settings. A
+# launchd job that is loaded means the service is on (macOS unloads sshd and screensharing when they are turned off);
+# no sudo needed, so it reads the same over SSH.
+off=()
+launchctl print system/com.openssh.sshd > /dev/null 2>&1 || {
+    off+=("Remote Login")
+    todo "Turn on Remote Login (SSH into this Mac): System Settings > General > Sharing > Remote Login"
+}
+launchctl print system/com.apple.screensharing > /dev/null 2>&1 || {
+    off+=("Screen Sharing")
+    todo "Turn on Screen Sharing: System Settings > General > Sharing > Remote Management (or Screen Sharing)"
+}
+# Wake for network access on AC lets home-network traffic wake a sleeping Mac (SSH through .local). Macs without an
+# AC section in pmset (none so far) are not checked.
+womp="$(pmset -g custom 2> /dev/null | awk '/^AC Power:/ { ac = 1; next } /^[A-Za-z].*:$/ { ac = 0 } ac && $1 == "womp" { print $2; exit }')"
+if [[ "$womp" == 0 ]]; then
+    off+=("wake for network access on AC")
+    todo "Turn on wake for network access when plugged in: sudo pmset -c womp 1"
+fi
+if [[ ${#off[@]} -eq 0 ]]; then
+    echo "OK:   remote access: Remote Login, Screen Sharing${womp:+, wake for network access on AC}"
+else
+    echo "NOTE: remote access off on this Mac: $(join "${off[@]}")"
 fi
 exit 0
 {{ end -}}

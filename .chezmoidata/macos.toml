@@ -58,6 +58,9 @@ launchanim = false                          # no bouncing icon while an app open
 "expose-group-apps" = true                  # Mission Control groups windows by app
 enterMissionControlByTopWindowDrag = false  # dragging a window to the top edge does not open Mission Control
 showDesktopGestureEnabled = true            # spread thumb and three fingers to show the desktop
+tilesize = 16                               # small Dock icons,
+magnification = true                        #   magnified on hover
+largesize = 128                             #   to the largest size
 
 [[macos_defaults]]
 domains = ["NSGlobalDomain"]
@@ -65,6 +68,7 @@ takes_effect = "reopen"
 [macos_defaults.set]
 AppleActionOnDoubleClick = "Fill"           # double-clicking a title bar fills the screen (Fill, Maximize, Minimize, None)
 AppleScrollerPagingBehavior = true          # clicking the scroll bar jumps to that spot
+ApplePressAndHoldEnabled = false            # holding a key repeats it (no accent pop-up; Option+key still types accents)
 
 [[macos_defaults]]
 domains = ["NSGlobalDomain"]
