@@ -333,7 +333,7 @@ STUB
         "exit 0 swap --source-pane p1 --target-pane p2|swap --source-pane p1 --target-pane p3|swap --source-pane p2 --target-pane p3|swap --source-pane p2 --target-pane p3" "$(lay_run rotate-up) $(lay_calls)"
     rm -rf "$lay/state"; lay_set 160 p2 false p1 p2 p3
     check "herdr-layout rotate-up: focus goes to the pane rotated into the focused place" \
-        "swap --source-pane p3 --target-pane p2|swap --source-pane p3 --target-pane p2" "$(lay_run rotate-up >/dev/null; sed -n '3,4p' "$lay/calls" | paste -sd'|')"
+        "swap --source-pane p3 --target-pane p2|swap --source-pane p3 --target-pane p2" "$(lay_run rotate-up >/dev/null; sed -n '3,4p' "$lay/calls" | paste -sd'|' -)"
     lay_set 160 p1 false p1 p2 p3
     rm -rf "$lay/state"
     check "herdr-layout rotate-down: the last pane comes first, already focused (tmux M-o)" \
@@ -348,7 +348,7 @@ STUB
     lay_set 160 p3 false p1 p2 p3 p4
     check "herdr-layout main-vertical: main 80 of 160 columns, the rest stacked, focus kept" \
         "exit 0 move p2 --tab w1:t1 --split right --target-pane p1 --ratio 0.5000 --no-focus|move p3 --tab w1:t1 --split down --target-pane p2 --ratio 0.3333 --focus|move p4 --tab w1:t1 --split down --target-pane p3 --ratio 0.5000 --no-focus" \
-        "$(lay_run main-vertical) $(sed -n '4,$p' "$lay/calls" | paste -sd'|')"
+        "$(lay_run main-vertical) $(sed -n '4,$p' "$lay/calls" | paste -sd'|' -)"
     lay_set 200 p1 false p1 p2 p3
     check "herdr-layout main-vertical-mirrored: the rest on the left, main (80 of 200) on the right" \
         "exit 0 move p3 --new-tab --no-focus|move p1 --tab w1:t9 --split right --target-pane p3 --no-focus|move p1 --tab w1:t1 --split right --target-pane p2 --ratio 0.6000 --focus|move p3 --tab w1:t1 --split down --target-pane p2 --ratio 0.5000 --no-focus" \
@@ -356,7 +356,7 @@ STUB
     lay_set 160 p1 false p1 p2 p3 p4 p5
     check "herdr-layout tiled: 5 panes in rows of 2, 2 and 1, as tmux 3.8" \
         "exit 0 move p3 --tab w1:t1 --split down --target-pane p1 --ratio 0.3333 --no-focus|move p5 --tab w1:t1 --split down --target-pane p3 --ratio 0.5000 --no-focus|move p2 --tab w1:t1 --split right --target-pane p1 --ratio 0.5000 --no-focus|move p4 --tab w1:t1 --split right --target-pane p3 --ratio 0.5000 --no-focus" \
-        "$(lay_run tiled) $(sed -n '5,$p' "$lay/calls" | paste -sd'|')"
+        "$(lay_run tiled) $(sed -n '5,$p' "$lay/calls" | paste -sd'|' -)"
     check "herdr-layout next after tiled wraps to even-horizontal" "exit 0 even-horizontal" "$(lay_run next) $(cat "$lay/state/herdr-layout/default_w1_t1.layout")"
     rm -rf "$lay/state"; lay_set 160 p1 false p1 p2
     check "herdr-layout tiled: 2 panes stacked, as tmux" "move p2 --tab w1:t1 --split down --target-pane p1 --ratio 0.5000 --no-focus" "$(lay_run tiled >/dev/null; sed -n 2p "$lay/calls")"
@@ -431,7 +431,7 @@ STUB
     echo '{"result":{"move_result":{"changed":true}}}' > "$join/move.json"
     join_tabs w1:t1:1:2 w1:t2:2:1 w2:t1:logs:3
     check "herdr-join lists every other tab, in every workspace, numbered" \
-        "1) chezmoi  2  (1 pane)|2) other  1: logs  (3 panes)" "$(join_run '' > /dev/null; grep -E '^[0-9]+\) ' "$join/err" | paste -sd'|')"
+        "1) chezmoi  2  (1 pane)|2) other  1: logs  (3 panes)" "$(join_run '' > /dev/null; grep -E '^[0-9]+\) ' "$join/err" | paste -sd'|' -)"
     check "herdr-join moves the pane right of the picked tab's focused pane, focus following (tmux join-pane -h)" \
         "exit 0 move p1 --tab w2:t1 --split right --focus" "$(join_run 2) $(join_calls)"
     check "herdr-join: an empty choice cancels" "exit 0 " "$(join_run '') $(join_calls)"
@@ -1056,9 +1056,9 @@ check "Ghostty on Omarchy: every leader action closes the table after it" "" \
 # Plan A (2026-11-21): r reloads, as after tmux's and Herdr's prefix; Alt+arrows resize a step and stay in resize mode
 # (tmux and Herdr resize on prefix Alt+arrows); Shift+e equalizes (tmux E), = kept.
 check "Ghostty on Omarchy: leader r reloads the config" "keybind = term/r=reload_config|keybind = chain=deactivate_key_table" \
-    "$(grep -A1 -xF 'keybind = term/r=reload_config' <<< "$ghostty_lead" | paste -sd'|')"
+    "$(grep -A1 -xF 'keybind = term/r=reload_config' <<< "$ghostty_lead" | paste -sd'|' -)"
 check "Ghostty on Omarchy: leader Alt+arrows resize 40 px, then resize mode" 4 \
-    "$(for d in left down up right; do grep -A2 -xF "keybind = term/alt+arrow_$d=resize_split:$d,40" <<< "$ghostty_lead" | paste -sd'|'; done | grep -cxE 'keybind = term/alt\+arrow_[a-z]+=resize_split:[a-z]+,40\|keybind = chain=deactivate_key_table\|keybind = chain=activate_key_table:term_resize')"
+    "$(for d in left down up right; do grep -A2 -xF "keybind = term/alt+arrow_$d=resize_split:$d,40" <<< "$ghostty_lead" | paste -sd'|' -; done | grep -cxE 'keybind = term/alt\+arrow_[a-z]+=resize_split:[a-z]+,40\|keybind = chain=deactivate_key_table\|keybind = chain=activate_key_table:term_resize')"
 check "Ghostty on Omarchy: resize mode keeps Alt+arrows at 40 px, h j k l at 20" "4 4" \
     "$(grep -cE '^keybind = term_resize/alt\+arrow_(left|down|up|right)=resize_split:(left|down|up|right),40$' <<< "$ghostty_lead") $(grep -cE '^keybind = term_resize/[hjkl]=resize_split:[a-z]+,20$' <<< "$ghostty_lead")"
 check "Ghostty on Omarchy: leader Shift+e and = equalize" "2" "$(grep -cE '^keybind = term/(shift\+e|equal)=equalize_splits$' <<< "$ghostty_lead")"
