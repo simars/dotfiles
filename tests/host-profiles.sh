@@ -398,7 +398,7 @@ STUB
     echo "$live" > "$lay/state/herdr-layout/default_w1_t1.lock/pid"
     check "herdr-layout: a second run at once is refused" "exit 1 1" "$(lay_run tiled) $(grep -c 'already running' "$lay/err")"
     kill "$live" 2> /dev/null; wait "$live" 2> /dev/null
-    check "herdr-layout: a lock left by a run that died is taken over" "exit 0 0" "$(lay_run tiled) $(ls -d "$lay/state/herdr-layout/default_w1_t1.lock" 2> /dev/null | wc -l | tr -d ' ')"
+    check "herdr-layout: a lock left by a run that died is taken over" "exit 0 0" "$(lay_run tiled) $(find "$lay/state/herdr-layout" -maxdepth 1 -name default_w1_t1.lock 2> /dev/null | wc -l | tr -d ' ')"
     # herdr-join: tmux's join-pane. The stub serves the pane's layout (tab w1:t1), tabs.json and workspaces.json, logs
     # a move and answers it with move.json. Not a terminal here, so the script reads a number from stdin.
     join="$work/herdr-join"; mkdir -p "$join"
@@ -424,6 +424,8 @@ STUB
                 '{tab_id: $t, workspace_id: ($t | split(":")[0]), number: ($t | split(":t")[1] | tonumber), label: $l, pane_count: $n}'
         done | jq -sc . > "$join/tabs.json"
     }
+    # ${2-p1} unquoted on purpose: join_run X '' must pass no argument at all, not an empty one.
+    # shellcheck disable=SC2086
     join_run() { : > "$join/calls"; printf '%s\n' "$1" | HERDR_BIN_PATH="$join/herdr" bash dot_local/bin/executable_herdr-join ${2-p1} 2> "$join/err"; echo "exit $?"; }
     join_calls() { paste -sd'|' "$join/calls"; }
     echo '{"result":{"move_result":{"changed":true}}}' > "$join/move.json"
