@@ -156,6 +156,14 @@ for zsh_plugin in zsh-autosuggestions zsh-syntax-highlighting; do
 done
 {{- end }}
 
+# Ghostty's terminal description, which run_onchange_after_92_ghostty_terminfo.sh installs: without it a shell reached
+# over SSH from Ghostty garbles typed lines. Warn only.
+if infocmp xterm-ghostty > /dev/null 2>&1; then
+    echo "OK:   terminfo knows xterm-ghostty"
+else
+    report warn "this host has no xterm-ghostty terminfo, so typing over SSH from Ghostty shows extra text. Fix: tic -x -o ~/.terminfo ~/.local/share/chezmoi/terminfo/xterm-ghostty.terminfo"
+fi
+
 # mise: warn only. An old mise or an uninstalled project pin is not a secret-scanning gap, and a stale pin
 # in some side repo must not fail the apply.
 MISE_MIN="{{ .requirements.mise.min }}"

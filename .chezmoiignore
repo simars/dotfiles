@@ -5,6 +5,9 @@ tests/
 tests/**
 bootstrap/
 bootstrap/**
+# Ghostty's terminal description: source for run_onchange_after_92_ghostty_terminfo.sh, not a file in $HOME.
+terminfo/
+terminfo/**
 .github/
 .github/**
 .gitleaks.toml

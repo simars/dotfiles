@@ -972,6 +972,24 @@ check "setup-guides lists the guides" 'guides=("zsh" "terminals-clipboard" "wave
 check "omarchy requirement check reports guides with setup-guides apply" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'Fix: setup-guides apply')"
 check "omarchy packages include omarchy-zsh" 1 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -c '"omarchy-zsh"')"
 
+# Ghostty's terminfo (xterm-ghostty) on every host: compiled from terminfo/ unless the system has its own copy.
+for host in $hosts; do
+    render "$host" run_onchange_after_92_ghostty_terminfo.sh.tmpl > "$work/$host.terminfo.sh"
+    check "$host terminfo script is valid bash" "" "$(bash -n "$work/$host.terminfo.sh" 2>&1)"
+    check "$host terminfo script carries the whole description" "$(grep -cv '^#' terminfo/xterm-ghostty.terminfo)" \
+        "$(sed -n "/^cat > \"\$src\" << 'TERMINFO_EOF'$/,/^TERMINFO_EOF$/p" "$work/$host.terminfo.sh" | grep -cv -e '^#' -e 'TERMINFO_EOF')"
+    check "$host terminfo script leaves a system copy alone" 1 "$(grep -c 'env -u TERMINFO -u TERMINFO_DIRS HOME=/nonexistent infocmp xterm-ghostty' "$work/$host.terminfo.sh")"
+    check "$host does not deploy terminfo/" 0 "$(grep -c '^terminfo' "$work/$host.managed")"
+    check "$host requirement check looks for xterm-ghostty" 1 "$(render "$host" run_after_99_assert_requirements.sh.tmpl | grep -c '^if infocmp xterm-ghostty > /dev/null 2>&1; then$')"
+done
+check "terminfo script re-runs when the description changes" 1 \
+    "$(grep -c '^# terminfo hash: {{ include "terminfo/xterm-ghostty.terminfo" | sha256sum }}$' run_onchange_after_92_ghostty_terminfo.sh.tmpl)"
+if command -v tic > /dev/null 2>&1; then
+    ti="$work/terminfo"
+    tic -x -o "$ti" terminfo/xterm-ghostty.terminfo 2> /dev/null
+    check "terminfo/xterm-ghostty.terminfo compiles (256 colours)" 256 "$(TERMINFO="$ti" TERM=xterm-ghostty tput colors 2>&1)"
+fi
+
 # iTerm2 shell integration: macOS ~/.zshrc only, loaded from the app, only in iTerm2 and not in SSH sessions.
 check "darwin ~/.zshrc loads iTerm2 shell integration only in iTerm2" 1 "$(grep -c 'TERM_PROGRAM:-}" == iTerm.app || "${LC_TERMINAL:-}" == iTerm2 ) && -z "${SSH_CONNECTION:-}"' "$work/darwin.zshrc")"
 for host in omarchy arch ubuntu; do

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Ghostty's terminal description (TERM=xterm-ghostty) on every host. Ghostty sets that TERM and ssh passes it on through
+# every hop (a Mac's Ghostty -> works -> another Mac); a host without the description can't move the cursor, so zsh
+# redraws a line by appending to it and typing shows extra text. Ghostty's own ssh-terminfo feature covers only the
+# first hop. This compiles the repository's copy (terminfo/xterm-ghostty.terminfo) into ~/.terminfo, unless the system
+# has its own (Arch's ghostty-terminfo package, which follows Ghostty updates). Re-runs when that copy changes.
+# terminfo hash: {{ include "terminfo/xterm-ghostty.terminfo" | sha256sum }}
+set -euo pipefail
+
+if [[ "${CHEZMOI_CI:-false}" == "true" ]]; then
+    echo "==> CI environment detected: skipping the Ghostty terminfo."
+    exit 0
+fi
+
+# The system's copy only: without ~/.terminfo (HOME), and without the TERMINFO that Ghostty sets for its own shells.
+if env -u TERMINFO -u TERMINFO_DIRS HOME=/nonexistent infocmp xterm-ghostty > /dev/null 2>&1; then
+    echo "==> Ghostty terminfo: the system has xterm-ghostty, nothing to install."
+    exit 0
+fi
+if ! command -v tic > /dev/null 2>&1; then
+    echo "==> Ghostty terminfo: no tic on this host, so xterm-ghostty is not installed (the requirement check reports it)."
+    exit 0
+fi
+
+src="$(mktemp "${TMPDIR:-/tmp}/xterm-ghostty.XXXXXX")"
+trap 'rm -f "$src"' EXIT
+# A plain heredoc into a file: inside $( ) the description's unbalanced parentheses (\E(B) confuse macOS's bash 3.2.
+cat > "$src" << 'TERMINFO_EOF'
+{{ include "terminfo/xterm-ghostty.terminfo" -}}
+TERMINFO_EOF
+
+mkdir -p "$HOME/.terminfo"
+# tic warns that older tic versions may read the description field as an alias: harmless, so shown only on failure.
+if out="$(tic -x -o "$HOME/.terminfo" "$src" 2>&1)"; then
+    echo "==> Ghostty terminfo: xterm-ghostty compiled into ~/.terminfo."
+else
+    echo "WARN: tic could not compile xterm-ghostty: $out"
+fi
