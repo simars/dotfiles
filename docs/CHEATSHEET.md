@@ -185,7 +185,7 @@ chezmoi writes macOS's own settings from `[[macos_defaults]]` in `.chezmoidata/m
 
 | Area | Settings |
 | :--- | :--- |
-| Dock | hidden, shown on hover at once with a quick slide; small icons (16) magnified to 128 on hover; minimize into the app's icon with Scale; no bouncing; no recent apps |
+| Dock | hidden, shown on hover at once with a quick slide; small icons (16) magnified to 128 on hover; minimized windows get their own Dock tile (Scale effect); no bouncing; no recent apps |
 | Mission Control | windows grouped by app; dragging a window to the top edge does nothing; thumb and three fingers spread shows the desktop |
 | Windows and keys | double-clicking a title bar fills the screen; clicking the scroll bar jumps there; holding a key repeats it (no accent pop-up: Option+key still types accents) |
 | Appearance | Dark, never Auto (the terminals' colours are dark) |
@@ -197,6 +197,24 @@ chezmoi writes macOS's own settings from `[[macos_defaults]]` in `.chezmoidata/m
 * **When it changes something** the apply restarts the Dock, Finder or Control Center (only while they run), says which keys it wrote, and puts **log out and back in** on the to-do list for the trackpad, scrolling, appearance and Spotlight keys, which macOS reads at login. Apps pick up the title-bar, scroll-bar and key-repeat settings when reopened.
 * **Remote access is checked, not set:** the same script reports Remote Login (SSH), Screen Sharing and wake for network access on AC, and puts any that is off on the to-do list with its fix (`OK:   remote access: ...` when all are on). Turning them on needs System Settings or sudo, so chezmoi never does it.
 * **List view** applies to folders that never saved their own view; others keep theirs (View > as List, then View > Show View Options > Use as Defaults).
+
+### Lost and Minimized Windows (macOS and Omarchy)
+Cmd+Tab picks an app, not a window: when every window of the app is minimized, or sits off-screen after a display change, the app comes to the front and nothing shows. These bring the windows back:
+
+| You want | macOS | Omarchy |
+| :--- | :--- | :--- |
+| Bring back the app you just picked: unhide it, restore its minimized windows, pull its off-screen ones in, stacked on this screen | **Cmd+Ctrl+U** (Hammerspoon) | |
+| The same for every app | **Cmd+Ctrl+Shift+U** | **Super+Ctrl+U**: off-screen floating windows to this workspace (private guide `~/guides/omarchy/window-rescue`) |
+| Restore one minimized window while switching | Cmd+Tab to the app, press Option, then let go of Cmd (several minimized windows: may not work) | |
+| See all of an app's windows, minimized ones too | Ctrl+Down (App Exposé); click one | |
+| Center or fill the active window | Fn+Ctrl+C / Fn+Ctrl+F | |
+| Arrange several windows | Fn+Ctrl+Shift+arrows, or Swish's swipes | Hyprland tiles by itself |
+| Unminimize with the trackpad | Swish's unminimize swipe: once for this screen, twice for all | |
+
+* **Stacked:** each window brought back is centered on the screen you are using, the next one 40 px down and right, the last one focused; a short alert says what came back ("Nothing minimized or off-screen" otherwise).
+* **Not moved:** windows on another Space (Cmd+Tab switches to their Space: macOS's default, System Settings > Desktop & Dock > Mission Control) and windows that are simply on another screen.
+* **Hammerspoon** comes with the other casks (Intel Macs: by hand, `docs/INTEL_MACS.md`). chezmoi writes `~/.hammerspoon/init.lua` and `window_rescue.lua`; put this Mac's own additions in `~/.hammerspoon/local.lua`. It reloads itself when they change and starts at login. Once per Mac: open it and allow it in System Settings > Privacy & Security > Accessibility (the apply lists it until it runs).
+* **Check it:** each run adds a line to `~/Library/Logs/window-rescue.log`. Over SSH: `open -g "hammerspoon://window-rescue"` (`?all=1` for every app), then read the log.
 
 ### Option as Alt in the Mac Terminals
 A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to act as Meta; otherwise Option types special characters (`ƒ`, `©`, `ü`). chezmoi sets **left Option = Alt, right Option = special characters** (macOS only):

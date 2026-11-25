@@ -772,7 +772,7 @@ md_todo() { cat "$md/cache"/after-apply.* 2> /dev/null; }
 md_set() { mkdir -p "$md/prefs/$1/$2" && printf '%s\n' "$4" > "$md/prefs/$1/$2/$3"; } # SCOPE DOMAIN KEY VALUE
 md_reset
 md_run > "$md/out"
-check "macOS settings on a new Mac: writes every key whose unset value differs (30 of 41)" 30 "$(wc -l < "$md/written" | tr -d ' ')"
+check "macOS settings on a new Mac: writes every key whose unset value differs (29 of 41)" 29 "$(wc -l < "$md/written" | tr -d ' ')"
 check "macOS settings on a new Mac: leaves keys that are already right when unset" 0 \
     "$(grep -cE ' (Dragging|DragLock|TrackpadThreeFingerDrag|TrackpadFiveFingerPinchGesture|AppleInterfaceStyleSwitchesAutomatically|com.apple.swipescrolldirection|ShowExternalHardDrivesOnDesktop)$' "$md/written")"
 check "macOS settings on a new Mac: restarts the Dock, Finder and Control Center" "Dock|Finder|ControlCenter" "$(paste -sd'|' - < "$md/killed")"
@@ -1025,6 +1025,21 @@ for host in arch ubuntu; do
 done
 check "darwin manages the Herdr app's settings" yes "$(manages darwin .config/herdr-app/settings.json)"
 check "omarchy leaves the Herdr app's settings alone" no "$(manages omarchy .config/herdr-app/settings.json)"
+# Hammerspoon's window rescue (Cmd+Ctrl+U): every Mac, no Linux host.
+for host in darwin intel; do
+    check "$host manages Hammerspoon's window rescue" "yes yes" "$(manages "$host" .hammerspoon/init.lua) $(manages "$host" .hammerspoon/window_rescue.lua)"
+done
+for host in omarchy arch ubuntu debian; do
+    check "$host leaves ~/.hammerspoon alone" no "$(manages "$host" .hammerspoon/init.lua)"
+done
+check "darwin casks include Hammerspoon" 1 "$(render darwin run_onchange_before_00_install_packages.sh.tmpl | grep -cx 'cask "hammerspoon"')"
+check "the Mac requirement check names Hammerspoon; only Intel points to INTEL_MACS.md" "1 0 1" \
+    "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'cask hammerspoon"$') $(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'hammerspoon (docs/INTEL_MACS.md)') $(render intel run_after_99_assert_requirements.sh.tmpl | grep -c 'hammerspoon (docs/INTEL_MACS.md)')"
+check "Linux requirement checks never mention Hammerspoon" "0 0" \
+    "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -ci hammerspoon.app) $(render ubuntu run_after_99_assert_requirements.sh.tmpl | grep -ci hammerspoon.app)"
+if command -v luac > /dev/null 2>&1; then
+    check "Hammerspoon's Lua files compile" ok "$(luac -p dot_hammerspoon/*.lua 2>&1 && echo ok)"
+fi
 kv() { render "$1" "$2" > "$work/kv.sh"; printf '%b' "$3" | bash "$work/kv.sh" | grep -v '^# Set by chezmoi' | paste -sd'|' -; }
 check "kitty on macOS: keeps the rest, sets copy on select and left Option as Alt" "include t.conf|font_size 11||copy_on_select clipboard|macos_option_as_alt left" \
     "$(kv darwin dot_config/kitty/modify_kitty.conf.tmpl 'include t.conf\ncopy_on_select no\nfont_size 11\n')"

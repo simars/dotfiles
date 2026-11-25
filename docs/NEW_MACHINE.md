@@ -44,7 +44,7 @@ and apps whose config just changed and need a reload. Follow it until it says no
      repository, and chezmoi builds the work rules in `~/.gitconfig` and `~/.gitconfig.work` from them. To change
      them later: `chezmoi init --prompt`, then `chezmoi apply`.
    - It then installs the Homebrew tools and apps in `.chezmoidata/packages.toml` (iTerm2, Ghostty, kitty, Wave, Warp,
-     the Herdr app, the 1Password CLI, the Nerd Font), LunarVim and the mise runtimes.
+     the Herdr app, Hammerspoon, the 1Password CLI, the Nerd Font), LunarVim and the mise runtimes.
    - It sets macOS's own settings (Dock, Mission Control, Finder, trackpad, appearance, menu bar; cheatsheet: "Same
      macOS Settings on Every Mac"), restarts the Dock and Finder, and lists a log out for the trackpad settings.
    - It ends with the to-do list. Most of it is the steps below.
@@ -102,12 +102,15 @@ and apps whose config just changed and need a reload. Follow it until it says no
     **Select the previous input source** (Ctrl+Space). These Macs never switch input language, and the shortcut would
     take tmux's and Herdr's second prefix. The apply names it only when macOS has stored it as on (after any change
     in that pane), so check it here on a new Mac.
-15. **Remote access and power** (System Settings or sudo, so chezmoi only checks them):
+15. **Hammerspoon, once** (the window rescue, Cmd+Ctrl+U; cheatsheet: "Lost and Minimized Windows"): open it
+    (`open -a Hammerspoon`) and allow it in System Settings > Privacy & Security > Accessibility when it asks. It
+    starts at login after that. The apply lists it while it is not running.
+16. **Remote access and power** (System Settings or sudo, so chezmoi only checks them):
     - System Settings > General > Sharing: turn on **Remote Login** (SSH) and **Remote Management** (screen sharing
       and control; a script can't turn on screen control). The apply lists either one while it is off.
     - From `~/.cfg`'s guides: `~/guides/macos/remote-access/apply.sh` (Remote Login and Touch ID for `sudo`) and
       `~/guides/macos/always-on/` for the power setup: regular (sleeps, woken by home-network traffic) or always on.
-16. **Check:** `chezmoi apply`. Repeat steps from the list until it says `Nothing to do on this machine`.
+17. **Check:** `chezmoi apply`. Repeat steps from the list until it says `Nothing to do on this machine`.
 
 ## B. New Omarchy machine
 
@@ -151,7 +154,7 @@ What the list at the end of `chezmoi apply` / `chezmoi update` can name:
 | Kind | Examples | Where it comes from |
 | :--- | :--- | :--- |
 | Requirement warnings | gitleaks missing (fails the apply), old git or mise, SSH passphrase not saved, missing Omarchy packages, runtimes, plugins or guides | `run_after_99_assert_requirements.sh` |
-| Once-per-machine steps not done | no SSH key, `~/.cfg` not cloned, ai-tooling not set up, dotfiles-local links missing (Mac), `gh` not on SSH or not logged in, LunarVim not linked (Omarchy) | `run_after_99_assert_requirements.sh` |
+| Once-per-machine steps not done | no SSH key, `~/.cfg` not cloned, ai-tooling not set up, dotfiles-local links missing (Mac), Hammerspoon not installed or not running (Mac), `gh` not on SSH or not logged in, LunarVim not linked (Omarchy) | `run_after_99_assert_requirements.sh` |
 | No work email answer | `chezmoi init` never got a work email (an init with `--promptDefaults`, or a machine set up before 2026-11-19): `chezmoi init --prompt` | `run_after_99_assert_requirements.sh` |
 | iTerm2 (Mac) | reopen iTerm2 for updated global settings; chezmoi's profile not the default; Claude Code integration missing; macOS still takes Ctrl+Space (settings changed on one Mac only are reported, not listed) | `run_after_96_macos_iterm2.sh` |
 | macOS settings (Mac) | log out and back in after trackpad, scrolling, appearance or Spotlight settings were written; a key `defaults` could not write; Remote Login, Screen Sharing or wake for network access on AC is off | `run_after_97_macos_defaults.sh` |

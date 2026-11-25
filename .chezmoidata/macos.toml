@@ -47,11 +47,13 @@ PasteTabToStringTabStopSize = 4             # a pasted tab becomes 4 spaces (whe
 [[macos_defaults]]
 domains = ["com.apple.dock"]
 takes_effect = "Dock"
+same_when_unset = ["minimize-to-application"]
 [macos_defaults.set]
 autohide = true                             # hide the Dock and show it on hover,
 "autohide-delay" = 0.0                      #   at once,
 "autohide-time-modifier" = 0.15             #   with a quick slide
-"minimize-to-application" = true            # minimize a window into its app's icon
+"minimize-to-application" = false           # each minimized window gets its own Dock tile, so it stays in sight
+                                            #   (true hid it in the app's icon: Cmd+Tab showed the app, no window)
 mineffect = "scale"                         # minimize with Scale, not Genie
 launchanim = false                          # no bouncing icon while an app opens
 "show-recents" = false                      # no suggested and recent apps in the Dock

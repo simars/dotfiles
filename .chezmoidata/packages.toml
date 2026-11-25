@@ -51,6 +51,7 @@ casks = [
     "1password-cli",
     "font-jetbrains-mono-nerd-font",
     "ghostty",
+    "hammerspoon",
     "herdr-app",
     "iterm2",
     "kitty",
