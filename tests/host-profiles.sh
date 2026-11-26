@@ -1187,6 +1187,9 @@ EOF_LUA
     check "send: the grab spot is a button: refused, nothing clicked" \
         "alert: No empty title-bar spot to hold this window by (hammerspoon://window-keys-probe)" "$(stub button)"
     check "send: a failing key press still lets go of the mouse button" "move | mouse-down | mouse-drag | mouse-up | move | alert: Could not press macOS's desktop shortcut" "$(stub key-fails)"
+    remap='/usr/bin/hidutil property --set {"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":30064771129,"HIDKeyboardModifierMappingDst":30064771181}]}'
+    check "Caps Lock remap re-applied when a USB device is added, after wake and at unlock (not on removal or sleep)" \
+        "$remap | $remap | $remap" "$(stub remap-watch)"
     check "go: presses Desktop 2 by key code at once, while the prefix is still held" "key-down 19 ctrl+alt+shift tagged | key-up 19 ctrl+alt+shift tagged" "$(stub go-held)"
     check "go: keys held for good: still presses, no refusal" "key-down 19 ctrl+alt+shift tagged | key-up 19 ctrl+alt+shift tagged" "$(stub go-held-long)"
 fi

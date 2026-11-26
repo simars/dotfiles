@@ -301,6 +301,17 @@ local function runCapsAction(action)
   end
 end
 
+-- The Caps Lock to F18 remap (hidutil) is set at login by ~/Library/LaunchAgents/dotfiles.caps-lock-f18.plist. Set it
+-- again when a USB device is connected, after a wake and at unlock, so a keyboard that appears later gets it too
+-- (setting it again is harmless).
+local REMAP = '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":{{ .caps_lock_remap.src }},"HIDKeyboardModifierMappingDst":{{ .caps_lock_remap.dst }}}]}'
+local function applyRemap() hs.task.new("/usr/bin/hidutil", nil, { "property", "--set", REMAP }):start() end
+function M.watchRemap()
+  M.usbWatch = hs.usb.watcher.new(function(device) if device.eventType == "added" then applyRemap() end end):start()
+  local cw = hs.caffeinate.watcher
+  M.powerWatch = cw.new(function(e) if e == cw.systemDidWake or e == cw.screensDidUnlock then applyRemap() end end):start()
+end
+
 local function startCapsLayer()
   local types, props = hs.eventtap.event.types, hs.eventtap.event.properties
   M.capsTap = hs.eventtap.new({ types.keyDown, types.keyUp }, function(e)
@@ -329,6 +340,7 @@ function M.start()
   bind(PREFIX, "u", function() require("window_rescue").rescue(false) end)
   hs.urlevent.bind("window-keys-probe", probe)
   startCapsLayer()
+  M.watchRemap()
 end
 
 return M

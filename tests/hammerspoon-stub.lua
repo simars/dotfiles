@@ -66,13 +66,26 @@ hs = {
     end,
   },
   alert = { show = function(m) record("alert: " .. m) end },
+  usb = { watcher = { new = function(fn) _G.usbFn = fn return { start = function(self) return self end } end } },
+  caffeinate = { watcher = { systemDidWake = "wake", screensDidUnlock = "unlock", screensDidSleep = "sleep",
+    new = function(fn) _G.powerFn = fn return { start = function(self) return self end } end } },
+  task = { new = function(path, _, args) return { start = function() record(path .. " " .. table.concat(args, " ")) end } end },
   fnutils = { filter = function(t, f) local r = {} for _, v in ipairs(t) do if f(v) then r[#r + 1] = v end end return r end },
 }
 
 local M = dofile(module)
 local log = io.open -- the module logs to ~/Library/Logs; send it nowhere
 io.open = function() return nil end
-local ok, err = pcall(scenario:sub(1, 2) == "go" and M.go or M.send, 2)
+local ok, err
+if scenario == "remap-watch" then
+  ok, err = pcall(function()
+    M.watchRemap()
+    usbFn({ eventType = "added" }); usbFn({ eventType = "removed" })
+    powerFn("wake"); powerFn("sleep"); powerFn("unlock")
+  end)
+else
+  ok, err = pcall(scenario:sub(1, 2) == "go" and M.go or M.send, 2)
+end
 io.open = log
 if not ok then record("error: " .. tostring(err):gsub("^.-: ", "")) end
 io.write(table.concat(events, " | "))
