@@ -204,8 +204,8 @@ Cmd+Tab picks an app, not a window: when every window of the app is minimized, o
 | You want | macOS | Omarchy |
 | :--- | :--- | :--- |
 | Bring back the app you just picked: unhide it, restore its minimized windows, pull its off-screen ones in, stacked on this screen | **Cmd+Ctrl+U** (Hammerspoon) | |
-| The same for every app | **Cmd+Ctrl+Shift+U** | **Super+Ctrl+U**: off-screen floating windows to this workspace (private guide `~/guides/omarchy/window-rescue`) |
-| Restore one minimized window while switching | Cmd+Tab to the app, press Option, then let go of Cmd (several minimized windows: may not work) | |
+| The same for every app | **Cmd+Ctrl+Shift+U** | **Super+Ctrl+U**: every minimized window (Super+M) and every off-screen floating window to this workspace (private guide `~/guides/omarchy/window-rescue`) |
+| Restore one minimized window while switching | Cmd+Tab to the app, press Option, then let go of Cmd (several minimized windows: may not work) | Click it in the dock |
 | See all of an app's windows, minimized ones too | Ctrl+Down (App Exposé); click one | |
 | Center or fill the active window | Fn+Ctrl+C / Fn+Ctrl+F | |
 | Arrange several windows | Fn+Ctrl+Shift+arrows, or Swish's swipes | Hyprland tiles by itself |
@@ -214,6 +214,7 @@ Cmd+Tab picks an app, not a window: when every window of the app is minimized, o
 * **Stacked:** each window brought back is centered on the screen you are using, the next one 40 px down and right, the last one focused; a short alert says what came back ("Nothing minimized or off-screen" otherwise).
 * **Not moved:** windows on another Space (Cmd+Tab switches to their Space: macOS's default, System Settings > Desktop & Dock > Mission Control) and windows that are simply on another screen.
 * **Hammerspoon** comes with the other casks (Intel Macs: by hand, `docs/INTEL_MACS.md`). chezmoi writes `~/.hammerspoon/init.lua` and `window_rescue.lua`; put this Mac's own additions in `~/.hammerspoon/local.lua`. It reloads itself when they change and starts at login. Once per Mac: open it, choose Open at macOS's downloaded-app question, and allow it in System Settings > Privacy & Security > Device Control and Data Access (Accessibility before macOS 27) (the apply lists it until it runs).
+* **Closed to the tray** (the window closed, the app still running in the menu bar or Omarchy's tray): there is no window to bring back. Open the app again, or use its tray icon.
 * **Check it:** each run adds a line to `~/Library/Logs/window-rescue.log`. Over SSH: `open -g "hammerspoon://window-rescue"` (`?all=1` for every app), then read the log.
 
 ### Option as Alt in the Mac Terminals
