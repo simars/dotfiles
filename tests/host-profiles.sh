@@ -970,7 +970,7 @@ done
 check "omarchy gets setup-guides" yes "$(manages omarchy .local/bin/setup-guides)"
 render omarchy dot_local/bin/executable_setup-guides.tmpl > "$work/setup-guides"
 check "setup-guides is valid bash" "" "$(bash -n "$work/setup-guides" 2>&1)"
-check "setup-guides lists the guides" 'guides=("zsh" "terminals-clipboard" "wave-keys" )' "$(grep '^guides=' "$work/setup-guides")"
+check "setup-guides lists the guides" 'guides=("zsh" "terminals-clipboard" "wave-keys" "window-rescue" "window-keys" )' "$(grep '^guides=' "$work/setup-guides")"
 check "omarchy requirement check reports guides with setup-guides apply" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'Fix: setup-guides apply')"
 check "omarchy packages include omarchy-zsh" 1 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -c '"omarchy-zsh"')"
 

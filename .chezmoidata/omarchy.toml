@@ -24,7 +24,7 @@ omarchy_mise_project_settings = true
 omarchy_dev_env = ["python", "go"]
 # omarchy_guides: guides in ~/guides/omarchy (from the private ~/.cfg) that every Omarchy machine gets. Not applied by
 #   chezmoi: the requirement check reports the ones not active, and `setup-guides apply` applies them.
-omarchy_guides = ["zsh", "terminals-clipboard", "wave-keys"]
+omarchy_guides = ["zsh", "terminals-clipboard", "wave-keys", "window-rescue", "window-keys"]
 
 # omarchy_installers: Omarchy installers that set an app up beyond its package (services, login, browser extension,
 #   bar widget). Each runs when its package is missing, from a terminal only (sudo, logins); otherwise it is printed.

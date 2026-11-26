@@ -383,7 +383,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/simars/dotfiles/main/bootstr
 | 2. Dotfiles and setup | `chezmoi init --apply` (https): packages and apps, Tailscale and 1Password installers, `python` / `go` runtimes, shell plugins | chezmoi's four questions (Git email and name, work email or `none`, work GitHub orgs); the Tailscale login link |
 | 3. SSH key | stops until `~/.ssh/id_rsa` is there (copy it by hand), saves its passphrase (`ssh-key-remember`), checks GitHub over SSH, switches chezmoi's remote to SSH | copy the key; its passphrase once |
 | 4. `~/.cfg` | clones and checks out the private bare repository (never overwrites a file; stops and names it) | — |
-| 5. Guides | `setup-guides apply`: zsh, terminals-clipboard, wave-keys | — |
+| 5. Guides | `setup-guides apply`: zsh, terminals-clipboard, wave-keys, window-rescue, window-keys | — |
 | 6. Remote disk unlock | only with `--with-remote-unlock`: the guide's `apply.sh`; the router steps are in its README | router, first unlock at the machine |
 | 7. Summary | the requirement check and the guides' verdicts | read it |
 
@@ -397,7 +397,7 @@ Listed in `.chezmoidata/omarchy.toml`; `chezmoi apply` on Omarchy does what it c
 | Runtimes `python`, `go` (`omarchy install dev-env`) | `omarchy_dev_env` | yes, from a terminal (needs sudo); otherwise prints the command | `omarchy install dev-env <lang>` |
 | Tailscale (service, login, operator, Taildrop, bar widget) and 1Password (+ CLI, browser extension) | `omarchy_installers` | yes, from a terminal, when the package is missing | `omarchy install service tailscale` / `service 1password` |
 | Shell plugins: monitor-layout (replaces Omarchy's display widget), drawing-tablet, sandman | `omarchy_plugins` | yes: `omarchy plugin add <url>` (latest version), enabled in the bar's right section | `omarchy plugin add <url> --enable` |
-| Guides `zsh`, `terminals-clipboard`, `wave-keys` (`~/guides/omarchy`, private `~/.cfg`) | `omarchy_guides` | **no**, only reported | `setup-guides apply` (`setup-guides` alone shows each guide's verdict) |
+| Guides `zsh`, `terminals-clipboard`, `wave-keys`, `window-rescue`, `window-keys` (`~/guides/omarchy`, private `~/.cfg`) | `omarchy_guides` | **no**, only reported | `setup-guides apply` (`setup-guides` alone shows each guide's verdict) |
 
 Plugin settings stay per machine: `~/.config/omarchy/monitor-layout.json` (your monitors), `~/.config/omarchy-drawing-tablet/tablets.json` (tablet to screen), `~/.config/omarchy/sandman.json`. Update plugins with `omarchy plugin update`. On a new machine, `setup-guides` first asks for `~/.cfg` and prints the clone command.
 
