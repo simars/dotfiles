@@ -14,7 +14,7 @@
 #   3. SSH key                          copied by hand to ~/.ssh/id_rsa (the script stops and says how); its passphrase
 #                                       saved once with ssh-key-remember; GitHub reached over SSH
 #   4. ~/.cfg                           the private bare repository (ai-tooling, dotfiles-local, guides, llm, scripts)
-#   5. guides                           setup-guides apply: zsh, terminals-clipboard, wave-keys, window-rescue, window-keys
+#   5. guides                           setup-guides apply: zsh, terminals-clipboard, wave-keys, window-rescue, window-keys, caps-prefix
 #   6. remote disk unlock (opt-in)      --with-remote-unlock: that guide's apply.sh, then its README for the router steps
 #   7. summary                          the requirement check and every guide's verdict
 #
