@@ -61,7 +61,7 @@ Raycast, BetterTouchTool, Alfred or Hyper-key app):
 - P + arrows, P + Shift + arrows, P + 1–9, P + L, P + U: free of macOS shortcuts. Ghostty's macOS defaults use none
   of them.
 - **P + 8 is macOS's "Invert Colors"** (Accessibility shortcut), off on mbp and not stored on 16i. If someone turns it
-  on, macOS takes P + 8 first. The requirement check reports it (NOTE plus a to-do to turn it off) when its
+  on, macOS takes P + 8 first. The macOS settings script (97) reports it (NOTE plus a to-do to turn it off) when its
   symbolic hotkey is enabled with Ctrl+Option+Cmd+8.
 - P + Shift + 1–0 is where the throwaway test put macOS's hidden desktop shortcuts: they move (below).
 - VoiceOver uses Ctrl+Option as its key; only relevant while VoiceOver is on.
@@ -145,7 +145,7 @@ not send gets its spot added to the table.
   so they never disagree.
 - `run_after_97_macos_defaults.sh.tmpl`: compare ids 118–133 with the table, write only those that differ, one
   `activateSettings -u`, reported on the existing "macOS settings updated" line.
-- `run_after_99_assert_requirements.sh.tmpl`: the Invert Colors check (P + 8).
+- The Invert Colors check (P + 8) sits in the same 97 script, next to the desktop shortcuts it protects.
 - `docs/CHEATSHEET.md`: a "Window Keys (macOS and Omarchy)" section beside "Lost and Minimized Windows" with the table,
   the Swish note, the fixed desktop order, the probe.
 - `tests/host-profiles.sh`: `luac -p` on the rendered module; darwin and intel manage `.hammerspoon/window_keys.lua`,
