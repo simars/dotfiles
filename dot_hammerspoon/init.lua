@@ -3,7 +3,9 @@
 
 hs.window.animationDuration = 0 -- move windows at once, no slide
 hs.autoLaunch(true)              -- start at login
-hs.accessibilityState(true)      -- moving windows needs Accessibility; macOS asks once, until it is allowed
+-- Moving windows needs Accessibility (macOS 27: Device Control and Data Access), allowed once by hand
+-- (docs/NEW_MACHINE.md). Never checked here: on macOS 27.2 the check reports "not allowed" even when it is, and asking
+-- showed macOS's dialog on every config reload.
 
 require("window_rescue").start()
 require("window_keys").start()

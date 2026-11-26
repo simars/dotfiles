@@ -1089,6 +1089,8 @@ fi
 check "the hidden mask is the sum of the hidden modifiers" "$(chezmoi execute-template '{{ .desktop_shortcuts.mask }}')" \
     "$(chezmoi execute-template '{{ range .desktop_shortcuts.hs_modifiers }}{{ . }} {{ end }}' | awk '{ for (i = 1; i <= NF; i++) s += ($i == "cmd" ? 1048576 : $i == "ctrl" ? 262144 : $i == "alt" ? 524288 : $i == "shift" ? 131072 : 1e9) } END { print s }')"
 check "window keys bind on Ctrl+Option+Cmd" 1 "$(grep -cxF 'local PREFIX = { "cmd", "ctrl", "alt" }' "$work/wk.lua")"
+check "init.lua never asks for Accessibility (macOS 27 shows the dialog on every reload, even when allowed)" 0 \
+    "$(grep -c 'accessibilityState' dot_hammerspoon/init.lua)"
 check "init.lua starts the window keys right after the rescue" 'require("window_keys").start()' \
     "$(grep -A1 -xF 'require("window_rescue").start()' dot_hammerspoon/init.lua | tail -1)"
 if [[ -n "$luac_bin" ]]; then
