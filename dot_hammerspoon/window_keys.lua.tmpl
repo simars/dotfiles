@@ -130,7 +130,7 @@ function M.go(n)
   local g, count, space = desktopOf(screen, n)
   if not g then return refuseDesktop(screen, n, count) end
   pressDesktop(g)
-  M.timers.go = hs.timer.doAfter(0.6, function()
+  M.timers.go = hs.timer.doAfter(1.5, function() -- after macOS's slide to the desktop
     if (hs.spaces.activeSpaces() or {})[screen:getUUID()] ~= space then
       log(string.format("go to desktop %d (macOS Desktop %d) on %s: did NOT switch", n, g, tostring(screen:name())))
     end
