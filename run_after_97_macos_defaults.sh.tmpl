@@ -72,7 +72,10 @@ ensure_desktop_key {{ add 118 $i }} {{ $key.code }} {{ $.desktop_shortcuts.mask 
 if [[ $desktop_keys_written -gt 0 ]]; then
     updated+=("desktop shortcuts")
     # Without this, macOS reads changed shortcuts only at the next login.
-    "${ACTIVATE_SETTINGS:-/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings}" -u > /dev/null 2>&1 || true
+    if ! "${ACTIVATE_SETTINGS:-/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings}" -u > /dev/null 2>&1; then
+        echo "NOTE: macOS did not reload its keyboard shortcuts, so the window keys' desktops work only after a log out"
+        todo "Log out of macOS and back in, so the desktop shortcuts (window keys) take effect"
+    fi
 fi
 # Invert Colors (Accessibility, id 21) is Ctrl+Option+Cmd+8 unless changed: turned on, macOS takes the window key for
 # desktop 8 first.

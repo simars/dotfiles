@@ -68,11 +68,11 @@ jobs:
       - name: Install chezmoi & age
         run: |
           if [[ "${{ runner.os }}" == "macOS" ]]; then
-            brew install chezmoi age
+            brew install chezmoi age lua  # lua: the window-keys tests (tests/host-profiles.sh)
           else
             sh -c "$(curl -fsLS https://get.chezmoi.io)" -- -b "$HOME/.local/bin"
             echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-            sudo apt-get update -y && sudo apt-get install -y age
+            sudo apt-get update -y && sudo apt-get install -y age lua5.4  # lua5.4: the window-keys tests
           fi
 
       - name: Generate Mock Age Identity Key

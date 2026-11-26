@@ -790,6 +790,10 @@ check "macOS settings on a new Mac: desktops keep their order; separate Spaces l
     "$(grep -cx 'user com.apple.dock mru-spaces' "$md/written")|$(grep -c 'spans-displays' "$md/written")"
 check "desktop shortcuts on a new Mac: Desktops 1-16 (ids 118-133) written once, enabled, settings activated once" "16|$(seq 118 133 | paste -sd' ' -)|16|1|1" \
     "$(wc -l < "$md/hotkeys-written" | tr -d ' ')|$(cut -d' ' -f1 "$md/hotkeys-written" | paste -sd' ' -)|$(awk '$2 == 1' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(wc -l < "$md/activated" | tr -d ' ')|$(grep -c '^OK:   macOS settings updated: .*desktop shortcuts' "$md/out")"
+check "desktop shortcuts: when macOS cannot reload them, log out goes on the to-do list" "1|1" \
+    "$(md_reset; printf '#!/bin/sh\nexit 1\n' > "$md/bin/activateSettings-fails"; chmod +x "$md/bin/activateSettings-fails"; MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings-fails" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1 | grep -c '^NOTE: macOS did not reload its keyboard shortcuts')|$(md_todo | grep -c 'Log out of macOS and back in, so the desktop shortcuts')"
+md_reset
+md_run > "$md/out"
 check "desktop shortcuts use one hidden modifier mask and 16 different keys" "1|16" \
     "$(cut -d' ' -f4 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')|$(cut -d' ' -f3 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')"
 check "macOS settings: per-machine keys go to -currentHost" "host com.apple.controlcenter BatteryShowPercentage|host com.apple.Spotlight MenuItemHidden" \
@@ -1077,23 +1081,30 @@ for host in omarchy arch ubuntu debian; do
     check "$host has no window keys" no "$(manages "$host" .hammerspoon/window_keys.lua)"
 done
 render darwin dot_hammerspoon/window_keys.lua.tmpl > "$work/wk.lua"
+lua_bin="$(command -v lua5.4 || command -v lua || true)"
+luac_bin="$(command -v luac5.4 || command -v luac || true)"
+if [[ -n "${CI:-}" ]]; then
+    check "CI has lua and luac for the window-keys tests" "yes yes" "$([[ -n "$lua_bin" ]] && echo yes || echo no) $([[ -n "$luac_bin" ]] && echo yes || echo no)"
+fi
+check "the hidden mask is the sum of the hidden modifiers" "$(chezmoi execute-template '{{ .desktop_shortcuts.mask }}')" \
+    "$(chezmoi execute-template '{{ range .desktop_shortcuts.hs_modifiers }}{{ . }} {{ end }}' | awk '{ for (i = 1; i <= NF; i++) s += ($i == "cmd" ? 1048576 : $i == "ctrl" ? 262144 : $i == "alt" ? 524288 : $i == "shift" ? 131072 : 1e9) } END { print s }')"
 check "window keys bind on Ctrl+Option+Cmd" 1 "$(grep -cxF 'local PREFIX = { "cmd", "ctrl", "alt" }' "$work/wk.lua")"
 check "init.lua starts the window keys right after the rescue" 'require("window_keys").start()' \
     "$(grep -A1 -xF 'require("window_rescue").start()' dot_hammerspoon/init.lua | tail -1)"
-if command -v luac > /dev/null 2>&1; then
-    check "window keys render and compile" ok "$(luac -p "$work/wk.lua" 2>&1 && echo ok)"
+if [[ -n "$luac_bin" ]]; then
+    check "window keys render and compile" ok "$("$luac_bin" -p "$work/wk.lua" 2>&1 && echo ok)"
 fi
-if command -v lua > /dev/null 2>&1; then
+if [[ -n "$lua_bin" ]]; then
     # globalDesktop: macOS numbers desktops across screens in Mission Control's order; full-screen apps (type 4) are
     # not desktops; the main display may be listed as "Main"; macOS has shortcuts for Desktop 1-16 only.
-    check "window keys: hidden desktop keys and modifiers come from macos.toml" "16|ctrl alt shift" "$(lua - "$work/wk.lua" << 'EOF_LUA'
+    check "window keys: hidden desktop keys (by key code) and modifiers come from macos.toml" "16|18 19 29 39|ctrl alt shift" "$("$lua_bin" - "$work/wk.lua" << 'EOF_LUA'
 hs = {}
 local M = dofile(arg[1])
-io.write(#M.HIDDEN.keys, "|", table.concat(M.HIDDEN.mods, " "))
+io.write(#M.HIDDEN.keys, "|", M.HIDDEN.keys[1], " ", M.HIDDEN.keys[2], " ", M.HIDDEN.keys[10], " ", M.HIDDEN.keys[16], "|", table.concat(M.HIDDEN.mods, " "))
 EOF_LUA
 )"
     check "window keys: per-screen desktop N to macOS's global Desktop number" \
-        "2 8 6|10 2 98|nil 2 nil|1 8 1|nil 8 nil|16 8 306" "$(lua - "$work/wk.lua" << 'EOF_LUA'
+        "2 8 6|10 2 98|nil 2 nil|1 8 1|nil 8 nil|16 8 306" "$("$lua_bin" - "$work/wk.lua" << 'EOF_LUA'
 hs = {}
 local M = dofile(arg[1])
 local function display(id, ids)
@@ -1116,6 +1127,16 @@ add(M.globalDesktop(three, "C", false, 6))
 io.write(table.concat(out, "|"))
 EOF_LUA
 )"
+    # Send and go to desktop under a stand-in Hammerspoon (tests/hammerspoon-stub.lua): key codes, never key names;
+    # the mouse button always comes back up; nothing is clicked while keys are held or on a button.
+    stub() { "$lua_bin" tests/hammerspoon-stub.lua "$work/wk.lua" "$1"; }
+    check "send: waits for released keys, holds the title bar, presses Desktop 2 by key code, lets go, mouse back" \
+        "move | mouse-down | mouse-drag | key-down 19 ctrl+alt+shift | key-up 19 ctrl+alt+shift | mouse-up | move" "$(stub send)"
+    check "send: keys still held after 2 s: refused, nothing clicked" "alert: Let go of the keys to send the window" "$(stub held)"
+    check "send: the grab spot is a button: refused, nothing clicked" \
+        "alert: No empty title-bar spot to hold this window by (hammerspoon://window-keys-probe)" "$(stub button)"
+    check "send: a failing key press still lets go of the mouse button" "move | mouse-down | mouse-drag | mouse-up | move | alert: Could not press macOS's desktop shortcut" "$(stub key-fails)"
+    check "go: waits for released keys, then presses Desktop 2 by key code" "key-down 19 ctrl+alt+shift | key-up 19 ctrl+alt+shift" "$(stub go-held)"
 fi
 kv() { render "$1" "$2" > "$work/kv.sh"; printf '%b' "$3" | bash "$work/kv.sh" | grep -v '^# Set by chezmoi' | paste -sd'|' -; }
 check "kitty on macOS: keeps the rest, sets copy on select and left Option as Alt" "include t.conf|font_size 11||copy_on_select clipboard|macos_option_as_alt left" \

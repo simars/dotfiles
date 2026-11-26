@@ -24,11 +24,13 @@ local PREFIX_SHIFT = { "cmd", "ctrl", "alt", "shift" }
 local LOG = os.getenv("HOME") .. "/Library/Logs/window-keys.log"
 local GAP = 8 -- px between tiled windows
 
--- macOS's hidden "Switch to Desktop N" shortcuts, Desktop 1 first (from .chezmoidata/macos.toml).
+-- macOS's hidden "Switch to Desktop N" shortcuts, Desktop 1 first (from .chezmoidata/macos.toml): key codes, the
+-- same ones the macOS settings script writes, so the keyboard layout cannot change them.
 M.HIDDEN = {
   mods = { {{ range $i, $m := .desktop_shortcuts.hs_modifiers }}{{ if $i }}, {{ end }}{{ $m | quote }}{{ end }} },
-  keys = { {{ range $i, $k := .desktop_shortcuts.keys }}{{ if $i }}, {{ end }}{{ $k.name | quote }}{{ end }} },
+  keys = { {{ range $i, $k := .desktop_shortcuts.keys }}{{ if $i }}, {{ end }}{{ $k.code }}{{ end }} },
 }
+M.timers = {} -- running timers, kept so they are not garbage-collected mid-way
 
 local DIRS = { left = "West", right = "East", up = "North", down = "South" }
 
@@ -83,7 +85,27 @@ local function refuseDesktop(screen, n, count)
   end
 end
 
-local function pressDesktop(g) hs.eventtap.keyStroke(M.HIDDEN.mods, M.HIDDEN.keys[g], 0) end
+local function pressDesktop(g)
+  local code = M.HIDDEN.keys[g]
+  hs.eventtap.event.newKeyEvent(M.HIDDEN.mods, code, true):post()
+  hs.eventtap.event.newKeyEvent(M.HIDDEN.mods, code, false):post()
+end
+
+local function modifiersHeld()
+  local m = hs.eventtap.checkKeyboardModifiers()
+  return m.cmd or m.ctrl or m.alt or m.shift or m.fn
+end
+
+-- Run whenReleased once the keys are let go (macOS would otherwise see the held prefix together with the hidden
+-- shortcut, and a held Ctrl turns a click into a right-click); after 2 s still held, run whenStillHeld instead.
+local function afterRelease(whenReleased, whenStillHeld)
+  local started = hs.timer.secondsSinceEpoch()
+  M.timers.wait = hs.timer.waitUntil(function()
+    return not modifiersHeld() or hs.timer.secondsSinceEpoch() - started > 2
+  end, function()
+    if modifiersHeld() then whenStillHeld() else whenReleased() end
+  end, 0.02)
+end
 
 local function focusDir(dir)
   local win = hs.window.focusedWindow()
@@ -101,11 +123,11 @@ local function swapDir(dir)
   win:focus()
 end
 
-local function gotoDesktop(n)
+function M.go(n)
   local screen = hs.mouse.getCurrentScreen() or hs.screen.mainScreen()
   local g, count = desktopOf(screen, n)
   if not g then return refuseDesktop(screen, n, count) end
-  pressDesktop(g)
+  afterRelease(function() pressDesktop(g) end, function() refuse("Let go of the keys to go to the desktop") end)
 end
 
 local function grabPoint(win)
@@ -118,43 +140,52 @@ local function grabPoint(win)
   return { x = f.x + 80, y = f.y + 12 }, bundle
 end
 
-local function modifiersHeld()
-  local m = hs.eventtap.checkKeyboardModifiers()
-  return m.cmd or m.ctrl or m.alt or m.shift or m.fn
+-- Controls a click would operate: never grabbed (the probe skips them too).
+local SKIP = { AXButton = true, AXRadioButton = true, AXTextField = true, AXSearchField = true, AXLink = true,
+  AXMenuButton = true, AXPopUpButton = true, AXCheckBox = true, AXTab = true, AXTextArea = true, AXComboBox = true }
+local function roleAt(p)
+  local el = hs.axuielement.systemElementAtPosition(p.x, p.y)
+  return el and el:attributeValue("AXRole") or "?"
 end
 
--- Once the keys are released (a held Ctrl would make the click a right-click), hold the window by its title bar,
--- press macOS's desktop shortcut, let go after 0.5 s, and put the mouse back.
-local function sendToDesktop(n)
+-- Once the keys are released, hold the window by an empty spot of its title bar, press macOS's desktop shortcut,
+-- let go after 0.5 s, and put the mouse back. The mouse button always comes back up, even if the key press fails.
+function M.send(n)
   local win = hs.window.focusedWindow()
   if not win then return end
   local screen = win:screen()
   local g, count, space = desktopOf(screen, n)
   if not g then return refuseDesktop(screen, n, count) end
-  local started = hs.timer.secondsSinceEpoch()
-  hs.timer.waitUntil(function()
-    return not modifiersHeld() or hs.timer.secondsSinceEpoch() - started > 2
-  end, function()
+  afterRelease(function()
     local point, bundle = grabPoint(win)
+    if SKIP[roleAt(point)] then
+      return refuse("No empty title-bar spot to hold this window by (hammerspoon://window-keys-probe)")
+    end
     local home = hs.mouse.absolutePosition()
     local event = hs.eventtap.event
+    local nudged = { x = point.x + 1, y = point.y }
+    local function letGo()
+      event.newMouseEvent(event.types.leftMouseUp, nudged, {}):post()
+      hs.mouse.absolutePosition(home)
+    end
     hs.mouse.absolutePosition(point)
     event.newMouseEvent(event.types.leftMouseDown, point, {}):post()
     hs.timer.usleep(60000)
-    local nudged = { x = point.x + 1, y = point.y }
     event.newMouseEvent(event.types.leftMouseDragged, nudged, {}):post()
     hs.timer.usleep(60000)
-    pressDesktop(g)
-    hs.timer.doAfter(0.5, function()
-      event.newMouseEvent(event.types.leftMouseUp, nudged, {}):post()
-      hs.mouse.absolutePosition(home)
-      hs.timer.doAfter(0.3, function()
+    if not pcall(pressDesktop, g) then
+      letGo()
+      return refuse("Could not press macOS's desktop shortcut")
+    end
+    M.timers.hold = hs.timer.doAfter(0.5, function()
+      letGo()
+      M.timers.check = hs.timer.doAfter(0.3, function()
         local now = hs.spaces.windowSpaces(win) or {}
         log(string.format("send to desktop %d (macOS Desktop %d) [%s] %s: %s", n, g, bundle, win:title(),
           now[1] == space and "moved" or "NOT moved (add a GRAB spot: hammerspoon://window-keys-probe)"))
       end)
     end)
-  end, 0.02)
+  end, function() refuse("Let go of the keys to send the window") end)
 end
 
 -- Dwindle, like Hyprland: each window, most recently used first, takes half of the space left, splitting left/right
@@ -183,10 +214,8 @@ local function tile()
   log("tile: " .. #wins .. " windows on " .. screen:name())
 end
 
--- Which spots at the top of the focused window drag it? Buttons, tabs and text fields are skipped (a click there
--- would do something); each other spot is dragged 12 px right and the frame put back.
-local SKIP = { AXButton = true, AXRadioButton = true, AXTextField = true, AXSearchField = true, AXLink = true,
-  AXMenuButton = true, AXPopUpButton = true, AXCheckBox = true, AXTab = true, AXTextArea = true, AXComboBox = true }
+-- Which spots at the top of the focused window drag it? Controls (SKIP) are left alone; each other spot is dragged
+-- 12 px right and the frame put back.
 local function probe()
   local win = hs.window.focusedWindow()
   if not win then return end
@@ -199,9 +228,7 @@ local function probe()
   for _, dy in ipairs({ 3, 6, 10, 16, 24, 34 }) do
     for _, fx in ipairs({ 90 / f0.w, 0.15, 0.3, 0.5, 0.7, (f0.w - 140) / f0.w, (f0.w - 60) / f0.w }) do
       local p = { x = math.floor(f0.x + fx * f0.w), y = f0.y + dy }
-      local el = hs.axuielement.systemElementAtPosition(p.x, p.y)
-      local role = el and el:attributeValue("AXRole") or "?"
-      if not SKIP[role] then
+      if not SKIP[roleAt(p)] then
         hs.mouse.absolutePosition(p)
         event.newMouseEvent(event.types.leftMouseDown, p, {}):post()
         hs.timer.usleep(80000)
@@ -232,8 +259,8 @@ function M.start()
     bind(PREFIX_SHIFT, dir, function() swapDir(dir) end)
   end
   for n = 1, 9 do
-    bind(PREFIX, tostring(n), function() gotoDesktop(n) end)
-    bind(PREFIX_SHIFT, tostring(n), function() sendToDesktop(n) end)
+    bind(PREFIX, tostring(n), function() M.go(n) end)
+    bind(PREFIX_SHIFT, tostring(n), function() M.send(n) end)
   end
   bind(PREFIX, "l", tile)
   bind(PREFIX, "u", function() require("window_rescue").rescue(false) end)

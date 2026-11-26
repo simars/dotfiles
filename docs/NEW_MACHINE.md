@@ -123,7 +123,7 @@ and apps whose config just changed and need a reload. Follow it until it says no
      the first unlock at the machine.
    - It installs chezmoi and git, then applies the dotfiles, packages, apps, runtimes, Tailscale, 1Password and shell
      plugins. It also copies in your SSH key, clones `~/.cfg` and applies the guides (zsh, terminals-clipboard,
-     wave-keys).
+     wave-keys, window-rescue, window-keys).
    - It pauses for the sudo password, chezmoi's four questions (as on the Mac: Git email and name, work email or
      `none`, work GitHub orgs), the Tailscale login link, the SSH key and its passphrase.
    - It is safe to run again: after any stop, fix what it says and run the same command.

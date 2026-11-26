@@ -140,7 +140,7 @@ MenuItemHidden = 1                          # no Spotlight icon in the menu bar 
 #   fails on macOS 27) nor move windows between them (moveWindowToSpace, closed in macOS 14.5) itself.
 #   mask          the modifiers as macOS stores them (Ctrl 262144 + Option 524288 + Shift 131072 = 917504)
 #   hs_modifiers  the same modifiers as Hammerspoon names them
-#   keys          Desktop 1 first: Hammerspoon's key name and macOS's key code
+#   keys          Desktop 1 first: macOS's key code (what is written and pressed) and the key's name (for reading only)
 [desktop_shortcuts]
 mask = 917504
 hs_modifiers = ["ctrl", "alt", "shift"]
