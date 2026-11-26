@@ -1069,6 +1069,54 @@ check "Linux requirement checks never mention Hammerspoon" "0 0" \
 if command -v luac > /dev/null 2>&1; then
     check "Hammerspoon's Lua files compile" ok "$(luac -p dot_hammerspoon/*.lua 2>&1 && echo ok)"
 fi
+# Window keys (Ctrl+Option+Cmd): every Mac, no Linux host; a template fed by .chezmoidata/macos.toml.
+for host in darwin intel; do
+    check "$host manages the window keys" yes "$(manages "$host" .hammerspoon/window_keys.lua)"
+done
+for host in omarchy arch ubuntu debian; do
+    check "$host has no window keys" no "$(manages "$host" .hammerspoon/window_keys.lua)"
+done
+render darwin dot_hammerspoon/window_keys.lua.tmpl > "$work/wk.lua"
+check "window keys bind on Ctrl+Option+Cmd" 1 "$(grep -cxF 'local PREFIX = { "cmd", "ctrl", "alt" }' "$work/wk.lua")"
+check "init.lua starts the window keys right after the rescue" 'require("window_keys").start()' \
+    "$(grep -A1 -xF 'require("window_rescue").start()' dot_hammerspoon/init.lua | tail -1)"
+if command -v luac > /dev/null 2>&1; then
+    check "window keys render and compile" ok "$(luac -p "$work/wk.lua" 2>&1 && echo ok)"
+fi
+if command -v lua > /dev/null 2>&1; then
+    # globalDesktop: macOS numbers desktops across screens in Mission Control's order; full-screen apps (type 4) are
+    # not desktops; the main display may be listed as "Main"; macOS has shortcuts for Desktop 1-16 only.
+    check "window keys: hidden desktop keys and modifiers come from macos.toml" "16|ctrl alt shift" "$(lua - "$work/wk.lua" << 'EOF_LUA'
+hs = {}
+local M = dofile(arg[1])
+io.write(#M.HIDDEN.keys, "|", table.concat(M.HIDDEN.mods, " "))
+EOF_LUA
+)"
+    check "window keys: per-screen desktop N to macOS's global Desktop number" \
+        "2 8 6|10 2 98|nil 2 nil|1 8 1|nil 8 nil|16 8 306" "$(lua - "$work/wk.lua" << 'EOF_LUA'
+hs = {}
+local M = dofile(arg[1])
+local function display(id, ids)
+  local spaces = {}
+  for _, x in ipairs(ids) do spaces[#spaces + 1] = { ManagedSpaceID = math.abs(x), type = x < 0 and 4 or 0 } end
+  return { ["Display Identifier"] = id, Spaces = spaces }
+end
+local laptop = { 1, 6, 8, 4, 7, 5, 9, 10 }
+local d = { display("A", laptop), display("B", { 89, -200, 98 }) }
+local main = { display("Main", laptop), display("B", { 89, 98 }) }
+local three = { display("A", laptop), display("B", { 89, 98 }), display("C", { 301, 302, 303, 304, 305, 306, 307, 308 }) }
+local out = {}
+local function add(...) local r = table.pack(...); out[#out + 1] = tostring(r[1]) .. " " .. tostring(r[2]) .. " " .. tostring(r[3]) end
+add(M.globalDesktop(d, "A", true, 2))
+add(M.globalDesktop(d, "B", false, 2))
+add(M.globalDesktop(d, "B", false, 3))
+add(M.globalDesktop(main, "A", true, 1))
+add(M.globalDesktop(three, "C", false, 7))
+add(M.globalDesktop(three, "C", false, 6))
+io.write(table.concat(out, "|"))
+EOF_LUA
+)"
+fi
 kv() { render "$1" "$2" > "$work/kv.sh"; printf '%b' "$3" | bash "$work/kv.sh" | grep -v '^# Set by chezmoi' | paste -sd'|' -; }
 check "kitty on macOS: keeps the rest, sets copy on select and left Option as Alt" "include t.conf|font_size 11||copy_on_select clipboard|macos_option_as_alt left" \
     "$(kv darwin dot_config/kitty/modify_kitty.conf.tmpl 'include t.conf\ncopy_on_select no\nfont_size 11\n')"

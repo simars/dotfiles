@@ -1,0 +1,243 @@
+-- Window keys: Omarchy's window keys on the Mac, with one prefix for both (cheatsheet: "Window Keys").
+--   Ctrl+Option+Cmd + arrows          focus the nearest window in that direction (across screens too)
+--   Ctrl+Option+Cmd + Shift + arrows  swap the focused window with that one (they trade frames)
+--   Ctrl+Option+Cmd + 1-9             show desktop N of the screen under the mouse
+--   Ctrl+Option+Cmd + Shift + 1-9     send the focused window to desktop N of its screen, and go with it
+--   Ctrl+Option+Cmd + L               lay out this screen's windows once, like Hyprland's dwindle layout
+--   Ctrl+Option+Cmd + U               the window rescue (as Cmd+Ctrl+U)
+-- On Omarchy the same prefix is Ctrl+Alt+Super (private guide ~/guides/omarchy/window-keys). Keys act only when
+-- pressed: nothing re-tiles by itself, so Swish's gestures keep working as before.
+--
+-- Desktops: macOS numbers them across screens, in Mission Control's display order (the main display first), and
+-- Hammerspoon can neither switch desktops (hs.spaces.gotoSpace fails on macOS 27) nor move a window to another one
+-- (moveWindowToSpace, closed in macOS 14.5). So chezmoi's macOS settings script binds macOS's own "Switch to Desktop
+-- 1-16" to a hidden combination (.chezmoidata/macos.toml, desktop_shortcuts), and these keys press it. To send a
+-- window, it is held by its title bar while macOS switches: macOS carries a held window along.
+-- `open -g "hammerspoon://window-keys-probe"` logs which spots at the top of the focused window drag it, for an app
+-- whose windows will not send (add its spot to GRAB). Sends, tiles, refused keys and probes are logged to
+-- ~/Library/Logs/window-keys.log.
+
+local M = {}
+
+local PREFIX = { "cmd", "ctrl", "alt" }
+local PREFIX_SHIFT = { "cmd", "ctrl", "alt", "shift" }
+local LOG = os.getenv("HOME") .. "/Library/Logs/window-keys.log"
+local GAP = 8 -- px between tiled windows
+
+-- macOS's hidden "Switch to Desktop N" shortcuts, Desktop 1 first (from .chezmoidata/macos.toml).
+M.HIDDEN = {
+  mods = { {{ range $i, $m := .desktop_shortcuts.hs_modifiers }}{{ if $i }}, {{ end }}{{ $m | quote }}{{ end }} },
+  keys = { {{ range $i, $k := .desktop_shortcuts.keys }}{{ if $i }}, {{ end }}{{ $k.name | quote }}{{ end }} },
+}
+
+local DIRS = { left = "West", right = "East", up = "North", down = "South" }
+
+-- Apps that draw their own top bar: an empty spot there that drags the window (found with the probe).
+local GRAB = {
+  ["com.google.Chrome"] = function(f) return { x = f.x + f.w - 140, y = f.y + 6 } end, -- end of the tab strip
+  ["com.tinyspeck.slackmacgap"] = function(f) return { x = f.x + math.min(260, f.w * 0.22), y = f.y + 14 } end,
+}
+
+local function log(line)
+  local file = io.open(LOG, "a")
+  if file then
+    file:write(os.date("%Y-%m-%d %H:%M:%S ") .. line .. "\n")
+    file:close()
+  end
+end
+
+local function refuse(message)
+  hs.alert.show(message)
+  log("refused: " .. message)
+end
+
+-- Desktop n of a screen as macOS's global Desktop number. displays: hs.spaces.data_managedDisplaySpaces().
+-- Returns the global number (nil when the screen has fewer than n desktops or the number has no shortcut), the
+-- screen's desktop count, and the desktop's space id.
+function M.globalDesktop(displays, screenUUID, isPrimary, n)
+  local before = 0
+  for _, display in ipairs(displays or {}) do
+    local id = display["Display Identifier"]
+    local desks = {}
+    for _, space in ipairs(display.Spaces or {}) do
+      if space.type == 0 then desks[#desks + 1] = space.ManagedSpaceID end
+    end
+    if id == screenUUID or (id == "Main" and isPrimary) then
+      if n > #desks or before + n > #M.HIDDEN.keys then return nil, #desks, nil end
+      return before + n, #desks, desks[n]
+    end
+    before = before + #desks
+  end
+  return nil, 0, nil
+end
+
+local function desktopOf(screen, n)
+  return M.globalDesktop(hs.spaces.data_managedDisplaySpaces(), screen:getUUID(), screen == hs.screen.primaryScreen(), n)
+end
+
+local function refuseDesktop(screen, n, count)
+  if n > count then
+    refuse(string.format("Only %d desktop%s on %s", count, count == 1 and "" or "s", screen:name()))
+  else
+    refuse("Desktop " .. n .. " on " .. screen:name() .. " is beyond macOS's 16 desktop shortcuts")
+  end
+end
+
+local function pressDesktop(g) hs.eventtap.keyStroke(M.HIDDEN.mods, M.HIDDEN.keys[g], 0) end
+
+local function focusDir(dir)
+  local win = hs.window.focusedWindow()
+  if win then win["focusWindow" .. DIRS[dir]](win, nil, true, true) end
+end
+
+local function swapDir(dir)
+  local win = hs.window.focusedWindow()
+  if not win then return end
+  local other = (win["windowsTo" .. DIRS[dir]](win, nil, true, true) or {})[1]
+  if not other then return end
+  local a, b = win:frame(), other:frame()
+  win:setFrame(b, 0)
+  other:setFrame(a, 0)
+  win:focus()
+end
+
+local function gotoDesktop(n)
+  local screen = hs.mouse.getCurrentScreen() or hs.screen.mainScreen()
+  local g, count = desktopOf(screen, n)
+  if not g then return refuseDesktop(screen, n, count) end
+  pressDesktop(g)
+end
+
+local function grabPoint(win)
+  local f = win:frame()
+  local app = win:application()
+  local bundle = app and app:bundleID() or "?"
+  if GRAB[bundle] then return GRAB[bundle](f), bundle end
+  local zoom = win:zoomButtonRect()
+  if zoom then return { x = zoom.x + zoom.w + 6, y = zoom.y + zoom.h / 2 }, bundle end
+  return { x = f.x + 80, y = f.y + 12 }, bundle
+end
+
+local function modifiersHeld()
+  local m = hs.eventtap.checkKeyboardModifiers()
+  return m.cmd or m.ctrl or m.alt or m.shift or m.fn
+end
+
+-- Once the keys are released (a held Ctrl would make the click a right-click), hold the window by its title bar,
+-- press macOS's desktop shortcut, let go after 0.5 s, and put the mouse back.
+local function sendToDesktop(n)
+  local win = hs.window.focusedWindow()
+  if not win then return end
+  local screen = win:screen()
+  local g, count, space = desktopOf(screen, n)
+  if not g then return refuseDesktop(screen, n, count) end
+  local started = hs.timer.secondsSinceEpoch()
+  hs.timer.waitUntil(function()
+    return not modifiersHeld() or hs.timer.secondsSinceEpoch() - started > 2
+  end, function()
+    local point, bundle = grabPoint(win)
+    local home = hs.mouse.absolutePosition()
+    local event = hs.eventtap.event
+    hs.mouse.absolutePosition(point)
+    event.newMouseEvent(event.types.leftMouseDown, point, {}):post()
+    hs.timer.usleep(60000)
+    local nudged = { x = point.x + 1, y = point.y }
+    event.newMouseEvent(event.types.leftMouseDragged, nudged, {}):post()
+    hs.timer.usleep(60000)
+    pressDesktop(g)
+    hs.timer.doAfter(0.5, function()
+      event.newMouseEvent(event.types.leftMouseUp, nudged, {}):post()
+      hs.mouse.absolutePosition(home)
+      hs.timer.doAfter(0.3, function()
+        local now = hs.spaces.windowSpaces(win) or {}
+        log(string.format("send to desktop %d (macOS Desktop %d) [%s] %s: %s", n, g, bundle, win:title(),
+          now[1] == space and "moved" or "NOT moved (add a GRAB spot: hammerspoon://window-keys-probe)"))
+      end)
+    end)
+  end, 0.02)
+end
+
+-- Dwindle, like Hyprland: each window, most recently used first, takes half of the space left, splitting left/right
+-- and top/bottom in turn (left/right first on a screen wider than tall).
+local function tile()
+  local focused = hs.window.focusedWindow()
+  local screen = focused and focused:screen() or hs.mouse.getCurrentScreen() or hs.screen.mainScreen()
+  local wins = hs.fnutils.filter(hs.window.orderedWindows(), function(win)
+    return win:isStandard() and win:isVisible() and win:screen() == screen
+  end)
+  local rest = screen:frame():copy()
+  local wideFirst = rest.w >= rest.h
+  for i, win in ipairs(wins) do
+    local f = rest:copy()
+    if i < #wins then
+      if (i % 2 == 1) == wideFirst then
+        f.w = rest.w / 2
+        rest.x, rest.w = rest.x + f.w, rest.w - f.w
+      else
+        f.h = rest.h / 2
+        rest.y, rest.h = rest.y + f.h, rest.h - f.h
+      end
+    end
+    win:setFrame({ x = f.x + GAP / 2, y = f.y + GAP / 2, w = f.w - GAP, h = f.h - GAP }, 0)
+  end
+  log("tile: " .. #wins .. " windows on " .. screen:name())
+end
+
+-- Which spots at the top of the focused window drag it? Buttons, tabs and text fields are skipped (a click there
+-- would do something); each other spot is dragged 12 px right and the frame put back.
+local SKIP = { AXButton = true, AXRadioButton = true, AXTextField = true, AXSearchField = true, AXLink = true,
+  AXMenuButton = true, AXPopUpButton = true, AXCheckBox = true, AXTab = true, AXTextArea = true, AXComboBox = true }
+local function probe()
+  local win = hs.window.focusedWindow()
+  if not win then return end
+  local app = win:application()
+  local bundle = app and app:bundleID() or "?"
+  local f0 = win:frame()
+  local home = hs.mouse.absolutePosition()
+  local event = hs.eventtap.event
+  local hits = {}
+  for _, dy in ipairs({ 3, 6, 10, 16, 24, 34 }) do
+    for _, fx in ipairs({ 90 / f0.w, 0.15, 0.3, 0.5, 0.7, (f0.w - 140) / f0.w, (f0.w - 60) / f0.w }) do
+      local p = { x = math.floor(f0.x + fx * f0.w), y = f0.y + dy }
+      local el = hs.axuielement.systemElementAtPosition(p.x, p.y)
+      local role = el and el:attributeValue("AXRole") or "?"
+      if not SKIP[role] then
+        hs.mouse.absolutePosition(p)
+        event.newMouseEvent(event.types.leftMouseDown, p, {}):post()
+        hs.timer.usleep(80000)
+        for step = 1, 4 do
+          event.newMouseEvent(event.types.leftMouseDragged, { x = p.x + 3 * step, y = p.y }, {}):post()
+          hs.timer.usleep(30000)
+        end
+        event.newMouseEvent(event.types.leftMouseUp, { x = p.x + 12, y = p.y }, {}):post()
+        hs.timer.usleep(150000)
+        if math.abs(win:frame().x - f0.x) >= 6 then
+          hits[#hits + 1] = string.format("(+%d,+%d)", p.x - f0.x, dy)
+          win:setFrame(f0, 0)
+        end
+      end
+    end
+  end
+  hs.mouse.absolutePosition(home)
+  win:focus()
+  log("probe [" .. bundle .. "] drags at " .. (#hits > 0 and table.concat(hits, " ") or "no spot"))
+  hs.alert.show("Probe: " .. (#hits > 0 and #hits .. " spots drag " .. bundle or "no spot drags " .. bundle))
+end
+
+function M.start()
+  M.hotkeys = {}
+  local function bind(mods, key, fn) M.hotkeys[#M.hotkeys + 1] = hs.hotkey.bind(mods, key, fn) end
+  for dir in pairs(DIRS) do
+    bind(PREFIX, dir, function() focusDir(dir) end)
+    bind(PREFIX_SHIFT, dir, function() swapDir(dir) end)
+  end
+  for n = 1, 9 do
+    bind(PREFIX, tostring(n), function() gotoDesktop(n) end)
+    bind(PREFIX_SHIFT, tostring(n), function() sendToDesktop(n) end)
+  end
+  bind(PREFIX, "l", tile)
+  bind(PREFIX, "u", function() require("window_rescue").rescue(false) end)
+  hs.urlevent.bind("window-keys-probe", probe)
+end
+
+return M

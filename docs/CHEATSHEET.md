@@ -219,6 +219,25 @@ Cmd+Tab picks an app, not a window: when every window of the app is minimized, o
 * **Closed to the tray** (the window closed, the app still running in the menu bar or Omarchy's tray): there is no window to bring back. Open the app again, or use its tray icon.
 * **Check it:** each run adds a line to `~/Library/Logs/window-rescue.log`. Over SSH: `open -g "hammerspoon://window-rescue"` (`?all=1` for every app), then read the log.
 
+### Window Keys (macOS and Omarchy)
+One prefix for window keys on every machine: **Ctrl+Option+Cmd** on the Macs, **Ctrl+Alt+Super** on Omarchy. On a Windows-style keyboard that is the same three keys on both (Ctrl, Win, Alt: macOS treats Win as Cmd and Alt as Option); on a Mac keyboard, the three keys left of the space bar. Add Shift to move instead of look.
+
+| Keys | macOS (Hammerspoon) | Omarchy (alias of Omarchy's own key, which stays) |
+| :--- | :--- | :--- |
+| Prefix + arrows | Focus the window in that direction, across screens too | Super+arrows |
+| Prefix + Shift + arrows | Swap the focused window with that one | Super+Shift+arrows |
+| Prefix + 1–9 | Desktop N **of the screen under the mouse** | Super+1–9 (workspace N of this monitor) |
+| Prefix + Shift + 1–9 | Send the window to desktop N of its screen, and go with it | Super+Shift+1–9 |
+| Prefix + L | Lay out this screen's windows once, like Hyprland (dwindle) | — (Hyprland tiles by itself) |
+| Prefix + U | Window rescue (as Cmd+Ctrl+U, above) | Window rescue (as Super+Ctrl+U) |
+
+* **Swish keeps working:** the keys act only when pressed, nothing re-tiles behind your back, and macOS's own desktops stay the workspaces, so Swish's snaps and desktop swipes are untouched.
+* **Desktop numbers are per screen**, as Omarchy's workspaces are per monitor. macOS itself counts desktops across screens (the main display's first), so the keys work out macOS's number and press its hidden "Switch to Desktop N" shortcut ("Same macOS Settings on Every Mac" above). Desktops keep their order (rearranging by recent use is off), up to 16 in total.
+* **Sending** holds the window by its title bar while macOS switches desktop: the mouse jumps there for half a second after you let go of the keys. If an app's windows do not move (`~/Library/Logs/window-keys.log` says `NOT moved`), focus one and run `open -g "hammerspoon://window-keys-probe"`: the log lists the spots that drag it; add one to `GRAB` in `dot_hammerspoon/window_keys.lua.tmpl`.
+* **Not taken:** Cmd+Ctrl+arrows stay Ghostty's split resize on the Mac. On Omarchy, Ctrl+Alt+Super+Shift+arrows replaces Ghostty's 100 px split resize (Super+Ctrl+Shift+arrows and the leader's Alt+arrows remain). macOS's Invert Colors shortcut (Ctrl+Option+Cmd+8) would take desktop 8: the apply warns if it is on.
+* **Where:** Mac, `~/.hammerspoon/window_keys.lua` (chezmoi; needs Hammerspoon, see "Lost and Minimized Windows"); Omarchy, the private guide `~/guides/omarchy/window-keys` (`setup-guides apply`).
+* **Near miss:** tmux and Herdr use Ctrl+Alt+arrows (panes, no prefix); add Super/Cmd and you are moving windows.
+
 ### Option as Alt in the Mac Terminals
 A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to act as Meta; otherwise Option types special characters (`ƒ`, `©`, `ü`). chezmoi sets **left Option = Alt, right Option = special characters** (macOS only):
 
