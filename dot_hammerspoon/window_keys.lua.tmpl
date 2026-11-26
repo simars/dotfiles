@@ -123,11 +123,18 @@ local function swapDir(dir)
   win:focus()
 end
 
+-- Pressed at once: the prefix is usually still held, to tap the next digit (as on Omarchy). A press macOS ignored is
+-- logged.
 function M.go(n)
   local screen = hs.mouse.getCurrentScreen() or hs.screen.mainScreen()
-  local g, count = desktopOf(screen, n)
+  local g, count, space = desktopOf(screen, n)
   if not g then return refuseDesktop(screen, n, count) end
-  afterRelease(function() pressDesktop(g) end, function() refuse("Let go of the keys to go to the desktop") end)
+  pressDesktop(g)
+  M.timers.go = hs.timer.doAfter(0.6, function()
+    if (hs.spaces.activeSpaces() or {})[screen:getUUID()] ~= space then
+      log(string.format("go to desktop %d (macOS Desktop %d) on %s: did NOT switch", n, g, tostring(screen:name())))
+    end
+  end)
 end
 
 local function grabPoint(win)

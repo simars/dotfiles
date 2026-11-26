@@ -7,7 +7,7 @@ local module, scenario = arg[1], arg[2]
 local events = {}
 local function record(what) events[#events + 1] = what end
 
-local held = scenario == "held" or scenario == "go-held"
+local held = scenario == "held" or scenario == "go-held" or scenario == "go-held-long"
 local releaseAfter = scenario == "go-held" and 2 or math.huge -- go-held: the keys are let go after two reads
 local reads, clock = 0, 0
 
@@ -32,6 +32,7 @@ hs = {
       return { { ["Display Identifier"] = "A", Spaces = { { ManagedSpaceID = 1, type = 0 }, { ManagedSpaceID = 6, type = 0 } } } }
     end,
     windowSpaces = function() return { 6 } end,
+    activeSpaces = function() return { A = 6 } end,
   },
   timer = {
     secondsSinceEpoch = function() clock = clock + 0.5 return clock end,

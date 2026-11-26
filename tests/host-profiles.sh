@@ -1136,7 +1136,8 @@ EOF_LUA
     check "send: the grab spot is a button: refused, nothing clicked" \
         "alert: No empty title-bar spot to hold this window by (hammerspoon://window-keys-probe)" "$(stub button)"
     check "send: a failing key press still lets go of the mouse button" "move | mouse-down | mouse-drag | mouse-up | move | alert: Could not press macOS's desktop shortcut" "$(stub key-fails)"
-    check "go: waits for released keys, then presses Desktop 2 by key code" "key-down 19 ctrl+alt+shift | key-up 19 ctrl+alt+shift" "$(stub go-held)"
+    check "go: presses Desktop 2 by key code at once, while the prefix is still held" "key-down 19 ctrl+alt+shift | key-up 19 ctrl+alt+shift" "$(stub go-held)"
+    check "go: keys held for good: still presses, no refusal" "key-down 19 ctrl+alt+shift | key-up 19 ctrl+alt+shift" "$(stub go-held-long)"
 fi
 kv() { render "$1" "$2" > "$work/kv.sh"; printf '%b' "$3" | bash "$work/kv.sh" | grep -v '^# Set by chezmoi' | paste -sd'|' -; }
 check "kitty on macOS: keeps the rest, sets copy on select and left Option as Alt" "include t.conf|font_size 11||copy_on_select clipboard|macos_option_as_alt left" \
