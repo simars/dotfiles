@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Managed by chezmoi (.chezmoidata/macos.toml, caps_lock_remap): at login, Caps Lock arrives as F18, which
+     Hammerspoon's window keys turn into the window-key prefix (held) or Caps Lock (tapped). Cheatsheet: "Window Keys". -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dotfiles.caps-lock-f18</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/hidutil</string>
+        <string>property</string>
+        <string>--set</string>
+        <string>{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":{{ .caps_lock_remap.src }},"HIDKeyboardModifierMappingDst":{{ .caps_lock_remap.dst }}}]}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>

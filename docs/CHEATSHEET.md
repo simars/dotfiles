@@ -188,6 +188,7 @@ chezmoi writes macOS's own settings from `[[macos_defaults]]` in `.chezmoidata/m
 | Dock | hidden, shown on hover at once with a quick slide; small icons (16) magnified to 128 on hover; minimized windows get their own Dock tile (Scale effect); no bouncing; no recent apps |
 | Mission Control | windows grouped by app; dragging a window to the top edge does nothing; thumb and three fingers spread shows the desktop; desktops keep the order you give them (never rearranged by recent use); each display has its own desktops |
 | Desktop shortcuts | macOS's own "Switch to Desktop 1–16" on a hidden combination (Ctrl+Option+Shift + `1`–`0` `-` `=` `[` `]` `;` `'`), which the window keys press for you ("Window Keys" below); Desktop N counts across screens, the main display's first |
+| Caps Lock | arrives as F18 on every keyboard (macOS's own `hidutil`, set at login by `~/Library/LaunchAgents/dotfiles.caps-lock-f18.plist` and by the apply when missing); Hammerspoon turns a tap back into Caps Lock and a hold into the window-key prefix ("Window Keys" below) |
 | Windows and keys | double-clicking a title bar fills the screen; clicking the scroll bar jumps there; holding a key repeats it (no accent pop-up: Option+key still types accents) |
 | Appearance | Dark, never Auto (the terminals' colours are dark) |
 | Trackpad | natural scrolling (mouse too), tracking speed 2.5, tap to click; no tap-to-drag, drag lock or three-finger drag, so three-finger swipes stay for spaces and Mission Control |

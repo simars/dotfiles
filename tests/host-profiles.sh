@@ -766,16 +766,30 @@ EOF
 printf '#!/bin/sh\nexit "$(cat "$MD/running")"\n' > "$md/bin/pgrep"
 printf '#!/bin/sh\necho "$1" >> "$MD/killed"\n' > "$md/bin/killall"
 printf '#!/bin/sh\necho "$1" >> "$MD/activated"\n' > "$md/bin/activateSettings"
+cat > "$md/bin/hidutil" << 'EOF_HID'
+#!/bin/bash
+# Stub: hidutil property --get UserKeyMapping | --set JSON, the state in $MD/hidutil (hidutil's own text form).
+case "$1 $2" in
+    "property --get") cat "$MD/hidutil" ;;
+    "property --set")
+        [[ -e "$MD/hidutil_fail" ]] && exit 1
+        echo "$3" >> "$MD/hidutil-set"
+        src=$(printf '%s' "$3" | grep -oE '"HIDKeyboardModifierMappingSrc": *[0-9]+' | grep -oE '[0-9]+$')
+        dst=$(printf '%s' "$3" | grep -oE '"HIDKeyboardModifierMappingDst": *[0-9]+' | grep -oE '[0-9]+$')
+        printf 'RegistryID  Key                   Value\n10000075d   UserKeyMapping   (\n        {\n        HIDKeyboardModifierMappingDst = %s;\n        HIDKeyboardModifierMappingSrc = %s;\n    }\n)\n' "$dst" "$src" > "$MD/hidutil" ;;
+esac
+EOF_HID
 printf '#!/bin/sh\n[ "$1" = print ] && [ -e "$MD/launchd/${2#system/}" ]\n' > "$md/bin/launchctl"
 printf '#!/bin/sh\ncat "$MD/pmset"\n' > "$md/bin/pmset"
-chmod +x "$md/bin/defaults" "$md/bin/pgrep" "$md/bin/killall" "$md/bin/launchctl" "$md/bin/pmset" "$md/bin/activateSettings"
+chmod +x "$md/bin/defaults" "$md/bin/pgrep" "$md/bin/killall" "$md/bin/launchctl" "$md/bin/pmset" "$md/bin/activateSettings" "$md/bin/hidutil"
 render darwin "$md97" > "$md/script.sh"
 md_reset() { # a Mac with Remote Login, Screen Sharing and wake for network access on AC
-    rm -rf "$md/prefs" "$md/written" "$md/killed" "$md/fail_write" "$md/cache" "$md/launchd" "$md/hotkeys-written" "$md/activated"; echo 0 > "$md/running"
+    rm -rf "$md/prefs" "$md/written" "$md/killed" "$md/fail_write" "$md/cache" "$md/launchd" "$md/hotkeys-written" "$md/activated" "$md/hidutil-set" "$md/hidutil_fail"; echo 0 > "$md/running"
+    printf 'RegistryID  Key                   Value\n10000075d   UserKeyMapping   (null)\n' > "$md/hidutil"
     mkdir -p "$md/launchd" && touch "$md/launchd/com.openssh.sshd" "$md/launchd/com.apple.screensharing"
     printf 'Battery Power:\n sleep                1\n womp                 0\nAC Power:\n sleep                1\n womp                 1\n' > "$md/pmset"
 }
-md_run() { MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1; echo "exit=$?"; }
+md_run() { MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings" HIDUTIL="$md/bin/hidutil" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1; echo "exit=$?"; }
 md_todo() { cat "$md/cache"/after-apply.* 2> /dev/null; }
 md_set() { mkdir -p "$md/prefs/$1/$2" && printf '%s\n' "$4" > "$md/prefs/$1/$2/$3"; } # SCOPE DOMAIN KEY VALUE
 md_reset
@@ -790,19 +804,24 @@ check "macOS settings on a new Mac: desktops keep their order; separate Spaces l
     "$(grep -cx 'user com.apple.dock mru-spaces' "$md/written")|$(grep -c 'spans-displays' "$md/written")"
 check "desktop shortcuts on a new Mac: Desktops 1-16 (ids 118-133) written once, enabled, settings activated once" "16|$(seq 118 133 | paste -sd' ' -)|16|1|1" \
     "$(wc -l < "$md/hotkeys-written" | tr -d ' ')|$(cut -d' ' -f1 "$md/hotkeys-written" | paste -sd' ' -)|$(awk '$2 == 1' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(wc -l < "$md/activated" | tr -d ' ')|$(grep -c '^OK:   macOS settings updated: .*desktop shortcuts' "$md/out")"
+check "Caps Lock remap that cannot be set: named, log out on the to-do list" "1|1" \
+    "$(md_reset; touch "$md/hidutil_fail"; md_run | grep -c '^NOTE: Caps Lock could not be remapped to F18')|$(md_todo | grep -c 'Log out and back in, so Caps Lock works as the window-key prefix')"
 check "desktop shortcuts: when macOS cannot reload them, log out goes on the to-do list" "1|1" \
     "$(md_reset; printf '#!/bin/sh\nexit 1\n' > "$md/bin/activateSettings-fails"; chmod +x "$md/bin/activateSettings-fails"; MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings-fails" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1 | grep -c '^NOTE: macOS did not reload its keyboard shortcuts')|$(md_todo | grep -c 'Log out of macOS and back in, so the desktop shortcuts')"
 md_reset
 md_run > "$md/out"
+check "Caps Lock on a new Mac: remapped to F18 once, and said" "1|1|1" \
+    "$(wc -l < "$md/hidutil-set" | tr -d ' ')|$(grep -c '"HIDKeyboardModifierMappingSrc": *30064771129, *"HIDKeyboardModifierMappingDst": *30064771181' "$md/hidutil-set")|$(grep -c '^OK:   macOS settings updated: .*Caps Lock as F18' "$md/out")"
 check "desktop shortcuts use one hidden modifier mask and 16 different keys" "1|16" \
     "$(cut -d' ' -f4 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')|$(cut -d' ' -f3 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')"
 check "macOS settings: per-machine keys go to -currentHost" "host com.apple.controlcenter BatteryShowPercentage|host com.apple.Spotlight MenuItemHidden" \
     "$(grep '^host ' "$md/written" | paste -sd'|' -)"
-rm -f "$md/written" "$md/killed" "$md/hotkeys-written" "$md/activated" "$md/cache"/after-apply.*
+rm -f "$md/written" "$md/killed" "$md/hotkeys-written" "$md/activated" "$md/hidutil-set" "$md/cache"/after-apply.*
 check "macOS settings: a second apply writes nothing and restarts nothing" "OK:   macOS settings match the repo|OK:   remote access: Remote Login, Screen Sharing, wake for network access on AC|exit=0|no|no|0" \
     "$(md_run | paste -sd'|' -)|$([[ -e "$md/written" ]] && echo yes || echo no)|$([[ -e "$md/killed" ]] && echo yes || echo no)|$(md_todo | wc -l | tr -d ' ')"
 check "desktop shortcuts: a Mac that already has them writes none and activates nothing" "no|no" \
     "$([[ -e "$md/hotkeys-written" ]] && echo yes || echo no)|$([[ -e "$md/activated" ]] && echo yes || echo no)"
+check "Caps Lock already F18: not set again" "no" "$([[ -e "$md/hidutil-set" ]] && echo yes || echo no)"
 hk="$md/prefs/user/com.apple.symbolichotkeys/AppleSymbolicHotKeys"
 sed -n '/^    120 = /,/^    };/p' "$hk" | sed -E 's/^( +)([0-9]+)$/\1999/' > "$md/hk120" # Desktop 3's mask changed by hand
 cat "$md/hk120" >> "$hk"
@@ -1073,6 +1092,15 @@ check "Linux requirement checks never mention Hammerspoon" "0 0" \
 if command -v luac > /dev/null 2>&1; then
     check "Hammerspoon's Lua files compile" ok "$(luac -p dot_hammerspoon/*.lua 2>&1 && echo ok)"
 fi
+# Caps Lock arrives as F18 on every Mac: a LaunchAgent at login (and the macOS settings script on each apply).
+for host in darwin intel; do
+    check "$host manages the Caps Lock agent" yes "$(manages "$host" Library/LaunchAgents/dotfiles.caps-lock-f18.plist)"
+done
+for host in omarchy ubuntu; do
+    check "$host has no Caps Lock agent" no "$(manages "$host" Library/LaunchAgents/dotfiles.caps-lock-f18.plist)"
+done
+check "the Caps Lock agent runs hidutil at login with Caps Lock to F18" "dotfiles.caps-lock-f18|True|/usr/bin/hidutil property --set|30064771129|30064771181" \
+    "$(render darwin private_Library/LaunchAgents/dotfiles.caps-lock-f18.plist.tmpl | python3 -c 'import plistlib,sys,json; p=plistlib.loads(sys.stdin.buffer.read()); a=p["ProgramArguments"]; m=json.loads(a[3])["UserKeyMapping"][0]; print("|".join([p["Label"], str(p["RunAtLoad"]), " ".join(a[:3]), str(m["HIDKeyboardModifierMappingSrc"]), str(m["HIDKeyboardModifierMappingDst"])]))' 2>&1)"
 # Window keys (Ctrl+Option+Cmd): every Mac, no Linux host; a template fed by .chezmoidata/macos.toml.
 for host in darwin intel; do
     check "$host manages the window keys" yes "$(manages "$host" .hammerspoon/window_keys.lua)"
