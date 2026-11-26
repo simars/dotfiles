@@ -152,9 +152,9 @@ keys = [
 ]
 
 # caps_lock_remap: Caps Lock arrives as F18 (key code 79) on every keyboard, so Hammerspoon can make a held Caps Lock
-#   the window-key prefix and turn a lone tap back into Caps Lock (dot_hammerspoon/window_keys.lua.tmpl). Applied with
-#   macOS's own `hidutil` by a login agent (~/Library/LaunchAgents/dotfiles.caps-lock-f18.plist) and, when missing,
-#   by run_after_97_macos_defaults.sh on each apply. HID usages: Caps Lock 0x700000039, F18 0x70000006D.
+#   the window-key prefix and turn a lone tap back into Caps Lock (dot_hammerspoon/window_keys.lua.tmpl). Hammerspoon
+#   sets it with macOS's own `hidutil` while it runs and clears it when it quits, so Caps Lock is never a dead key.
+#   HID usages: Caps Lock 0x700000039, F18 0x70000006D.
 [caps_lock_remap]
 src = 30064771129
 dst = 30064771181

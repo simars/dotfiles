@@ -265,29 +265,53 @@ local function probe()
 end
 
 -- Caps Lock (arriving as F18) as a one-key prefix. kind "down" or "up"; key an hs.keycodes.map name; shift and
--- isRepeat booleans. Returns the action to run (or nil) and whether to swallow the event. A tap (F18 down and up with
--- no other key) toggles Caps Lock; while F18 is held every key is swallowed, the window keys among them acted on.
+-- isRepeat booleans; now in seconds. Returns the action to run (or nil) and whether to swallow the event.
+--   tap (F18 down and up, nothing between)          toggles Caps Lock
+--   F18 held + a window key                          that key's action; held arrows repeat, the rest act once
+--   F18 held + any other key                         swallowed (prefix + an unbound key does nothing)...
+--   ... unless it comes within 200 ms of F18 and first: typing fast from Caps onto a letter is a Caps tap and the
+--       letter is typed (as keyd's overloadt2 on Omarchy)
+--   a key swallowed while F18 was held               its repeats and release are swallowed too, even after F18 is up;
+--                                                    any other key-up passes (a key pressed before Caps comes up)
+--   no F18 or layer event for 3 s                    the hold is stale (a missed release): keys pass again
 local LAYER = { left = "left", right = "right", up = "up", down = "down" }
-local caps = { held = false, used = false }
-function M.capsKey(kind, key, shift, isRepeat)
+local ROLL, STALE = 0.2, 3
+local caps = { held = false, used = false, since = 0, last = 0, swallowed = {} }
+function M.capsKey(kind, key, shift, isRepeat, now)
+  now = now or 0
   if key == "f18" then
     if kind == "down" then
-      if not isRepeat then caps.held, caps.used = true, false end
+      if not isRepeat then caps.held, caps.used, caps.since = true, false, now end
+      if caps.held then caps.last = now end
       return nil, true
     end
     local tap = caps.held and not caps.used
     caps.held = false
     return tap and "toggle-caps" or nil, true
   end
-  if not caps.held then return nil, false end
-  if kind ~= "down" then return nil, true end
+  if kind ~= "down" then
+    if caps.swallowed[key] then caps.swallowed[key] = nil return nil, true end
+    return nil, false
+  end
+  if not caps.held then return nil, caps.swallowed[key] == true end
+  if now - caps.last > STALE then caps.held = false return nil, false end
+  caps.last = now
+  local action
+  if LAYER[key] then action = (shift and "swap " or "focus ") .. key
+  elseif key:match("^[1-9]$") then action = (shift and "send " or "go ") .. key
+  elseif key == "l" then action = "tile"
+  elseif key == "u" then action = "rescue"
+  end
+  if not action and not caps.used and now - caps.since < ROLL then
+    caps.held = false
+    return "toggle-caps", false
+  end
   caps.used = true
-  if LAYER[key] then return (shift and "swap " or "focus ") .. key, true end
-  if key:match("^[1-9]$") then return (shift and "send " or "go ") .. key, true end
-  if key == "l" then return "tile", true end
-  if key == "u" then return "rescue", true end
-  return nil, true
+  caps.swallowed[key] = true
+  if action and isRepeat and not LAYER[key] then action = nil end
+  return action, true
 end
+function M.capsReset() caps.held, caps.swallowed = false, {} end
 
 local function runCapsAction(action)
   local verb, arg = action:match("^(%S+) ?(.*)$")
@@ -301,28 +325,40 @@ local function runCapsAction(action)
   end
 end
 
--- The Caps Lock to F18 remap (hidutil) is set at login by ~/Library/LaunchAgents/dotfiles.caps-lock-f18.plist. Set it
--- again when a USB device is connected, after a wake and at unlock, so a keyboard that appears later gets it too
--- (setting it again is harmless).
+-- Hammerspoon owns the Caps Lock to F18 remap (macOS's hidutil): set while it runs, cleared when it quits, so Caps Lock
+-- is plain Caps Lock whenever Hammerspoon is not there to read F18. Set again when a USB device is connected, after a
+-- wake and at unlock, so a keyboard that appears later gets it too (setting it again is harmless).
 local REMAP = '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":{{ .caps_lock_remap.src }},"HIDKeyboardModifierMappingDst":{{ .caps_lock_remap.dst }}}]}'
-local function applyRemap() hs.task.new("/usr/bin/hidutil", nil, { "property", "--set", REMAP }):start() end
-function M.watchRemap()
-  M.usbWatch = hs.usb.watcher.new(function(device) if device.eventType == "added" then applyRemap() end end):start()
+local function hidutil(mapping) return hs.task.new("/usr/bin/hidutil", nil, { "property", "--set", mapping }):start() end
+function M.ownRemap()
+  hidutil(REMAP)
+  M.usbWatch = hs.usb.watcher.new(function(device) if device.eventType == "added" then hidutil(REMAP) end end):start()
   local cw = hs.caffeinate.watcher
-  M.powerWatch = cw.new(function(e) if e == cw.systemDidWake or e == cw.screensDidUnlock then applyRemap() end end):start()
+  M.powerWatch = cw.new(function(e) if e == cw.systemDidWake or e == cw.screensDidUnlock then hidutil(REMAP) end end):start()
+  local previous = hs.shutdownCallback
+  hs.shutdownCallback = function()
+    hidutil('{"UserKeyMapping":[]}'):waitUntilExit() -- also on a config reload; the reload sets it again at start
+    if previous then previous() end
+  end
 end
 
 local function startCapsLayer()
   local types, props = hs.eventtap.event.types, hs.eventtap.event.properties
   M.capsTap = hs.eventtap.new({ types.keyDown, types.keyUp }, function(e)
-    if e:getProperty(props.eventSourceUserData) == OWN_EVENT then return false end
-    local action, consume = M.capsKey(e:getType() == types.keyDown and "down" or "up", hs.keycodes.map[e:getKeyCode()] or "?",
-      e:getFlags().shift == true, e:getProperty(props.keyboardEventAutorepeat) == 1)
-    if action then hs.timer.doAfter(0, function() runCapsAction(action) end) end
+    -- Any error lets the event through: a broken layer must never eat the keyboard.
+    local ok, action, consume = pcall(function()
+      if e:getProperty(props.eventSourceUserData) == OWN_EVENT then return nil, false end
+      return M.capsKey(e:getType() == types.keyDown and "down" or "up", hs.keycodes.map[e:getKeyCode()] or "?",
+        e:getFlags().shift == true, e:getProperty(props.keyboardEventAutorepeat) == 1, hs.timer.secondsSinceEpoch())
+    end)
+    if not ok then return false end
+    if action then M.timers.caps = hs.timer.doAfter(0, function() runCapsAction(action) end) end
     return consume
   end):start()
-  -- macOS turns an event tap off when a callback is slow; turn it back on.
-  M.capsWatch = hs.timer.doEvery(5, function() if not M.capsTap:isEnabled() then M.capsTap:start() end end)
+  -- macOS turns an event tap off when a callback is slow, and the Caps release may be lost then: forget the hold.
+  M.capsWatch = hs.timer.doEvery(5, function()
+    if not M.capsTap:isEnabled() then M.capsReset() M.capsTap:start() end
+  end)
 end
 
 function M.start()
@@ -340,7 +376,7 @@ function M.start()
   bind(PREFIX, "u", function() require("window_rescue").rescue(false) end)
   hs.urlevent.bind("window-keys-probe", probe)
   startCapsLayer()
-  M.watchRemap()
+  M.ownRemap()
 end
 
 return M

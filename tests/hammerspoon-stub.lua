@@ -69,7 +69,12 @@ hs = {
   usb = { watcher = { new = function(fn) _G.usbFn = fn return { start = function(self) return self end } end } },
   caffeinate = { watcher = { systemDidWake = "wake", screensDidUnlock = "unlock", screensDidSleep = "sleep",
     new = function(fn) _G.powerFn = fn return { start = function(self) return self end } end } },
-  task = { new = function(path, _, args) return { start = function() record(path .. " " .. table.concat(args, " ")) end } end },
+  task = { new = function(path, _, args)
+    local t = {}
+    function t.start(self) record(path .. " " .. table.concat(args, " ")) return self end
+    function t.waitUntilExit(self) return self end
+    return t
+  end },
   fnutils = { filter = function(t, f) local r = {} for _, v in ipairs(t) do if f(v) then r[#r + 1] = v end end return r end },
 }
 
@@ -79,9 +84,10 @@ io.open = function() return nil end
 local ok, err
 if scenario == "remap-watch" then
   ok, err = pcall(function()
-    M.watchRemap()
+    M.ownRemap()
     usbFn({ eventType = "added" }); usbFn({ eventType = "removed" })
     powerFn("wake"); powerFn("sleep"); powerFn("unlock")
+    hs.shutdownCallback()
   end)
 else
   ok, err = pcall(scenario:sub(1, 2) == "go" and M.go or M.send, 2)

@@ -804,14 +804,10 @@ check "macOS settings on a new Mac: desktops keep their order; separate Spaces l
     "$(grep -cx 'user com.apple.dock mru-spaces' "$md/written")|$(grep -c 'spans-displays' "$md/written")"
 check "desktop shortcuts on a new Mac: Desktops 1-16 (ids 118-133) written once, enabled, settings activated once" "16|$(seq 118 133 | paste -sd' ' -)|16|1|1" \
     "$(wc -l < "$md/hotkeys-written" | tr -d ' ')|$(cut -d' ' -f1 "$md/hotkeys-written" | paste -sd' ' -)|$(awk '$2 == 1' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(wc -l < "$md/activated" | tr -d ' ')|$(grep -c '^OK:   macOS settings updated: .*desktop shortcuts' "$md/out")"
-check "Caps Lock remap that cannot be set: named, log out on the to-do list" "1|1" \
-    "$(md_reset; touch "$md/hidutil_fail"; md_run | grep -c '^NOTE: Caps Lock could not be remapped to F18')|$(md_todo | grep -c 'Log out and back in, so Caps Lock works as the window-key prefix')"
 check "desktop shortcuts: when macOS cannot reload them, log out goes on the to-do list" "1|1" \
     "$(md_reset; printf '#!/bin/sh\nexit 1\n' > "$md/bin/activateSettings-fails"; chmod +x "$md/bin/activateSettings-fails"; MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings-fails" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1 | grep -c '^NOTE: macOS did not reload its keyboard shortcuts')|$(md_todo | grep -c 'Log out of macOS and back in, so the desktop shortcuts')"
 md_reset
 md_run > "$md/out"
-check "Caps Lock on a new Mac: remapped to F18 once, and said" "1|1|1" \
-    "$(wc -l < "$md/hidutil-set" | tr -d ' ')|$(grep -c '"HIDKeyboardModifierMappingSrc": *30064771129, *"HIDKeyboardModifierMappingDst": *30064771181' "$md/hidutil-set")|$(grep -c '^OK:   macOS settings updated: .*Caps Lock as F18' "$md/out")"
 check "desktop shortcuts use one hidden modifier mask and 16 different keys" "1|16" \
     "$(cut -d' ' -f4 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')|$(cut -d' ' -f3 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')"
 check "macOS settings: per-machine keys go to -currentHost" "host com.apple.controlcenter BatteryShowPercentage|host com.apple.Spotlight MenuItemHidden" \
@@ -821,7 +817,6 @@ check "macOS settings: a second apply writes nothing and restarts nothing" "OK: 
     "$(md_run | paste -sd'|' -)|$([[ -e "$md/written" ]] && echo yes || echo no)|$([[ -e "$md/killed" ]] && echo yes || echo no)|$(md_todo | wc -l | tr -d ' ')"
 check "desktop shortcuts: a Mac that already has them writes none and activates nothing" "no|no" \
     "$([[ -e "$md/hotkeys-written" ]] && echo yes || echo no)|$([[ -e "$md/activated" ]] && echo yes || echo no)"
-check "Caps Lock already F18: not set again" "no" "$([[ -e "$md/hidutil-set" ]] && echo yes || echo no)"
 hk="$md/prefs/user/com.apple.symbolichotkeys/AppleSymbolicHotKeys"
 sed -n '/^    120 = /,/^    };/p' "$hk" | sed -E 's/^( +)([0-9]+)$/\1999/' > "$md/hk120" # Desktop 3's mask changed by hand
 cat "$md/hk120" >> "$hk"
@@ -1092,15 +1087,10 @@ check "Linux requirement checks never mention Hammerspoon" "0 0" \
 if command -v luac > /dev/null 2>&1; then
     check "Hammerspoon's Lua files compile" ok "$(luac -p dot_hammerspoon/*.lua 2>&1 && echo ok)"
 fi
-# Caps Lock arrives as F18 on every Mac: a LaunchAgent at login (and the macOS settings script on each apply).
-for host in darwin intel; do
-    check "$host manages the Caps Lock agent" yes "$(manages "$host" Library/LaunchAgents/dotfiles.caps-lock-f18.plist)"
-done
-for host in omarchy ubuntu; do
-    check "$host has no Caps Lock agent" no "$(manages "$host" Library/LaunchAgents/dotfiles.caps-lock-f18.plist)"
-done
-check "the Caps Lock agent runs hidutil at login with Caps Lock to F18" "dotfiles.caps-lock-f18|True|/usr/bin/hidutil property --set|30064771129|30064771181" \
-    "$(render darwin private_Library/LaunchAgents/dotfiles.caps-lock-f18.plist.tmpl | python3 -c 'import plistlib,sys,json; p=plistlib.loads(sys.stdin.buffer.read()); a=p["ProgramArguments"]; m=json.loads(a[3])["UserKeyMapping"][0]; print("|".join([p["Label"], str(p["RunAtLoad"]), " ".join(a[:3]), str(m["HIDKeyboardModifierMappingSrc"]), str(m["HIDKeyboardModifierMappingDst"])]))' 2>&1)"
+# Caps Lock as F18 is Hammerspoon's to set (window_keys.lua) while it runs: no login agent, and the macOS settings
+# script never sets it, so Caps Lock is never a dead key while Hammerspoon is not running.
+check "no Mac gets a Caps Lock login agent" "no no" "$(manages darwin Library/LaunchAgents/dotfiles.caps-lock-f18.plist) $(manages intel Library/LaunchAgents/dotfiles.caps-lock-f18.plist)"
+check "the macOS settings script never sets the Caps Lock remap" 0 "$(render darwin run_after_97_macos_defaults.sh.tmpl | grep -c 'hidutil')"
 # Window keys (Ctrl+Option+Cmd): every Mac, no Linux host; a template fed by .chezmoidata/macos.toml.
 for host in darwin intel; do
     check "$host manages the window keys" yes "$(manages "$host" .hammerspoon/window_keys.lua)"
@@ -1157,15 +1147,18 @@ add(M.globalDesktop(three, "C", false, 6))
 io.write(table.concat(out, "|"))
 EOF_LUA
 )"
-    # Caps Lock (F18) as a one-key prefix: M.capsKey(kind, key, shift, isRepeat) -> action, consume. Each sequence is
-    # "kind:key[:shift][:repeat]" steps; the result lists each step's action (or -) and c/p (consumed/passed).
+    # Caps Lock (F18) as a one-key prefix: M.capsKey(kind, key, shift, isRepeat, now) -> action, consume. Each step is
+    # "kind:key[:shift][:repeat][@seconds]" (time defaults to 50 ms after the step before); the result lists each
+    # step's action (or -) and c/p (consumed/passed).
     caps() { "$lua_bin" - "$work/wk.lua" "$@" << 'EOF_LUA'
 hs = {}
 local M = dofile(arg[1])
-local out = {}
+local out, t = {}, 0
 for i = 2, #arg do
-  local kind, key, a, b = arg[i]:match("^(%a+):([^:]+):?(%a*):?(%a*)$")
-  local action, consume = M.capsKey(kind, key, a == "shift" or b == "shift", a == "repeat" or b == "repeat")
+  local step, at = arg[i]:match("^([^@]+)@?(.*)$")
+  t = at ~= "" and tonumber(at) or t + 0.05
+  local kind, key, a, b = step:match("^(%a+):([^:]+):?(%a*):?(%a*)$")
+  local action, consume = M.capsKey(kind, key, a == "shift" or b == "shift", a == "repeat" or b == "repeat", t)
   out[#out + 1] = (action or "-") .. "/" .. (consume and "c" or "p")
 end
 io.write(table.concat(out, " "))
@@ -1177,7 +1170,16 @@ EOF_LUA
     check "caps: Shift+arrow swaps, digits go and send, L tiles, U rescues" "-/c swap right/c go 3/c send 3/c tile/c rescue/c -/c -/c" \
         "$(caps down:f18 down:right:shift down:3 down:3:shift down:l down:u down:a up:f18)"
     check "caps: outside the layer nothing is touched" "-/p -/p" "$(caps down:left up:left)"
-    check "caps: a held key's auto-repeat acts again (hold Caps+Left to keep moving)" "-/c focus left/c focus left/c" "$(caps down:f18 down:left down:left:repeat)"
+    check "caps: a held arrow's auto-repeat keeps moving focus" "-/c focus left/c focus left/c" "$(caps down:f18 down:left down:left:repeat)"
+    check "caps: auto-repeat never repeats go, send, tile or rescue" "-/c go 3/c -/c send 3/c -/c tile/c -/c" \
+        "$(caps down:f18 down:3 down:3:repeat down:3:shift down:3:shift:repeat down:l down:l:repeat)"
+    check "caps: a key pressed before Caps is released normally" "-/p -/c -/p" "$(caps down:h down:f18 up:h)"
+    check "caps: a window key held past Caps's release stays swallowed until it comes up" "-/c focus left/c -/c -/c -/c" \
+        "$(caps down:f18 down:left up:f18 down:left:repeat up:left)"
+    check "caps: rolling fast from Caps onto a letter is a Caps tap, and the letter is typed" "-/c toggle-caps/p -/c -/p" \
+        "$(caps down:f18@0 down:n@0.1 up:f18@0.15 up:n@0.2)"
+    check "caps: a letter while Caps is really held does nothing" "-/c -/c -/c" "$(caps down:f18@0 down:a@0.5 up:a@0.6)"
+    check "caps: a layer stuck after a missed Caps release lets typing through after 3 s" "-/c -/p" "$(caps down:f18@0 down:a@5)"
     # Send and go to desktop under a stand-in Hammerspoon (tests/hammerspoon-stub.lua): key codes, never key names;
     # the mouse button always comes back up; nothing is clicked while keys are held or on a button.
     stub() { "$lua_bin" tests/hammerspoon-stub.lua "$work/wk.lua" "$1"; }
@@ -1188,8 +1190,9 @@ EOF_LUA
         "alert: No empty title-bar spot to hold this window by (hammerspoon://window-keys-probe)" "$(stub button)"
     check "send: a failing key press still lets go of the mouse button" "move | mouse-down | mouse-drag | mouse-up | move | alert: Could not press macOS's desktop shortcut" "$(stub key-fails)"
     remap='/usr/bin/hidutil property --set {"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":30064771129,"HIDKeyboardModifierMappingDst":30064771181}]}'
-    check "Caps Lock remap re-applied when a USB device is added, after wake and at unlock (not on removal or sleep)" \
-        "$remap | $remap | $remap" "$(stub remap-watch)"
+    clear='/usr/bin/hidutil property --set {"UserKeyMapping":[]}'
+    check "Hammerspoon owns the Caps Lock remap: set at start, after a USB device, wake and unlock; cleared when it quits" \
+        "$remap | $remap | $remap | $remap | $clear" "$(stub remap-watch)"
     check "go: presses Desktop 2 by key code at once, while the prefix is still held" "key-down 19 ctrl+alt+shift tagged | key-up 19 ctrl+alt+shift tagged" "$(stub go-held)"
     check "go: keys held for good: still presses, no refusal" "key-down 19 ctrl+alt+shift tagged | key-up 19 ctrl+alt+shift tagged" "$(stub go-held-long)"
 fi

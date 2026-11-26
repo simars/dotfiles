@@ -77,18 +77,6 @@ if [[ $desktop_keys_written -gt 0 ]]; then
         todo "Log out of macOS and back in, so the desktop shortcuts (window keys) take effect"
     fi
 fi
-# Caps Lock as F18 (.chezmoidata/macos.toml, caps_lock_remap): the login agent sets it; set it here too when it is
-# missing (a new Mac, or before the next login), so the window keys' Caps Lock prefix works at once.
-hidutil_bin="${HIDUTIL:-/usr/bin/hidutil}"
-if [[ -x "$hidutil_bin" ]] && ! "$hidutil_bin" property --get UserKeyMapping 2> /dev/null \
-    | awk '/HIDKeyboardModifierMappingSrc = {{ .caps_lock_remap.src }};/ { s = 1 } /HIDKeyboardModifierMappingDst = {{ .caps_lock_remap.dst }};/ { d = 1 } END { exit !(s && d) }'; then
-    if "$hidutil_bin" property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc": {{ .caps_lock_remap.src }}, "HIDKeyboardModifierMappingDst": {{ .caps_lock_remap.dst }}}]}' > /dev/null 2>&1; then
-        updated+=("Caps Lock as F18")
-    else
-        echo "NOTE: Caps Lock could not be remapped to F18, so holding it is not the window-key prefix until the next login"
-        todo "Log out and back in, so Caps Lock works as the window-key prefix"
-    fi
-fi
 # Invert Colors (Accessibility, id 21) is Ctrl+Option+Cmd+8 unless changed: turned on, macOS takes the window key for
 # desktop 8 first.
 set -- $(hotkey 21)

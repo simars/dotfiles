@@ -1,6 +1,6 @@
 # Caps Lock as a One-Key Window Prefix
 
-Date: 2026-11-26. Status: draft, awaiting the user's approval. Builds on
+Date: 2026-11-26. Status: approved by the user 2026-11-26; revised after the code review (see "Revisions"). Builds on
 `2026-11-26-mac-window-keys-design.md` (the window keys).
 
 ## Intent
@@ -74,3 +74,17 @@ capitals, so it would mean replacing Omarchy's own `kb_options`.
 
 The F18 layer's internals (an `hs.eventtap` or `hs.hotkey.modal`), the LaunchAgent's label and trigger, keyd's
 exact syntax, test names.
+
+## Revisions after the code review (2026-11-26)
+
+- **Hammerspoon owns the Mac remap** (no login agent, no setting by the apply): set at start, after a USB device
+  appears, after wake and at unlock; cleared when Hammerspoon quits. Otherwise Caps Lock was a dead key whenever
+  Hammerspoon was not running (the anti-goal "losing Caps Lock's toggle").
+- **Fast typing onto Caps is a tap** on both systems: keyd `overloadt2(window, capslock, 200)`; on the Mac, a non-window
+  key within 200 ms of Caps, before any other, toggles Caps Lock and is typed. Otherwise Caps+letter at typing speed
+  fired Omarchy's own Ctrl+Alt+Super letters (screenshot, display mirroring, ...).
+- **Mac layer safety:** a hold with no Caps or window-key event for 3 s is stale (a missed release); key-ups match
+  the key-downs the layer swallowed; go, send, tile and rescue never auto-repeat; an error lets the key through.
+- **Known limit (Mac):** in password fields macOS hides keys from Hammerspoon (secure input), so a Caps tap does not
+  toggle capitals there. The three-key prefix still works. Karabiner would avoid it (rejected: a new app with a
+  system extension).
