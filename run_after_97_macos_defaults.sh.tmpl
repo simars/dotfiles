@@ -47,6 +47,41 @@ ensure_default {{ $group.takes_effect | squote }} {{ $host }} {{ if has $key $un
 {{ end -}}
 join() { printf '%s\n' "$@" | awk '!seen[$0]++' | paste -sd, - | sed 's/,/, /g'; } # unique, in order
 
+# macOS's own "Switch to Desktop N" shortcuts (ids 118-133), on the hidden combination in .chezmoidata/macos.toml
+# (desktop_shortcuts), which Hammerspoon's window keys press. defaults' text form is read once: one line per entry,
+# "ID ENABLED CODE MASK" (CODE and MASK empty when macOS stores no value), the last entry for an id winning.
+hotkeys_now="$(defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys 2> /dev/null | awk '
+    /^    [0-9]+ = / { if (id != "") print id, en, p[2], p[3]; id = $1; en = ""; n = 0; delete p; next }
+    id != "" && /enabled = / { en = $3; sub(/;/, "", en) }
+    id != "" && /^ +[0-9]+,?$/ { v = $1; sub(/,/, "", v); p[++n] = v }
+    END { if (id != "") print id, en, p[2], p[3] }')"
+hotkey() { printf '%s\n' "$hotkeys_now" | awk -v id="$1" '$1 == id { l = $0 } END { print l }'; } # hotkey ID
+desktop_keys_written=0
+ensure_desktop_key() { # ensure_desktop_key ID CODE MASK
+    [[ "$(hotkey "$1")" == "$1 1 $2 $3" ]] && return 0
+    if defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add "$1" \
+        "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>$2</integer><integer>$3</integer></array><key>type</key><string>standard</string></dict></dict>"; then
+        desktop_keys_written=$((desktop_keys_written + 1))
+    else
+        failed+=("com.apple.symbolichotkeys $1")
+    fi
+}
+{{ range $i, $key := .desktop_shortcuts.keys -}}
+ensure_desktop_key {{ add 118 $i }} {{ $key.code }} {{ $.desktop_shortcuts.mask }}
+{{ end -}}
+if [[ $desktop_keys_written -gt 0 ]]; then
+    updated+=("desktop shortcuts")
+    # Without this, macOS reads changed shortcuts only at the next login.
+    "${ACTIVATE_SETTINGS:-/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings}" -u > /dev/null 2>&1 || true
+fi
+# Invert Colors (Accessibility, id 21) is Ctrl+Option+Cmd+8 unless changed: turned on, macOS takes the window key for
+# desktop 8 first.
+set -- $(hotkey 21)
+if [[ "${2:-}" == 1 && ( -z "${3:-}" || "${3:-} ${4:-}" == "28 1835008" ) ]]; then
+    echo "NOTE: macOS's Invert Colors shortcut (Ctrl+Option+Cmd+8) takes the window key for desktop 8"
+    todo "Turn off System Settings > Keyboard > Keyboard Shortcuts > Accessibility > Invert colors, so Ctrl+Option+Cmd+8 reaches the window keys"
+fi
+
 if [[ ${#failed[@]} -gt 0 ]]; then
     echo "NOTE: macOS settings could not be written: $(join "${failed[@]}")"
     todo "Set these macOS settings by hand (System Settings), or find why defaults could not write them: $(join "${failed[@]}")"

@@ -57,12 +57,22 @@ autohide = true                             # hide the Dock and show it on hover
 mineffect = "scale"                         # minimize with Scale, not Genie
 launchanim = false                          # no bouncing icon while an app opens
 "show-recents" = false                      # no suggested and recent apps in the Dock
+"mru-spaces" = false                        # desktops keep the order you give them (never rearranged by recent use):
+                                            #   the window keys' desktop numbers stay put (cheatsheet "Window Keys")
 "expose-group-apps" = true                  # Mission Control groups windows by app
 enterMissionControlByTopWindowDrag = false  # dragging a window to the top edge does not open Mission Control
 showDesktopGestureEnabled = true            # spread thumb and three fingers to show the desktop
 tilesize = 16                               # small Dock icons,
 magnification = true                        #   magnified on hover
 largesize = 128                             #   to the largest size
+
+[[macos_defaults]]
+domains = ["com.apple.spaces"]
+takes_effect = "logout"
+same_when_unset = ["spans-displays"]
+[macos_defaults.set]
+"spans-displays" = false                    # each display has its own desktops (macOS's default, pinned): the window
+                                            #   keys number desktops per screen
 
 [[macos_defaults]]
 domains = ["NSGlobalDomain"]
@@ -121,3 +131,22 @@ current_host = true
 takes_effect = "logout"
 [macos_defaults.set]
 MenuItemHidden = 1                          # no Spotlight icon in the menu bar (Cmd-Space still opens Spotlight)
+
+# desktop_shortcuts: macOS's own "Switch to Desktop N" shortcuts (com.apple.symbolichotkeys AppleSymbolicHotKeys, ids
+#   118-133 = Desktop 1-16), turned on by run_after_97_macos_defaults.sh on a hidden combination nobody presses, so
+#   Hammerspoon's window keys (dot_hammerspoon/window_keys.lua.tmpl) can press them. macOS numbers desktops across
+#   screens in Mission Control's display order (the main display first: on a laptop with 8 desktops beside a monitor
+#   with 2, the monitor's are Desktop 9 and 10), and Hammerspoon can neither switch desktops (hs.spaces.gotoSpace
+#   fails on macOS 27) nor move windows between them (moveWindowToSpace, closed in macOS 14.5) itself.
+#   mask          the modifiers as macOS stores them (Ctrl 262144 + Option 524288 + Shift 131072 = 917504)
+#   hs_modifiers  the same modifiers as Hammerspoon names them
+#   keys          Desktop 1 first: Hammerspoon's key name and macOS's key code
+[desktop_shortcuts]
+mask = 917504
+hs_modifiers = ["ctrl", "alt", "shift"]
+keys = [
+    { name = "1", code = 18 }, { name = "2", code = 19 }, { name = "3", code = 20 }, { name = "4", code = 21 },
+    { name = "5", code = 23 }, { name = "6", code = 22 }, { name = "7", code = 26 }, { name = "8", code = 28 },
+    { name = "9", code = 25 }, { name = "0", code = 29 }, { name = "-", code = 27 }, { name = "=", code = 24 },
+    { name = "[", code = 33 }, { name = "]", code = 30 }, { name = ";", code = 41 }, { name = "'", code = 39 },
+]

@@ -732,7 +732,7 @@ for host in omarchy arch ubuntu; do
     check "$host gets no macOS settings script" "" "$(render "$host" "$md97" | tr -d '[:space:]')"
 done
 check "darwin macOS settings script is valid bash" "" "$(render darwin "$md97" | bash -n 2>&1)"
-check "darwin macOS settings script sets 41 keys" 41 "$(render darwin "$md97" | grep -c "^ensure_default '")"
+check "darwin macOS settings script sets 43 keys" 43 "$(render darwin "$md97" | grep -c "^ensure_default '")"
 check "darwin macOS settings: bool, float, string, int and per-machine keys" 5 "$(render darwin "$md97" | grep -cxE \
     "ensure_default 'Dock' - 0 'com.apple.dock' 'autohide' -bool true|ensure_default 'Dock' - 0 'com.apple.dock' 'autohide-time-modifier' -float 0.15|ensure_default 'Finder' - 0 'com.apple.finder' 'FXDefaultSearchScope' -string 'SCcf'|ensure_default 'logout' - 1 'com.apple.AppleMultitouchTrackpad' 'TrackpadFiveFingerPinchGesture' -int 2|ensure_default 'ControlCenter' -currentHost 0 'com.apple.controlcenter' 'BatteryShowPercentage' -bool true")"
 check "darwin macOS settings: new Finder windows open in this Mac's Downloads" 1 \
@@ -751,6 +751,13 @@ case "$1" in
     read) [[ -f "$f" ]] || exit 1; cat "$f" ;;
     write)
         grep -qxF "$3" "$MD/fail_write" 2> /dev/null && exit 1
+        if [[ "$4" == -dict-add ]]; then
+            # A symbolic hotkey: append the entry in defaults' text form (the last entry for an id wins when read).
+            set -- $(printf '%s' "$6" | grep -oE '<integer>[0-9]+</integer>|<(true|false)/>' | sed -E 's/<integer>([0-9]+)<\/integer>/\1/; s/<true\/>/1/; s/<false\/>/0/') "$5"
+            mkdir -p "${f%/*}" && printf '    %s =     {\n        enabled = %s;\n        value =         {\n            parameters =             (\n                %s,\n                %s,\n                %s\n            );\n            type = standard;\n        };\n    };\n' "$5" "$1" "$2" "$3" "$4" >> "$f"
+            printf '%s %s %s %s\n' "$5" "$1" "$3" "$4" >> "$MD/hotkeys-written"
+            exit 0
+        fi
         case "$4 $5" in "-bool true") v=1 ;; "-bool false") v=0 ;; *) v="$5" ;; esac
         mkdir -p "${f%/*}" && printf '%s\n' "$v" > "$f"
         printf '%s %s %s\n' "$scope" "$2" "$3" >> "$MD/written" ;;
@@ -758,31 +765,53 @@ esac
 EOF
 printf '#!/bin/sh\nexit "$(cat "$MD/running")"\n' > "$md/bin/pgrep"
 printf '#!/bin/sh\necho "$1" >> "$MD/killed"\n' > "$md/bin/killall"
+printf '#!/bin/sh\necho "$1" >> "$MD/activated"\n' > "$md/bin/activateSettings"
 printf '#!/bin/sh\n[ "$1" = print ] && [ -e "$MD/launchd/${2#system/}" ]\n' > "$md/bin/launchctl"
 printf '#!/bin/sh\ncat "$MD/pmset"\n' > "$md/bin/pmset"
-chmod +x "$md/bin/defaults" "$md/bin/pgrep" "$md/bin/killall" "$md/bin/launchctl" "$md/bin/pmset"
+chmod +x "$md/bin/defaults" "$md/bin/pgrep" "$md/bin/killall" "$md/bin/launchctl" "$md/bin/pmset" "$md/bin/activateSettings"
 render darwin "$md97" > "$md/script.sh"
 md_reset() { # a Mac with Remote Login, Screen Sharing and wake for network access on AC
-    rm -rf "$md/prefs" "$md/written" "$md/killed" "$md/fail_write" "$md/cache" "$md/launchd"; echo 0 > "$md/running"
+    rm -rf "$md/prefs" "$md/written" "$md/killed" "$md/fail_write" "$md/cache" "$md/launchd" "$md/hotkeys-written" "$md/activated"; echo 0 > "$md/running"
     mkdir -p "$md/launchd" && touch "$md/launchd/com.openssh.sshd" "$md/launchd/com.apple.screensharing"
     printf 'Battery Power:\n sleep                1\n womp                 0\nAC Power:\n sleep                1\n womp                 1\n' > "$md/pmset"
 }
-md_run() { MD="$md" PATH="$md/bin:$PATH" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1; echo "exit=$?"; }
+md_run() { MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1; echo "exit=$?"; }
 md_todo() { cat "$md/cache"/after-apply.* 2> /dev/null; }
 md_set() { mkdir -p "$md/prefs/$1/$2" && printf '%s\n' "$4" > "$md/prefs/$1/$2/$3"; } # SCOPE DOMAIN KEY VALUE
 md_reset
 md_run > "$md/out"
-check "macOS settings on a new Mac: writes every key whose unset value differs (29 of 41)" 29 "$(wc -l < "$md/written" | tr -d ' ')"
+check "macOS settings on a new Mac: writes every key whose unset value differs (30 of 43)" 30 "$(wc -l < "$md/written" | tr -d ' ')"
 check "macOS settings on a new Mac: leaves keys that are already right when unset" 0 \
     "$(grep -cE ' (Dragging|DragLock|TrackpadThreeFingerDrag|TrackpadFiveFingerPinchGesture|AppleInterfaceStyleSwitchesAutomatically|com.apple.swipescrolldirection|ShowExternalHardDrivesOnDesktop)$' "$md/written")"
 check "macOS settings on a new Mac: restarts the Dock, Finder and Control Center" "Dock|Finder|ControlCenter" "$(paste -sd'|' - < "$md/killed")"
 check "macOS settings on a new Mac: says what it updated, and log out goes on the to-do list" "1|1|1|exit=0" \
     "$(grep -c '^OK:   macOS settings updated: autohide, autohide-delay, ' "$md/out")|$(grep -c '; restarted Dock, Finder, ControlCenter; apps pick up the title-bar, scroll-bar and key-repeat settings' "$md/out")|$(md_todo | grep -c '^Log out of macOS and back in')|$(tail -1 "$md/out")"
+check "macOS settings on a new Mac: desktops keep their order; separate Spaces left as macOS's default" "1|0" \
+    "$(grep -cx 'user com.apple.dock mru-spaces' "$md/written")|$(grep -c 'spans-displays' "$md/written")"
+check "desktop shortcuts on a new Mac: Desktops 1-16 (ids 118-133) written once, enabled, settings activated once" "16|$(seq 118 133 | paste -sd' ' -)|16|1|1" \
+    "$(wc -l < "$md/hotkeys-written" | tr -d ' ')|$(cut -d' ' -f1 "$md/hotkeys-written" | paste -sd' ' -)|$(awk '$2 == 1' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(wc -l < "$md/activated" | tr -d ' ')|$(grep -c '^OK:   macOS settings updated: .*desktop shortcuts' "$md/out")"
+check "desktop shortcuts use one hidden modifier mask and 16 different keys" "1|16" \
+    "$(cut -d' ' -f4 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')|$(cut -d' ' -f3 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')"
 check "macOS settings: per-machine keys go to -currentHost" "host com.apple.controlcenter BatteryShowPercentage|host com.apple.Spotlight MenuItemHidden" \
     "$(grep '^host ' "$md/written" | paste -sd'|' -)"
-rm -f "$md/written" "$md/killed" "$md/cache"/after-apply.*
+rm -f "$md/written" "$md/killed" "$md/hotkeys-written" "$md/activated" "$md/cache"/after-apply.*
 check "macOS settings: a second apply writes nothing and restarts nothing" "OK:   macOS settings match the repo|OK:   remote access: Remote Login, Screen Sharing, wake for network access on AC|exit=0|no|no|0" \
     "$(md_run | paste -sd'|' -)|$([[ -e "$md/written" ]] && echo yes || echo no)|$([[ -e "$md/killed" ]] && echo yes || echo no)|$(md_todo | wc -l | tr -d ' ')"
+check "desktop shortcuts: a Mac that already has them writes none and activates nothing" "no|no" \
+    "$([[ -e "$md/hotkeys-written" ]] && echo yes || echo no)|$([[ -e "$md/activated" ]] && echo yes || echo no)"
+hk="$md/prefs/user/com.apple.symbolichotkeys/AppleSymbolicHotKeys"
+sed -n '/^    120 = /,/^    };/p' "$hk" | sed -E 's/^( +)([0-9]+)$/\1999/' > "$md/hk120" # Desktop 3's mask changed by hand
+cat "$md/hk120" >> "$hk"
+check "desktop shortcuts: one entry with the wrong mask is rewritten alone, then activated" "120|1" \
+    "$(md_run > /dev/null; cut -d' ' -f1 "$md/hotkeys-written" | paste -sd' ' -)|$(wc -l < "$md/activated" | tr -d ' ')"
+rm -f "$md/written" "$md/killed" "$md/hotkeys-written" "$md/activated" "$md/cache"/after-apply.*
+printf '    21 =     {\n        enabled = 1;\n    };\n' >> "$hk"
+check "macOS Invert Colors on Ctrl+Option+Cmd+8 is named and goes on the to-do list" "1|1" \
+    "$(md_run | grep -c "^NOTE: macOS's Invert Colors shortcut (Ctrl+Option+Cmd+8) takes the window key for desktop 8$")|$(md_todo | grep -c 'Accessibility > Invert colors')"
+rm -f "$md/cache"/after-apply.*
+printf '    21 =     {\n        enabled = 0;\n    };\n' >> "$hk"
+check "macOS Invert Colors turned off: nothing said" "0|0" "$(md_run | grep -c 'Invert Colors')|$(md_todo | grep -c 'Invert colors')"
+rm -f "$md/written" "$md/killed" "$md/hotkeys-written" "$md/activated" "$md/cache"/after-apply.*
 md_set user com.apple.AppleMultitouchTrackpad Dragging 1
 md_set user com.apple.dock autohide-time-modifier 0.150
 check "macOS settings: tap-to-drag turned on is turned off again; a float equal as a number is left; no restart" \
