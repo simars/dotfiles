@@ -104,7 +104,7 @@ and apps whose config just changed and need a reload. Follow it until it says no
     in that pane), so check it here on a new Mac.
 15. **Hammerspoon, once** (the window rescue, Cmd+Ctrl+U; cheatsheet: "Lost and Minimized Windows"): open it
     (`open -a Hammerspoon`), choose **Open** when macOS asks about an app downloaded from the Internet, and allow
-    it in System Settings > Privacy & Security > Accessibility when it asks. It starts at login after that. The apply lists it while it is not running.
+    it in System Settings > Privacy & Security > Device Control and Data Access (Accessibility before macOS 27) when it asks. It starts at login after that. The apply lists it while it is not running.
 16. **Remote access and power** (System Settings or sudo, so chezmoi only checks them):
     - System Settings > General > Sharing: turn on **Remote Login** (SSH) and **Remote Management** (screen sharing
       and control; a script can't turn on screen control). The apply lists either one while it is off.

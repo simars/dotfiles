@@ -259,7 +259,7 @@ if [[ -d /Applications/Hammerspoon.app ]]; then
     if pgrep -xq Hammerspoon; then
         echo "OK:   Hammerspoon is running (Cmd+Ctrl+U window rescue)"
     else
-        note "Hammerspoon is installed but not running, so Cmd+Ctrl+U does not rescue windows. Fix: open -a Hammerspoon, then allow it in System Settings > Privacy & Security > Accessibility"
+        note "Hammerspoon is installed but not running, so Cmd+Ctrl+U does not rescue windows. Fix: open -a Hammerspoon, then allow it in System Settings > Privacy & Security > Device Control and Data Access (Accessibility before macOS 27)"
     fi
 else
     note "Hammerspoon is not installed, so Cmd+Ctrl+U does not rescue windows. Fix: brew install --cask hammerspoon{{ if ne .chezmoi.arch "arm64" }} (docs/INTEL_MACS.md){{ end }}"
