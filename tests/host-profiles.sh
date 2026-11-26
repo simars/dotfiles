@@ -1157,17 +1157,38 @@ add(M.globalDesktop(three, "C", false, 6))
 io.write(table.concat(out, "|"))
 EOF_LUA
 )"
+    # Caps Lock (F18) as a one-key prefix: M.capsKey(kind, key, shift, isRepeat) -> action, consume. Each sequence is
+    # "kind:key[:shift][:repeat]" steps; the result lists each step's action (or -) and c/p (consumed/passed).
+    caps() { "$lua_bin" - "$work/wk.lua" "$@" << 'EOF_LUA'
+hs = {}
+local M = dofile(arg[1])
+local out = {}
+for i = 2, #arg do
+  local kind, key, a, b = arg[i]:match("^(%a+):([^:]+):?(%a*):?(%a*)$")
+  local action, consume = M.capsKey(kind, key, a == "shift" or b == "shift", a == "repeat" or b == "repeat")
+  out[#out + 1] = (action or "-") .. "/" .. (consume and "c" or "p")
+end
+io.write(table.concat(out, " "))
+EOF_LUA
+    }
+    check "caps: a lone tap toggles capitals" "-/c toggle-caps/c" "$(caps down:f18 up:f18)"
+    check "caps: auto-repeat while held still toggles once" "-/c -/c -/c toggle-caps/c" "$(caps down:f18 down:f18:repeat down:f18:repeat up:f18)"
+    check "caps: held with a window key focuses and never toggles" "-/c focus left/c -/c -/c" "$(caps down:f18 down:left up:left up:f18)"
+    check "caps: Shift+arrow swaps, digits go and send, L tiles, U rescues" "-/c swap right/c go 3/c send 3/c tile/c rescue/c -/c -/c" \
+        "$(caps down:f18 down:right:shift down:3 down:3:shift down:l down:u down:a up:f18)"
+    check "caps: outside the layer nothing is touched" "-/p -/p" "$(caps down:left up:left)"
+    check "caps: a held key's auto-repeat acts again (hold Caps+Left to keep moving)" "-/c focus left/c focus left/c" "$(caps down:f18 down:left down:left:repeat)"
     # Send and go to desktop under a stand-in Hammerspoon (tests/hammerspoon-stub.lua): key codes, never key names;
     # the mouse button always comes back up; nothing is clicked while keys are held or on a button.
     stub() { "$lua_bin" tests/hammerspoon-stub.lua "$work/wk.lua" "$1"; }
     check "send: waits for released keys, holds the title bar, presses Desktop 2 by key code, lets go, mouse back" \
-        "move | mouse-down | mouse-drag | key-down 19 ctrl+alt+shift | key-up 19 ctrl+alt+shift | mouse-up | move" "$(stub send)"
+        "move | mouse-down | mouse-drag | key-down 19 ctrl+alt+shift tagged | key-up 19 ctrl+alt+shift tagged | mouse-up | move" "$(stub send)"
     check "send: keys still held after 2 s: refused, nothing clicked" "alert: Let go of the keys to send the window" "$(stub held)"
     check "send: the grab spot is a button: refused, nothing clicked" \
         "alert: No empty title-bar spot to hold this window by (hammerspoon://window-keys-probe)" "$(stub button)"
     check "send: a failing key press still lets go of the mouse button" "move | mouse-down | mouse-drag | mouse-up | move | alert: Could not press macOS's desktop shortcut" "$(stub key-fails)"
-    check "go: presses Desktop 2 by key code at once, while the prefix is still held" "key-down 19 ctrl+alt+shift | key-up 19 ctrl+alt+shift" "$(stub go-held)"
-    check "go: keys held for good: still presses, no refusal" "key-down 19 ctrl+alt+shift | key-up 19 ctrl+alt+shift" "$(stub go-held-long)"
+    check "go: presses Desktop 2 by key code at once, while the prefix is still held" "key-down 19 ctrl+alt+shift tagged | key-up 19 ctrl+alt+shift tagged" "$(stub go-held)"
+    check "go: keys held for good: still presses, no refusal" "key-down 19 ctrl+alt+shift tagged | key-up 19 ctrl+alt+shift tagged" "$(stub go-held-long)"
 fi
 kv() { render "$1" "$2" > "$work/kv.sh"; printf '%b' "$3" | bash "$work/kv.sh" | grep -v '^# Set by chezmoi' | paste -sd'|' -; }
 check "kitty on macOS: keeps the rest, sets copy on select and left Option as Alt" "include t.conf|font_size 11||copy_on_select clipboard|macos_option_as_alt left" \

@@ -5,6 +5,8 @@
 --   Ctrl+Option+Cmd + Shift + 1-9     send the focused window to desktop N of its screen, and go with it
 --   Ctrl+Option+Cmd + L               lay out this screen's windows once, like Hyprland's dwindle layout
 --   Ctrl+Option+Cmd + U               the window rescue (as Cmd+Ctrl+U)
+-- Holding Caps Lock does the same as holding Ctrl+Option+Cmd; a tap of Caps Lock still toggles capitals. macOS hands
+-- Caps Lock over as F18 (hidutil, .chezmoidata/macos.toml caps_lock_remap), which M.capsKey turns into these actions.
 -- On Omarchy the same prefix is Ctrl+Alt+Super (private guide ~/guides/omarchy/window-keys). Keys act only when
 -- pressed: nothing re-tiles by itself, so Swish's gestures keep working as before.
 --
@@ -85,10 +87,14 @@ local function refuseDesktop(screen, n, count)
   end
 end
 
+-- Key events this module posts carry this tag, so the Caps Lock layer lets them through.
+local OWN_EVENT = 0x57494E4B
+
 local function pressDesktop(g)
+  local event = hs.eventtap.event
   local code = M.HIDDEN.keys[g]
-  hs.eventtap.event.newKeyEvent(M.HIDDEN.mods, code, true):post()
-  hs.eventtap.event.newKeyEvent(M.HIDDEN.mods, code, false):post()
+  event.newKeyEvent(M.HIDDEN.mods, code, true):setProperty(event.properties.eventSourceUserData, OWN_EVENT):post()
+  event.newKeyEvent(M.HIDDEN.mods, code, false):setProperty(event.properties.eventSourceUserData, OWN_EVENT):post()
 end
 
 local function modifiersHeld()
@@ -258,6 +264,56 @@ local function probe()
   hs.alert.show("Probe: " .. (#hits > 0 and #hits .. " spots drag " .. bundle or "no spot drags " .. bundle))
 end
 
+-- Caps Lock (arriving as F18) as a one-key prefix. kind "down" or "up"; key an hs.keycodes.map name; shift and
+-- isRepeat booleans. Returns the action to run (or nil) and whether to swallow the event. A tap (F18 down and up with
+-- no other key) toggles Caps Lock; while F18 is held every key is swallowed, the window keys among them acted on.
+local LAYER = { left = "left", right = "right", up = "up", down = "down" }
+local caps = { held = false, used = false }
+function M.capsKey(kind, key, shift, isRepeat)
+  if key == "f18" then
+    if kind == "down" then
+      if not isRepeat then caps.held, caps.used = true, false end
+      return nil, true
+    end
+    local tap = caps.held and not caps.used
+    caps.held = false
+    return tap and "toggle-caps" or nil, true
+  end
+  if not caps.held then return nil, false end
+  if kind ~= "down" then return nil, true end
+  caps.used = true
+  if LAYER[key] then return (shift and "swap " or "focus ") .. key, true end
+  if key:match("^[1-9]$") then return (shift and "send " or "go ") .. key, true end
+  if key == "l" then return "tile", true end
+  if key == "u" then return "rescue", true end
+  return nil, true
+end
+
+local function runCapsAction(action)
+  local verb, arg = action:match("^(%S+) ?(.*)$")
+  if verb == "toggle-caps" then hs.hid.capslock.toggle()
+  elseif verb == "focus" then focusDir(arg)
+  elseif verb == "swap" then swapDir(arg)
+  elseif verb == "go" then M.go(tonumber(arg))
+  elseif verb == "send" then M.send(tonumber(arg))
+  elseif verb == "tile" then tile()
+  elseif verb == "rescue" then require("window_rescue").rescue(false)
+  end
+end
+
+local function startCapsLayer()
+  local types, props = hs.eventtap.event.types, hs.eventtap.event.properties
+  M.capsTap = hs.eventtap.new({ types.keyDown, types.keyUp }, function(e)
+    if e:getProperty(props.eventSourceUserData) == OWN_EVENT then return false end
+    local action, consume = M.capsKey(e:getType() == types.keyDown and "down" or "up", hs.keycodes.map[e:getKeyCode()] or "?",
+      e:getFlags().shift == true, e:getProperty(props.keyboardEventAutorepeat) == 1)
+    if action then hs.timer.doAfter(0, function() runCapsAction(action) end) end
+    return consume
+  end):start()
+  -- macOS turns an event tap off when a callback is slow; turn it back on.
+  M.capsWatch = hs.timer.doEvery(5, function() if not M.capsTap:isEnabled() then M.capsTap:start() end end)
+end
+
 function M.start()
   M.hotkeys = {}
   local function bind(mods, key, fn) M.hotkeys[#M.hotkeys + 1] = hs.hotkey.bind(mods, key, fn) end
@@ -272,6 +328,7 @@ function M.start()
   bind(PREFIX, "l", tile)
   bind(PREFIX, "u", function() require("window_rescue").rescue(false) end)
   hs.urlevent.bind("window-keys-probe", probe)
+  startCapsLayer()
 end
 
 return M

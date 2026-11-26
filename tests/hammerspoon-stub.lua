@@ -48,10 +48,14 @@ hs = {
     end,
     event = {
       types = { leftMouseDown = "down", leftMouseDragged = "drag", leftMouseUp = "up", keyDown = "kd", keyUp = "ku" },
+      properties = { eventSourceUserData = "userData" },
       newMouseEvent = function(t) return { post = function() record("mouse-" .. t) end } end,
       newKeyEvent = function(mods, code, down)
         if scenario == "key-fails" then error("no such key") end
-        return { post = function() record((down and "key-down " or "key-up ") .. tostring(code) .. " " .. table.concat(mods, "+")) end }
+        local e = { tag = "" }
+        function e.setProperty(self, prop, value) if prop == "userData" and value == 0x57494E4B then self.tag = " tagged" end return self end
+        function e.post(self) record((down and "key-down " or "key-up ") .. tostring(code) .. " " .. table.concat(mods, "+") .. self.tag) end
+        return e
       end,
     },
     keyStroke = function() record("keyStroke (by name: layout-dependent)") end,
