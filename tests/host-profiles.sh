@@ -1118,6 +1118,25 @@ check "the Mac requirement check names Hammerspoon; only Intel points to INTEL_M
     "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'cask hammerspoon"$') $(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'hammerspoon (docs/INTEL_MACS.md)') $(render intel run_after_99_assert_requirements.sh.tmpl | grep -c 'hammerspoon (docs/INTEL_MACS.md)')"
 check "the Mac requirement check names all Hammerspoon runs: window keys, Caps Lock prefix, window rescue" 3 \
     "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'window keys, the Caps Lock prefix and the Cmd+Ctrl+U window rescue')"
+# Hammerspoon opened once after install (check_hammerspoon): stubs open and pgrep, HAMMERSPOON_APP and XDG_STATE_HOME
+# pointed at scratch dirs.
+render darwin run_after_99_assert_requirements.sh.tmpl | sed -n '/^check_hammerspoon() {/,/^}/p' > "$work/hs.sh"
+hsd="$work/hsd"
+mkdir -p "$hsd/bin" "$hsd/Hammerspoon.app"
+printf '#!/bin/sh\necho "open $*" >> "$HSD/log"\n' > "$hsd/bin/open"
+printf '#!/bin/sh\nexit "$(cat "$HSD/running")"\n' > "$hsd/bin/pgrep"
+printf '#!/bin/sh\necho "xattr $*" >> "$HSD/log"\n' > "$hsd/bin/xattr"
+chmod +x "$hsd/bin/"*
+hs_check() { HSD="$hsd" HAMMERSPOON_APP="$hsd/Hammerspoon.app" XDG_STATE_HOME="$hsd/state" PATH="$hsd/bin:$PATH" bash -c 'note() { echo "NOTE: $1"; }; source "$0"; check_hammerspoon' "$work/hs.sh" 2>&1 | paste -sd'|' -; }
+echo 1 > "$hsd/running"
+check "Hammerspoon installed, never opened: opened once, command printed, the note says what to click" "1|1|open -a $hsd/Hammerspoon.app" \
+    "$(hs_check > "$hsd/out"; grep -c "^\\$ open -a $hsd/Hammerspoon.app" "$hsd/out")|$(grep -c 'choose Open' "$hsd/out")|$(cat "$hsd/log")"
+rm -f "$hsd/log"
+check "Hammerspoon opened before and still not running: not opened again, only the note" "1|no-open" \
+    "$(hs_check | grep -c '^NOTE: Hammerspoon is installed but not running')|$([[ -e "$hsd/log" ]] && echo opened || echo no-open)"
+echo 0 > "$hsd/running"
+check "Hammerspoon running: OK, nothing opened, never xattr" "1|no-open" \
+    "$(hs_check | grep -c '^OK:   Hammerspoon is running')|$([[ -e "$hsd/log" ]] && echo opened || echo no-open)"
 check "Linux requirement checks never mention Hammerspoon" "0 0" \
     "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -ci hammerspoon.app) $(render ubuntu run_after_99_assert_requirements.sh.tmpl | grep -ci hammerspoon.app)"
 if command -v luac > /dev/null 2>&1; then

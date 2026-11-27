@@ -102,8 +102,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
     source** (Ctrl+Space), which would take tmux's and Herdr's second prefix (these Macs never switch input language).
 15. **Hammerspoon, once.** It runs the window keys (Ctrl+Option+Cmd), the Caps Lock prefix (hold Caps Lock for the
     window keys) and the window rescue (Cmd+Ctrl+U); cheatsheet: "Window Keys" and "Lost and Minimized Windows". Until
-    this step none of them work, and Caps Lock stays plain Caps Lock. Open it
-    (`open -a Hammerspoon`), choose **Open** when macOS asks about an app downloaded from the Internet, and allow
+    this step none of them work, and Caps Lock stays plain Caps Lock. The first apply opens it for you (once); if it
+    did not, open it (`open -a Hammerspoon`). Choose **Open** when macOS asks about an app downloaded from the Internet, and allow
     it in System Settings > Privacy & Security > Device Control and Data Access (Accessibility before macOS 27): switch
     Hammerspoon on there, or add it with **+** from `/Applications` if it is not listed. chezmoi's config never asks
     for it (on macOS 27 asking showed the dialog on every config reload). It starts at login after that. The apply
