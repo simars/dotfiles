@@ -383,6 +383,7 @@ if command -v herdr > /dev/null 2>&1; then
 fi
 reload_hint "$HOME/.config/herdr/config.toml" herdr "Herdr's config changed: run herdr server reload-config (or press Ctrl-b r in Herdr)"
 reload_hint "$HOME/.config/tmux/tmux.conf" tmux "tmux's config changed: press Ctrl-b r in tmux"
+reload_hint "$HOME/.claude/settings.json" claude "Claude Code's settings changed: restart open Claude Code sessions to pick them up"
 reload_hint "$HOME/.copilot/settings.json" copilot "Copilot CLI's settings changed: restart open Copilot sessions (/restart) to pick them up"
 for startup_file in .zshrc .zprofile .aliases; do
     reload_hint "$HOME/$startup_file" "" "Shell startup files changed: run exec zsh in open shells, or open new ones"

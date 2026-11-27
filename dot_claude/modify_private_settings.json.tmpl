@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# chezmoi modify script for Claude Code's ~/.claude/settings.json (600): Claude Code and its plugins write this file
+# too, so only the usability keys are set and everything else is passed through. The values come from [agent_usability]
+# in .chezmoidata/agents.toml; a false writes the opposite value, it does not leave the key.
+# Claude Code has no mouse setting, only the environment switch CLAUDE_CODE_DISABLE_MOUSE, which it reads from the `env`
+# block of this file: the mouse is on while the switch is unset, so on removes it (and an `env` it leaves empty) and off
+# sets it to "1". `tui` is set to fullscreen, the mode that takes the mouse. Claude Code reads the file at
+# start. Runs under bash 3.2, the macOS /bin/bash. Cheatsheet: "Same Keys in Every Agent".
+set -euo pipefail
+# shellcheck disable=SC2016 # jq variables, not shell ones
+filter='.editorMode = (if $vim then "vim" else "normal" end) | .copyOnSelect = $copy | .tui = "fullscreen"
+  | if $mouse then
+      (if (.env | type) == "object" and (.env | has("CLAUDE_CODE_DISABLE_MOUSE")) then del(.env.CLAUDE_CODE_DISABLE_MOUSE) | (if .env == {} then del(.env) else . end) else . end)
+    else .env.CLAUDE_CODE_DISABLE_MOUSE = "1" end'
+args=(--argjson vim {{ .agent_usability.vim_keys }} --argjson copy {{ .agent_usability.copy_on_select }} --argjson mouse {{ .agent_usability.mouse }})
+{{ template "modify-json.sh" . }}

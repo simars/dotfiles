@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# chezmoi modify script for GitHub Copilot CLI's ~/.copilot/settings.json: Copilot writes this file itself (plugins,
+# hooks, `copilot config`), so only the usability keys are set and everything else is passed through. The values come
+# from [agent_usability] in .chezmoidata/agents.toml; a false writes the opposite value, it does not leave the key.
+# Selecting text with the mouse copies it, as in every terminal, tmux and Herdr here: Copilot's copyOnSelect is on by
+# default only on macOS, so on Linux its mouse selection (which it takes over from the terminal and Herdr) copied
+# nothing until Ctrl+C. Copilot reads the file at start. Runs under bash 3.2, the macOS /bin/bash.
+# Cheatsheet: "Same Keys in Every Agent".
+set -euo pipefail
+# shellcheck disable=SC2016 # jq variables, not shell ones
+filter='.editorMode = (if $vim then "vim" else "normal" end) | .copyOnSelect = $copy | .mouse = $mouse'
+args=(--argjson vim {{ .agent_usability.vim_keys }} --argjson copy {{ .agent_usability.copy_on_select }} --argjson mouse {{ .agent_usability.mouse }})
+{{ template "modify-json.sh" . }}

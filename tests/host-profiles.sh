@@ -633,18 +633,38 @@ check "foot: second run changes nothing" "$(foot '[main]\nfont=x\n')" "$(printf 
 # Copilot CLI copies what the mouse selects (copyOnSelect; its default is on only on macOS), on every host. Only that
 # key is set; the rest of the file, which Copilot writes, is kept.
 for host in $hosts; do check "$host manages Copilot CLI's settings" yes "$(manages "$host" .copilot/settings.json)"; done
+# The JSON agents share .chezmoitemplates/modify-json.sh: the intents (vim keys, copy on select, mouse) arrive as the jq
+# arguments $vim, $copy and $mouse. A `false` writes the agent's opposite value; it does not leave the key alone.
 if command -v jq > /dev/null 2>&1; then
-    copilot_modify=private_dot_copilot/modify_settings.json
-    check "Copilot: copy on select, rest kept" '{"a":1,"copyOnSelect":true}' "$(printf '{"a": 1}' | bash "$copilot_modify" | jq -c .)"
-    check "Copilot: turns copy on select back on" '{"copyOnSelect":true}' "$(printf '{"copyOnSelect": false}' | bash "$copilot_modify" | jq -c .)"
-    check "Copilot: a missing file gets only copy on select" '{"copyOnSelect":true}' "$(printf '' | bash "$copilot_modify" | jq -c .)"
-    check "Copilot: second run changes nothing" "$(printf '{"a": 1}' | bash "$copilot_modify")" "$(printf '{"a": 1}' | bash "$copilot_modify" | bash "$copilot_modify")"
+    render omarchy private_dot_copilot/modify_settings.json.tmpl > "$work/copilot.sh"
+    render omarchy dot_claude/modify_private_settings.json.tmpl > "$work/claude.sh"
+    off='{"vim_keys":false,"copy_on_select":false,"mouse":false}'
+    false_data="$(host_data omarchy | jq -c ".agent_usability = $off")"
+    chezmoi --source . --override-data "$false_data" execute-template < private_dot_copilot/modify_settings.json.tmpl > "$work/copilot-false.sh"
+    chezmoi --source . --override-data "$false_data" execute-template < dot_claude/modify_private_settings.json.tmpl > "$work/claude-false.sh"
+    jqc() { jq -cS . ; }
+    check "Copilot: vim keys, copy on select and mouse, rest kept" '{"a":1,"copyOnSelect":true,"editorMode":"vim","mouse":true}' "$(printf '{"a": 1}' | bash "$work/copilot.sh" | jqc)"
+    check "Copilot: turns the keys back on" '{"copyOnSelect":true,"editorMode":"vim","mouse":true}' "$(printf '{"copyOnSelect": false, "editorMode": "normal", "mouse": false}' | bash "$work/copilot.sh" | jqc)"
+    check "Copilot: a missing file gets only the keys" '{"copyOnSelect":true,"editorMode":"vim","mouse":true}' "$(printf '' | bash "$work/copilot.sh" | jqc)"
+    check "Copilot: key order (vim, copy, mouse)" '{"a":1,"editorMode":"vim","copyOnSelect":true,"mouse":true}' "$(printf '{"a": 1}' | bash "$work/copilot.sh" | jq -c .)"
+    check "Copilot: second run changes nothing" "$(printf '{"a": 1}' | bash "$work/copilot.sh")" "$(printf '{"a": 1}' | bash "$work/copilot.sh" | bash "$work/copilot.sh")"
+    check "Copilot: false intents write the opposite values" '{"editorMode":"normal","copyOnSelect":false,"mouse":false}' "$(printf '{}' | bash "$work/copilot-false.sh" | jq -c .)"
+    check "Copilot: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/copilot.sh")"
+    check "Claude: keys set, the mouse switch-off removed, other env kept" '{"model":"x","env":{"K":"v"},"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '{"model":"x","env":{"CLAUDE_CODE_DISABLE_MOUSE":"1","K":"v"}}' | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: no env key when there is nothing to put in it" '{"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '{}' | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: an emptied env is dropped" '{"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '{"env":{"CLAUDE_CODE_DISABLE_MOUSE":"1"}}' | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: a missing file gets only the keys" '{"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '' | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: second run changes nothing" "$(printf '{"env":{"K":"v","CLAUDE_CODE_DISABLE_MOUSE":"1"}}' | bash "$work/claude.sh")" "$(printf '{"env":{"K":"v","CLAUDE_CODE_DISABLE_MOUSE":"1"}}' | bash "$work/claude.sh" | bash "$work/claude.sh")"
+    check "Claude: false intents write the opposite values" '{"editorMode":"normal","copyOnSelect":false,"tui":"fullscreen","env":{"CLAUDE_CODE_DISABLE_MOUSE":"1"}}' "$(printf '{}' | bash "$work/claude-false.sh" | jq -c .)"
+    check "Claude: false then true removes the mouse switch-off again" '{"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '{}' | bash "$work/claude-false.sh" | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/claude.sh")"
+    # ~/.claude is a 755 folder (dot_), only settings.json is 600 (private_ in the script's name).
+    check "Claude: settings.json is private, the folder is not" "yes" "$([[ -f dot_claude/modify_private_settings.json.tmpl && ! -e private_dot_claude ]] && echo yes || echo no)"
 fi
-check "Copilot: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash private_dot_copilot/modify_settings.json)"
 
 # Every CLI coding agent gets the same usability settings (vim keys, copy on select, mouse), but only where it is set up:
 # a host without the agent gets no folder for it. `agents_present` (tests only) stands in for the detection.
-agents=".copilot/settings.json"   # each agent's target is added as its script lands
+agents=".copilot/settings.json .claude/settings.json"   # each agent's target is added as its script lands
 for host in $hosts; do for t in $agents; do check "$host manages $t where the agent is present" yes "$(manages "$host" "$t")"; done; done
 absent="$(chezmoi --override-data "$(host_data omarchy | jq -c '.agents_present = false')" managed --include=all)"
 check "no agent: the rest of the repository is still managed" 1 "$(printf '%s\n' "$absent" | grep -cx '\.zshrc')"
