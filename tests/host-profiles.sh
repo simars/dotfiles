@@ -665,24 +665,32 @@ if command -v jq > /dev/null 2>&1; then
     check "Claude: false then true removes the mouse switch-off again" '{"editorMode":"vim","tui":"fullscreen"}' "$(printf '{}' | bash "$work/claude-false.sh" | bash "$work/claude.sh" | jq -c .)"
     check "Claude: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/claude.sh")"
     check "Claude: a copyOnSelect already in the file is kept as it is" "false" "$(printf '{"copyOnSelect": false}' | bash "$work/claude.sh" | jq -c .copyOnSelect)"
+    # A failed read (a directory as stdin) must exit non-zero with nothing on stdout: that stdout would replace the file.
+    for agent in copilot claude cursor antigravity; do
+        out="$(bash "$work/$agent.sh" < "$work" 2> /dev/null)" && rc=0 || rc=$?
+        check "$agent: a failed read exits non-zero" "yes" "$([[ $rc -ne 0 ]] && echo yes || echo no)"
+        check "$agent: a failed read prints nothing on stdout" "0" "${#out}"
+    done
     # Pass-through is byte for byte, trailing newline included ($(...) would strip it).
     for agent in copilot claude cursor antigravity; do
         check "$agent: a non-JSON file ending in a newline comes back byte for byte" "6e6f74206a736f6e0a" "$(printf 'not json\n' | bash "$work/$agent.sh" | od -An -tx1 | tr -d ' \n')"
     done
     check "Copilot: whitespace-only input gives the keys only" '{"editorMode":"vim","copyOnSelect":true,"mouse":true}' "$(printf '  \n' | bash "$work/copilot.sh" | jq -c .)"
     check "Claude: whitespace-only input gives the keys only" '{"editorMode":"vim","tui":"fullscreen"}' "$(printf '  \n' | bash "$work/claude.sh" | jq -c .)"
-    # Cursor's agent has only vim keys (editor.vimMode); Antigravity has editorMode (vim / normal) and copyOnSelect.
+    # Cursor's agent has only vim keys (editor.vimMode); Antigravity has editorMode (vim, or the key removed) and copyOnSelect (removed when on, false when off).
     check "Cursor: vim keys on, rest kept" '{"editor":{"vimMode":true},"display":{"mode":"zen"}}' "$(printf '{"editor":{"vimMode":false},"display":{"mode":"zen"}}' | bash "$work/cursor.sh" | jq -c .)"
     check "Cursor: a missing file gets only the key" '{"editor":{"vimMode":true}}' "$(printf '' | bash "$work/cursor.sh" | jq -c .)"
     check "Cursor: whitespace-only input gives the key only" '{"editor":{"vimMode":true}}' "$(printf '  \n' | bash "$work/cursor.sh" | jq -c .)"
     check "Cursor: false intent writes vimMode false" '{"editor":{"vimMode":false}}' "$(printf '{}' | bash "$work/cursor-false.sh" | jq -c .)"
     check "Cursor: second run changes nothing" "$(printf '{"a": 1}' | bash "$work/cursor.sh")" "$(printf '{"a": 1}' | bash "$work/cursor.sh" | bash "$work/cursor.sh")"
     check "Cursor: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/cursor.sh")"
-    check "Antigravity: vim keys and copy on select, rest kept" '{"trustedWorkspaces":["/x"],"editorMode":"vim","copyOnSelect":true}' "$(printf '{"trustedWorkspaces":["/x"]}' | bash "$work/antigravity.sh" | jq -c .)"
-    check "Antigravity: a missing file gets only the keys" '{"editorMode":"vim","copyOnSelect":true}' "$(printf '' | bash "$work/antigravity.sh" | jq -c .)"
-    check "Antigravity: whitespace-only input gives the keys only" '{"editorMode":"vim","copyOnSelect":true}' "$(printf '  \n' | bash "$work/antigravity.sh" | jq -c .)"
-    check "Antigravity: false intents write normal and false" '{"editorMode":"normal","copyOnSelect":false}' "$(printf '{}' | bash "$work/antigravity-false.sh" | jq -c .)"
-    check "Antigravity: turns the keys back on" '{"editorMode":"vim","copyOnSelect":true}' "$(printf '{"editorMode":"normal","copyOnSelect":false}' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: vim keys on, copy on select left at its default, rest kept" '{"trustedWorkspaces":["/x"],"editorMode":"vim"}' "$(printf '{"trustedWorkspaces":["/x"]}' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: a copyOnSelect true (its default, which agy drops itself) is removed" '{"editorMode":"vim"}' "$(printf '{"copyOnSelect":true}' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: a missing file gets only the vim key" '{"editorMode":"vim"}' "$(printf '' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: whitespace-only input gives the vim key only" '{"editorMode":"vim"}' "$(printf '  \n' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: false intents remove editorMode (agy rejects normal) and write copyOnSelect false" '{"copyOnSelect":false}' "$(printf '{"editorMode":"vim"}' | bash "$work/antigravity-false.sh" | jq -c .)"
+    check "Antigravity: false intents on an empty object write copyOnSelect false" '{"copyOnSelect":false}' "$(printf '{}' | bash "$work/antigravity-false.sh" | jq -c .)"
+    check "Antigravity: turns the keys back on" '{"editorMode":"vim"}' "$(printf '{"editorMode":"default","copyOnSelect":false}' | bash "$work/antigravity.sh" | jq -c .)"
     check "Antigravity: second run changes nothing" "$(printf '{"a": 1}' | bash "$work/antigravity.sh")" "$(printf '{"a": 1}' | bash "$work/antigravity.sh" | bash "$work/antigravity.sh")"
     check "Antigravity: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/antigravity.sh")"
     # Modes: ~/.cursor and ~/.gemini/antigravity-cli are 755 folders (dot_), cli-config.json is 644, settings.json is 600.
