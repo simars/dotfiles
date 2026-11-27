@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# chezmoi modify script for Cursor's agent (cursor-agent) ~/.cursor/cli-config.json: the agent writes this file itself
+# (permissions, model, approval mode), so only editor.vimMode is set and everything else is passed through. The value
+# comes from vim_keys in [agent_usability] in .chezmoidata/agents.toml; a false writes false, it does not leave the key.
+# Cursor's agent has no copy on select or mouse setting, so those two intents do not apply here. It reads the file at
+# start. Runs under bash 3.2, the macOS /bin/bash. Cheatsheet: "Same Keys in Every Agent".
+set -euo pipefail
+# shellcheck disable=SC2016 # jq variables, not shell ones
+filter='.editor.vimMode = $vim'
+args=(--argjson vim {{ .agent_usability.vim_keys }})
+{{ template "modify-json.sh" . }}

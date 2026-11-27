@@ -640,10 +640,14 @@ for host in $hosts; do check "$host manages Copilot CLI's settings" yes "$(manag
 if command -v jq > /dev/null 2>&1; then
     render omarchy private_dot_copilot/modify_settings.json.tmpl > "$work/copilot.sh"
     render omarchy dot_claude/modify_private_settings.json.tmpl > "$work/claude.sh"
+    render omarchy dot_cursor/modify_cli-config.json.tmpl > "$work/cursor.sh"
+    render omarchy dot_gemini/antigravity-cli/modify_private_settings.json.tmpl > "$work/antigravity.sh"
     off='{"vim_keys":false,"copy_on_select":false,"mouse":false}'
     false_data="$(host_data omarchy | jq -c ".agent_usability = $off")"
     chezmoi --source . --override-data "$false_data" execute-template < private_dot_copilot/modify_settings.json.tmpl > "$work/copilot-false.sh"
     chezmoi --source . --override-data "$false_data" execute-template < dot_claude/modify_private_settings.json.tmpl > "$work/claude-false.sh"
+    chezmoi --source . --override-data "$false_data" execute-template < dot_cursor/modify_cli-config.json.tmpl > "$work/cursor-false.sh"
+    chezmoi --source . --override-data "$false_data" execute-template < dot_gemini/antigravity-cli/modify_private_settings.json.tmpl > "$work/antigravity-false.sh"
     jqc() { jq -cS . ; }
     check "Copilot: vim keys, copy on select and mouse, rest kept" '{"a":1,"copyOnSelect":true,"editorMode":"vim","mouse":true}' "$(printf '{"a": 1}' | bash "$work/copilot.sh" | jqc)"
     check "Copilot: turns the keys back on" '{"copyOnSelect":true,"editorMode":"vim","mouse":true}' "$(printf '{"copyOnSelect": false, "editorMode": "normal", "mouse": false}' | bash "$work/copilot.sh" | jqc)"
@@ -662,20 +666,39 @@ if command -v jq > /dev/null 2>&1; then
     check "Claude: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/claude.sh")"
     check "Claude: a copyOnSelect already in the file is kept as it is" "false" "$(printf '{"copyOnSelect": false}' | bash "$work/claude.sh" | jq -c .copyOnSelect)"
     # Pass-through is byte for byte, trailing newline included ($(...) would strip it).
-    for agent in copilot claude; do
+    for agent in copilot claude cursor antigravity; do
         check "$agent: a non-JSON file ending in a newline comes back byte for byte" "6e6f74206a736f6e0a" "$(printf 'not json\n' | bash "$work/$agent.sh" | od -An -tx1 | tr -d ' \n')"
     done
     check "Copilot: whitespace-only input gives the keys only" '{"editorMode":"vim","copyOnSelect":true,"mouse":true}' "$(printf '  \n' | bash "$work/copilot.sh" | jq -c .)"
     check "Claude: whitespace-only input gives the keys only" '{"editorMode":"vim","tui":"fullscreen"}' "$(printf '  \n' | bash "$work/claude.sh" | jq -c .)"
+    # Cursor's agent has only vim keys (editor.vimMode); Antigravity has editorMode (vim / normal) and copyOnSelect.
+    check "Cursor: vim keys on, rest kept" '{"editor":{"vimMode":true},"display":{"mode":"zen"}}' "$(printf '{"editor":{"vimMode":false},"display":{"mode":"zen"}}' | bash "$work/cursor.sh" | jq -c .)"
+    check "Cursor: a missing file gets only the key" '{"editor":{"vimMode":true}}' "$(printf '' | bash "$work/cursor.sh" | jq -c .)"
+    check "Cursor: whitespace-only input gives the key only" '{"editor":{"vimMode":true}}' "$(printf '  \n' | bash "$work/cursor.sh" | jq -c .)"
+    check "Cursor: false intent writes vimMode false" '{"editor":{"vimMode":false}}' "$(printf '{}' | bash "$work/cursor-false.sh" | jq -c .)"
+    check "Cursor: second run changes nothing" "$(printf '{"a": 1}' | bash "$work/cursor.sh")" "$(printf '{"a": 1}' | bash "$work/cursor.sh" | bash "$work/cursor.sh")"
+    check "Cursor: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/cursor.sh")"
+    check "Antigravity: vim keys and copy on select, rest kept" '{"trustedWorkspaces":["/x"],"editorMode":"vim","copyOnSelect":true}' "$(printf '{"trustedWorkspaces":["/x"]}' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: a missing file gets only the keys" '{"editorMode":"vim","copyOnSelect":true}' "$(printf '' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: whitespace-only input gives the keys only" '{"editorMode":"vim","copyOnSelect":true}' "$(printf '  \n' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: false intents write normal and false" '{"editorMode":"normal","copyOnSelect":false}' "$(printf '{}' | bash "$work/antigravity-false.sh" | jq -c .)"
+    check "Antigravity: turns the keys back on" '{"editorMode":"vim","copyOnSelect":true}' "$(printf '{"editorMode":"normal","copyOnSelect":false}' | bash "$work/antigravity.sh" | jq -c .)"
+    check "Antigravity: second run changes nothing" "$(printf '{"a": 1}' | bash "$work/antigravity.sh")" "$(printf '{"a": 1}' | bash "$work/antigravity.sh" | bash "$work/antigravity.sh")"
+    check "Antigravity: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/antigravity.sh")"
+    # Modes: ~/.cursor and ~/.gemini/antigravity-cli are 755 folders (dot_), cli-config.json is 644, settings.json is 600.
+    check "Cursor: cli-config.json is 644, the folder is not private" "yes" "$([[ -f dot_cursor/modify_cli-config.json.tmpl && ! -e private_dot_cursor ]] && echo yes || echo no)"
+    check "Antigravity: settings.json is private, the folders are not" "yes" "$([[ -f dot_gemini/antigravity-cli/modify_private_settings.json.tmpl && ! -e private_dot_gemini && ! -e dot_gemini/private_antigravity-cli ]] && echo yes || echo no)"
     # ~/.claude is a 755 folder (dot_), only settings.json is 600 (private_ in the script's name).
     check "Claude: settings.json is private, the folder is not" "yes" "$([[ -f dot_claude/modify_private_settings.json.tmpl && ! -e private_dot_claude ]] && echo yes || echo no)"
 fi
 
 # Every CLI coding agent gets the same usability settings (vim keys, copy on select, mouse), but only where it is set up:
 # a host without the agent gets no folder for it. `agents_present` (tests only) stands in for the detection.
-agents=".copilot/settings.json .claude/settings.json"   # each agent's target is added as its script lands
+agents=".copilot/settings.json .claude/settings.json .cursor/cli-config.json .gemini/antigravity-cli/settings.json"   # each agent's target is added as its script lands
 for host in $hosts; do for t in $agents; do check "$host manages $t where the agent is present" yes "$(manages "$host" "$t")"; done; done
 absent="$(chezmoi --override-data "$(host_data omarchy | jq -c '.agents_present = false')" managed --include=all)"
+# .gemini/AGENTS.md belongs to ai-tooling: chezmoi manages .gemini/antigravity-cli only, never .gemini or its AGENTS.md.
+for host in $hosts; do check "$host does not manage .gemini/AGENTS.md" no "$(manages "$host" .gemini/AGENTS.md)"; done
 check "no agent: the rest of the repository is still managed" 1 "$(printf '%s\n' "$absent" | grep -cx '\.zshrc')"
 for t in .claude .copilot .cursor .codex .gemini; do check "no agent: $t is left alone" 0 "$(printf '%s\n' "$absent" | grep -cE "^${t//./\\.}(/|$)")"; done
 check "usability intents are vim keys, copy on select and mouse" "true true true" "$(chezmoi --override-data "$(host_data omarchy)" execute-template '{{ .agent_usability.vim_keys }} {{ .agent_usability.copy_on_select }} {{ .agent_usability.mouse }}')"

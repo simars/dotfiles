@@ -263,14 +263,14 @@ A Mac terminal sends `Alt` keys (`Esc` plus the key) only when Option is set to 
 Programs in the terminal can **set** the clipboard this way, never read it. **Selecting with the mouse copies at once** in every terminal: iTerm2 (its default) and Wave (`term:copyonselect`, set by chezmoi) on macOS; foot (`selection-target=both`, set by chezmoi), Alacritty (`[selection] save_to_clipboard`, set by the Omarchy guide) and Wave on Omarchy; kitty (`copy_on_select clipboard`) and Ghostty (`copy-on-select = clipboard`) on both, set by chezmoi; and in herdr, the Herdr app and tmux everywhere. Copilot CLI and Claude Code take the mouse over from the terminal and Herdr and select text themselves; chezmoi sets Copilot's `copyOnSelect` and reports Claude Code's (see "Same Keys in Every Agent" below), which Copilot has on by default only on macOS, so on Omarchy a selection there copied nothing until `Ctrl + C` or a right-click. foot stays Omarchy's default terminal; Alacritty, kitty, Ghostty, Wave (`waveterm-bin`, AUR) and the Herdr app (`herdr-app`) are installed beside it; Wave and the Herdr app are tagged as terminals (Omarchy tags the others itself) so `Super + C` / `Super + V` copy and paste there instead of sending `Ctrl + C`.
 
 ### Same Keys in Every Agent
-The CLI coding agents get the same three settings: vim keys in the prompt, copy on select, and the mouse. The values come from `[agent_usability]` in `.chezmoidata/agents.toml`, each apply puts them back, and they apply only where the agent is set up (its folder exists or its command is installed). A `false` writes the agent's opposite value; it does not leave the key alone.
+The CLI coding agents get the same three settings: vim keys in the prompt, copy on select, and the mouse. The values come from `[agent_usability]` in `.chezmoidata/agents.toml`, they apply only where the agent is set up (its folder exists or its command is installed), and each apply puts every value back and leaves the rest of the file alone. A `false` writes the agent's opposite value; it does not leave the key alone. The one exception is Claude Code's copy on select, which lives in a file chezmoi does not write: the apply only reports it when it is off. A setting an agent does not have says "not available".
 
 | Agent | File | Vim keys | Copy on select | Mouse |
 | :--- | :--- | :--- | :--- | :--- |
 | Claude Code | `~/.claude/settings.json` | `editorMode` | on by default; kept in `~/.claude.json`, which chezmoi does not write; the apply's to-do list says if it is off | no setting: `env.CLAUDE_CODE_DISABLE_MOUSE` (`"1"` turns the mouse off; removed when on), with `tui` set to `fullscreen` |
 | Copilot CLI | `~/.copilot/settings.json` | `editorMode` | `copyOnSelect` | `mouse` |
-| Cursor's agent (`cursor-agent`) | `~/.cursor/cli-config.json` | coming (Task 3) | not available | not available |
-| Antigravity (`agy`) | `~/.gemini/antigravity-cli/` | not available: its CLI settings have neither key (2026-11-27) | not available: its CLI settings have neither key (2026-11-27) | not available: its CLI settings have neither key (2026-11-27) |
+| Cursor's agent (`cursor-agent`) | `~/.cursor/cli-config.json` | `editor.vimMode` | not available | not available |
+| Antigravity (`agy`) | `~/.gemini/antigravity-cli/settings.json` | `editorMode` `vim` (value not yet confirmed in its `/settings`) | `copyOnSelect` | always on in its full-screen mode; no setting |
 | Codex | `~/.codex/config.toml` | coming | coming | coming |
 
 ### Ghostty over SSH (every host)
