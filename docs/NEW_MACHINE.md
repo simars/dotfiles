@@ -137,11 +137,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
    cd ~/ai-tooling && make setup
    gh auth login                    # the apply sets gh to clone over SSH
    ```
-5. **LunarVim, if the list asks:**
-   ```bash
-   mkdir -p ~/.local/share/lunarvim && ln -s /usr/share/lunarvim ~/.local/share/lunarvim/lvim && lvim --headless +qa
-   ```
-   Never run the package's `init-lvim.sh`.
+5. **LunarVim:** nothing to do: the apply links it for you once LunarVim is installed (never its `init-lvim.sh`).
+   If LunarVim arrives later, the list names the link command.
 6. **Per machine, by hand:**
    - Arrange the monitors in the bar's Display widget (monitor-layout), and the tablet in its widget.
    - Pick the theme and add the web apps.

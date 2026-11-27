@@ -1001,6 +1001,19 @@ fi
 # Omarchy setup beyond packages (.chezmoidata/omarchy.toml): dev-env runtimes and shell plugins by a run_onchange
 # script, guides only reported (setup-guides). Nothing of it on other hosts.
 render omarchy run_onchange_after_91_omarchy_setup.sh.tmpl > "$work/omarchy.setup"
+# LunarVim's one-time link (link_lunarvim): scratch HOME, a stub lvim that logs, LVIM_SHARE pointed at a scratch dir.
+sed -n '/^link_lunarvim() {/,/^}/p' "$work/omarchy.setup" > "$work/lvim.sh"
+mkdir -p "$work/lv/bin" "$work/lv/share" "$work/lv/home"
+printf '#!/bin/sh\necho "lvim $*" >> "$LV/log"\n' > "$work/lv/bin/lvim"
+chmod +x "$work/lv/bin/lvim"
+lvim_link() { LV="$work/lv" HOME="$work/lv/home" LVIM_SHARE="$work/lv/share" PATH="$work/lv/bin:$PATH" bash -c 'source "$0"; link_lunarvim' "$work/lvim.sh" 2>&1 | paste -sd'|' -; }
+check "LunarVim: linked for you, commands printed, lvim run headless once" \
+    "\$ mkdir -p $work/lv/home/.local/share/lunarvim|\$ ln -s $work/lv/share $work/lv/home/.local/share/lunarvim/lvim|\$ lvim --headless +qa|link|lvim --headless +qa" \
+    "$(lvim_link)|$([[ -L "$work/lv/home/.local/share/lunarvim/lvim" ]] && echo link)|$(cat "$work/lv/log")"
+rm -f "$work/lv/log"
+check "LunarVim: already linked, nothing done" "|no-run" "$(lvim_link)|$([[ -e "$work/lv/log" ]] && echo ran || echo no-run)"
+check "LunarVim: never its init-lvim.sh" 0 "$(grep -c 'init-lvim' "$work/lvim.sh")"
+
 check "omarchy setup script is valid bash" "" "$(bash -n "$work/omarchy.setup" 2>&1)"
 check "omarchy setup adds the three shell plugins" 3 "$(grep -cE '^    if omarchy plugin add "https://github.com/[^"]+" --yes; then$' "$work/omarchy.setup")"
 check "omarchy setup turns off Omarchy's display widget for monitor-layout" 1 "$(grep -c 'omarchy plugin disable "omarchy.monitor"' "$work/omarchy.setup")"
