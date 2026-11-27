@@ -1082,6 +1082,8 @@ done
 check "darwin casks include Hammerspoon" 1 "$(render darwin run_onchange_before_00_install_packages.sh.tmpl | grep -cx 'cask "hammerspoon"')"
 check "the Mac requirement check names Hammerspoon; only Intel points to INTEL_MACS.md" "1 0 1" \
     "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'cask hammerspoon"$') $(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'hammerspoon (docs/INTEL_MACS.md)') $(render intel run_after_99_assert_requirements.sh.tmpl | grep -c 'hammerspoon (docs/INTEL_MACS.md)')"
+check "the Mac requirement check names all Hammerspoon runs: window keys, Caps Lock prefix, window rescue" 3 \
+    "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'window keys, the Caps Lock prefix and the Cmd+Ctrl+U window rescue')"
 check "Linux requirement checks never mention Hammerspoon" "0 0" \
     "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -ci hammerspoon.app) $(render ubuntu run_after_99_assert_requirements.sh.tmpl | grep -ci hammerspoon.app)"
 if command -v luac > /dev/null 2>&1; then

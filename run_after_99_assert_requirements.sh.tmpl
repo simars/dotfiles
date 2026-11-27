@@ -253,16 +253,17 @@ for local_file in zshrc.local aliases.local; do
         note "~/.$local_file is missing, so this Mac's own settings in ~/dotfiles-local are not loaded. Fix: ln -s ~/dotfiles-local/$local_file ~/.$local_file"
     fi
 done
-# Hammerspoon runs the window rescue (Cmd+Ctrl+U, ~/.hammerspoon) only once it has been opened; after that it starts at
-# login. Its Accessibility permission cannot be read here: Hammerspoon asks for it itself.
+# Hammerspoon (~/.hammerspoon) runs the window keys, the Caps Lock prefix and the window rescue only once it has been
+# opened; after that it starts at login. Its permission (Device Control and Data Access) cannot be read here and is
+# allowed once by hand (docs/NEW_MACHINE.md).
 if [[ -d /Applications/Hammerspoon.app ]]; then
     if pgrep -xq Hammerspoon; then
-        echo "OK:   Hammerspoon is running (Cmd+Ctrl+U window rescue)"
+        echo "OK:   Hammerspoon is running (the window keys, the Caps Lock prefix and the Cmd+Ctrl+U window rescue)"
     else
-        note "Hammerspoon is installed but not running, so Cmd+Ctrl+U does not rescue windows. Fix: open -a Hammerspoon, then allow it in System Settings > Privacy & Security > Device Control and Data Access (Accessibility before macOS 27)"
+        note "Hammerspoon is installed but not running, so the window keys, the Caps Lock prefix and the Cmd+Ctrl+U window rescue do not work (Caps Lock stays plain Caps Lock). Fix: open -a Hammerspoon, then allow it in System Settings > Privacy & Security > Device Control and Data Access (Accessibility before macOS 27)"
     fi
 else
-    note "Hammerspoon is not installed, so Cmd+Ctrl+U does not rescue windows. Fix: brew install --cask hammerspoon{{ if ne .chezmoi.arch "arm64" }} (docs/INTEL_MACS.md){{ end }}"
+    note "Hammerspoon is not installed, so the window keys, the Caps Lock prefix and the Cmd+Ctrl+U window rescue do not work. Fix: brew install --cask hammerspoon{{ if ne .chezmoi.arch "arm64" }} (docs/INTEL_MACS.md){{ end }}"
 fi
 {{- end }}
 if command -v gh &> /dev/null; then
