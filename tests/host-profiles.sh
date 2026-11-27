@@ -803,13 +803,15 @@ check "macOS settings on a new Mac: says what it updated, and log out goes on th
 check "macOS settings on a new Mac: desktops keep their order; separate Spaces left as macOS's default" "1|0" \
     "$(grep -cx 'user com.apple.dock mru-spaces' "$md/written")|$(grep -c 'spans-displays' "$md/written")"
 check "desktop shortcuts on a new Mac: Desktops 1-16 (ids 118-133) written once, enabled, settings activated once" "16|$(seq 118 133 | paste -sd' ' -)|16|1|1" \
-    "$(wc -l < "$md/hotkeys-written" | tr -d ' ')|$(cut -d' ' -f1 "$md/hotkeys-written" | paste -sd' ' -)|$(awk '$2 == 1' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(wc -l < "$md/activated" | tr -d ' ')|$(grep -c '^OK:   macOS settings updated: .*desktop shortcuts' "$md/out")"
+    "$(awk '$1 >= 118' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(awk '$1 >= 118 { print $1 }' "$md/hotkeys-written" | paste -sd' ' -)|$(awk '$1 >= 118 && $2 == 1' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(wc -l < "$md/activated" | tr -d ' ')|$(grep -c '^OK:   macOS settings updated: .*desktop shortcuts' "$md/out")"
 check "desktop shortcuts: when macOS cannot reload them, log out goes on the to-do list" "1|1" \
     "$(md_reset; printf '#!/bin/sh\nexit 1\n' > "$md/bin/activateSettings-fails"; chmod +x "$md/bin/activateSettings-fails"; MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings-fails" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1 | grep -c '^NOTE: macOS did not reload its keyboard shortcuts')|$(md_todo | grep -c 'Log out of macOS and back in, so the desktop shortcuts')"
 md_reset
 md_run > "$md/out"
 check "desktop shortcuts use one hidden modifier mask and 16 different keys" "1|16" \
-    "$(cut -d' ' -f4 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')|$(cut -d' ' -f3 "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')"
+    "$(awk '$1 >= 118 { print $4 }' "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')|$(awk '$1 >= 118 { print $3 }' "$md/hotkeys-written" | sort -u | wc -l | tr -d ' ')"
+check "Ctrl+Space input-source shortcut on a new Mac: turned off (id 60), said" "60 0 49 262144|1" \
+    "$(grep '^60 ' "$md/hotkeys-written")|$(grep -c '^OK:   macOS settings updated: .*input-source shortcut off' "$md/out")"
 check "macOS settings: per-machine keys go to -currentHost" "host com.apple.controlcenter BatteryShowPercentage|host com.apple.Spotlight MenuItemHidden" \
     "$(grep '^host ' "$md/written" | paste -sd'|' -)"
 rm -f "$md/written" "$md/killed" "$md/hotkeys-written" "$md/activated" "$md/hidutil-set" "$md/cache"/after-apply.*
@@ -881,20 +883,7 @@ jq '.Profiles[0].Triggers += [{"regex": "x"}]' "$it_profile" > "$it/p.json" && m
 check "iTerm2 script: a trigger without an action is named \"unnamed\"" 1 "$(iterm_after | grep -c 'not shared: trigger unnamed\.')"
 it_reset
 check "iTerm2 script: silent without iTerm2" "|exit=0" "$(it_app="$it/none" iterm_after | paste -sd'|' -)"
-# macOS's "Select the previous input source" (AppleSymbolicHotKeys 60) is Ctrl+Space, tmux's and Herdr's second prefix.
-hotkeys() { # hotkeys ENABLED: defaults' text form with entry 60 between two others
-    printf '{\n    32 =     {\n        enabled = 1;\n    };\n    60 =     {\n        enabled = %s;\n        value =         {\n            parameters =             (\n                32,\n                49,\n                262144\n            );\n            type = standard;\n        };\n    };\n    61 =     {\n        enabled = 1;\n    };\n}\n' "$1" > "$it/defaults/AppleSymbolicHotKeys"
-}
-it_reset
-hotkeys 1
-check "iTerm2 script: macOS taking Ctrl+Space is named and goes on the to-do list" "1|1" \
-    "$(iterm_after | grep -c '^NOTE: macOS takes Ctrl+Space (select the previous input source)')|$(it_todo | grep -c 'Select the previous input source')"
-it_reset
-hotkeys 0
-check "iTerm2 script: Ctrl+Space left to tmux is OK, no to-do" "1|0" \
-    "$(iterm_after | grep -c '^OK:   macOS leaves Ctrl+Space to tmux and Herdr')|$(it_todo | grep -c 'input source')"
-it_reset
-check "iTerm2 script: no stored input-source shortcut, nothing said" 0 "$(iterm_after | grep -c 'Ctrl+Space')"
+check "the iTerm2 script leaves Ctrl+Space to the macOS settings script" 0 "$(render darwin run_after_96_macos_iterm2.sh.tmpl | grep -c 'symbolichotkeys\|Select the previous input source')"
 
 # Wave pane commands: only inside Wave (WAVETERM_BLOCKID set and wsh on PATH), in bash and zsh.
 check "Wave pane commands are not defined outside Wave" "" "$(bash -c 'source dot_aliases; type -t wt wr wsplit wsr wsd 2> /dev/null')"

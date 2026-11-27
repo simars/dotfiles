@@ -4,8 +4,8 @@
 #   1. Writes the global settings listed in .chezmoidata/macos.toml ([iterm2_globals]) where this Mac differs. iTerm2
 #      keeps them outside profiles, so the shared look profile cannot carry them, and reads them only at start.
 #      Clipboard access (OSC 52) is one of them: copies in tmux, herdr and Neovim, also over SSH, reach the clipboard.
-#   2. Checks once-per-Mac steps chezmoi cannot do: chezmoi's profile as the default, iTerm2's Claude Code
-#      integration, and macOS's Ctrl+Space input-source shortcut being off (tmux's and Herdr's second prefix).
+#   2. Checks once-per-Mac steps: chezmoi's profile as the default, iTerm2's Claude Code integration. (macOS's
+#      Ctrl+Space input-source shortcut is turned off by run_after_97_macos_defaults.sh.)
 #   3. Names settings saved in "Default (Left Option as Alt)" on this Mac only, beyond chezmoi's own keys.
 # Steps with a fix go on the list printed at the end of the apply; local changes are only reported (a deliberate local
 # tweak may never clear). Informational: never fails the apply. ITERM2_APP (default /Applications/iTerm.app) is a test
@@ -63,18 +63,6 @@ else
     todo "Install iTerm2's Claude Code integration: menu iTerm2 > Install Claude Code Integration, then Mark Rewritable and Install"
 fi
 
-# Ctrl+Space is tmux's and Herdr's second prefix; macOS's "Select the previous input source" (AppleSymbolicHotKeys 60)
-# takes it first. These Macs never switch input language, so the shortcut should be off. Checked, never written.
-# Silent when macOS has not stored the shortcut (never changed in System Settings), since that does not say its state.
-input_source_key="$(defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys 2> /dev/null \
-    | awk '/^ *60 = / { in60 = 1 } in60 && /enabled = / { gsub(/[^0-9]/, ""); print; exit }')"
-case "$input_source_key" in
-    1)
-        echo "NOTE: macOS takes Ctrl+Space (select the previous input source), so it never reaches tmux or Herdr"
-        todo "Turn off System Settings > Keyboard > Keyboard Shortcuts > Input Sources > Select the previous input source, so Ctrl+Space reaches tmux and Herdr"
-        ;;
-    0) echo "OK:   macOS leaves Ctrl+Space to tmux and Herdr" ;;
-esac
 
 # Settings changed in iTerm2 on this Mac only: keys in chezmoi's rewritable profile beyond its own whose value differs
 # from the shared look (iTerm2 keeps some keys it saves even when they equal the parent's value), and triggers beyond the

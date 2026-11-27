@@ -69,8 +69,20 @@ ensure_desktop_key() { # ensure_desktop_key ID CODE MASK
 {{ range $i, $key := .desktop_shortcuts.keys -}}
 ensure_desktop_key {{ add 118 $i }} {{ $key.code }} {{ $.desktop_shortcuts.mask }}
 {{ end -}}
+# Ctrl+Space is tmux's and Herdr's second prefix; macOS's "Select the previous input source" (id 60) takes it first.
+# These Macs never switch input language, so it is turned off (macOS's own parameters kept: space, Ctrl).
+set -- $(hotkey 60)
+if [[ "${2:-}" != 0 ]]; then
+    if defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 60 \
+        "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>262144</integer></array><key>type</key><string>standard</string></dict></dict>"; then
+        updated+=("input-source shortcut off")
+        desktop_keys_written=$((desktop_keys_written + 1))
+    else
+        failed+=("com.apple.symbolichotkeys 60")
+    fi
+fi
 if [[ $desktop_keys_written -gt 0 ]]; then
-    updated+=("desktop shortcuts")
+    [[ "${updated[*]:-}" == *"input-source shortcut off"* && $desktop_keys_written -eq 1 ]] || updated+=("desktop shortcuts")
     # Without this, macOS reads changed shortcuts only at the next login.
     if ! "${ACTIVATE_SETTINGS:-/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings}" -u > /dev/null 2>&1; then
         echo "NOTE: macOS did not reload its keyboard shortcuts, so the window keys' desktops work only after a log out"

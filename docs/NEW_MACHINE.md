@@ -83,9 +83,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
    ```
    Add MCP servers with each agent's own command or claude.ai connectors (`~/ai-tooling/docs/MCP_NATIVE_SETUP.md`).
    Never run ai-tooling's retired `make mcp-*`.
-10. **GitHub CLI:**
+10. **GitHub CLI** (chezmoi installed it):
     ```bash
-    brew install gh
     gh auth login                    # the apply sets gh to clone over SSH
     ```
 11. **Sign in to the apps:** 1Password (then Settings > Developer > Integrate with 1Password CLI, for `op`), Claude,
@@ -98,10 +97,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
       Mac"). New tabs then have the shared look: JetBrains Mono Nerd Font Mono, the Atom colours, a silent bell.
 13. **Warp, if you use it:** Settings > Features > Keys: Left Option is Meta on, Right Option is Meta off. Warp's
     account sync carries it to your other Macs, and chezmoi leaves it alone.
-14. **Ctrl+Space for tmux and Herdr:** System Settings > Keyboard > Keyboard Shortcuts > Input Sources: turn off
-    **Select the previous input source** (Ctrl+Space). These Macs never switch input language, and the shortcut would
-    take tmux's and Herdr's second prefix. The apply names it only when macOS has stored it as on (after any change
-    in that pane), so check it here on a new Mac.
+14. **Ctrl+Space for tmux and Herdr:** nothing to do: the apply turns off macOS's **Select the previous input
+    source** (Ctrl+Space), which would take tmux's and Herdr's second prefix (these Macs never switch input language).
 15. **Hammerspoon, once.** It runs the window keys (Ctrl+Option+Cmd), the Caps Lock prefix (hold Caps Lock for the
     window keys) and the window rescue (Cmd+Ctrl+U); cheatsheet: "Window Keys" and "Lost and Minimized Windows". Until
     this step none of them work, and Caps Lock stays plain Caps Lock. Open it
