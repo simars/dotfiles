@@ -5,7 +5,8 @@
 #   reload_hint FILE PROCESS MESSAGE add MESSAGE when FILE changed since the last apply and PROCESS is running (an app
 #                                    that reads its config only at start or on a reload key); PROCESS "" skips that test.
 #                                    PROCESS matches the process name, or the first word of its command line (Copilot
-#                                    CLI's process is named MainThread but started as copilot)
+#                                    CLI's process is named MainThread but started as copilot). PROCESS is spliced into
+#                                    an ERE, so it may be an alternation in parentheses such as (agy|antigravity)
 #   print_todo                       print the list (or "Nothing to do"), then forget it; run_after_99 calls it last
 # The scripts of one apply share chezmoi's process ID, so the list file is per apply. Checksums of the watched files
 # live in ~/.local/state/chezmoi-after-apply; the first apply on a machine only records them.

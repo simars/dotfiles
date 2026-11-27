@@ -3,8 +3,8 @@
 # (trusted workspaces and the rest of /settings), so only the usability keys are set and everything else is passed
 # through. The values come from [agent_usability] in .chezmoidata/agents.toml; a false writes the opposite value, it does
 # not leave the key. editorMode is "vim" or "normal" (the strings in agy's binary, as in Copilot CLI). Antigravity has no
-# mouse setting: its full-screen mode always takes the mouse. Only this folder is managed: ai-tooling owns the rest of
-# ~/.gemini (AGENTS.md, skills). Runs under bash 3.2, the macOS /bin/bash. Cheatsheet: "Same Keys in Every Agent".
+# mouse setting: its full-screen mode always takes the mouse. Only this folder (and ~/.gemini as its parent) is managed:
+# ai-tooling owns the rest of ~/.gemini (AGENTS.md, skills). Runs under bash 3.2, the macOS /bin/bash. Cheatsheet: "Same Keys in Every Agent".
 set -euo pipefail
 # shellcheck disable=SC2016 # jq variables, not shell ones
 filter='.editorMode = (if $vim then "vim" else "normal" end) | .copyOnSelect = $copy'

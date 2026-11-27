@@ -697,7 +697,8 @@ fi
 agents=".copilot/settings.json .claude/settings.json .cursor/cli-config.json .gemini/antigravity-cli/settings.json"   # each agent's target is added as its script lands
 for host in $hosts; do for t in $agents; do check "$host manages $t where the agent is present" yes "$(manages "$host" "$t")"; done; done
 absent="$(chezmoi --override-data "$(host_data omarchy | jq -c '.agents_present = false')" managed --include=all)"
-# .gemini/AGENTS.md belongs to ai-tooling: chezmoi manages .gemini/antigravity-cli only, never .gemini or its AGENTS.md.
+# .gemini/AGENTS.md belongs to ai-tooling and is never managed. .gemini itself is managed (as a folder) only where
+# Antigravity is set up, and ignored elsewhere.
 for host in $hosts; do check "$host does not manage .gemini/AGENTS.md" no "$(manages "$host" .gemini/AGENTS.md)"; done
 check "no agent: the rest of the repository is still managed" 1 "$(printf '%s\n' "$absent" | grep -cx '\.zshrc')"
 for t in .claude .copilot .cursor .codex .gemini; do check "no agent: $t is left alone" 0 "$(printf '%s\n' "$absent" | grep -cE "^${t//./\\.}(/|$)")"; done
@@ -1653,6 +1654,29 @@ printf 'three\n' > "$aa/home/app.conf"
 check "reload hint: changed file, app not running" "$nothing" "$(PGREP_EXIT=1 aa_run 'reload_hint "$HOME/app.conf" app "reload app"; print_todo')"
 printf 'four\n' > "$aa/home/app.conf"
 check "reload hint: no process to test" "==> To do on this machine after this apply:|    1. reload shells" "$(PGREP_EXIT=1 aa_run 'reload_hint "$HOME/app.conf" "" "reload shells"; print_todo')"
+# Antigravity's `agy` is a symlink to the binary `antigravity`, so the process may carry either name: run_after_99 passes
+# an ERE alternation as PROCESS. A pgrep stand-in that matches like the real one (-x: whole name; -f: the command line)
+# against the one process in $AA_PS ("name|command line") proves both names, and not another one, fire the hint.
+check "requirement check watches Antigravity as agy or antigravity" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -cF "reload_hint \"\$HOME/.gemini/antigravity-cli/settings.json\" '(agy|antigravity)' ")"
+mkdir -p "$aa/psbin"
+cat > "$aa/psbin/pgrep" <<'PGREP'
+#!/bin/bash
+mode="$1"; pattern="$2"; name="${AA_PS%%|*}"; cmdline="${AA_PS#*|}"
+if [[ "$mode" == -x ]]; then [[ "$name" =~ ^($pattern)$ ]]; else [[ "$cmdline" =~ $pattern ]]; fi
+PGREP
+chmod +x "$aa/psbin/pgrep"
+ps_hint() { # ps_hint "name|command line": does the Antigravity hint fire with that process running?
+    printf 'a\n' > "$aa/home/ag.json"
+    AA_PS="$1" aa_run 'PATH="'"$aa"'/psbin:$PATH"; reload_hint "$HOME/ag.json" "(agy|antigravity)" "restart agy"; print_todo' > /dev/null
+    printf 'b\n' > "$aa/home/ag.json"
+    AA_PS="$1" aa_run 'PATH="'"$aa"'/psbin:$PATH"; reload_hint "$HOME/ag.json" "(agy|antigravity)" "restart agy"; print_todo' | grep -c 'restart agy'
+    rm -f "$aa/state/chezmoi-after-apply/ag.json"
+}
+check "reload hint: fires for a process named antigravity" 1 "$(ps_hint 'antigravity|/usr/bin/antigravity')"
+check "reload hint: fires for a process named agy" 1 "$(ps_hint 'agy|agy')"
+check "reload hint: fires when agy is the first word of the command line" 1 "$(ps_hint 'node|/home/x/bin/agy --flag')"
+check "reload hint: fires when antigravity is the first word of the command line" 1 "$(ps_hint 'node|antigravity chat')"
+check "reload hint: stays quiet for another process" 0 "$(ps_hint 'bash|bash -c agy-notes')"
 for host in darwin omarchy arch; do
     check "$host requirement check prints the to-do list last" "print_todo" "$(render "$host" run_after_99_assert_requirements.sh.tmpl | grep -E '^[a-z_]' | tail -1)"
 done
