@@ -92,7 +92,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
     one app it does not install: install it (App Store or standalone) and sign in; the short SSH host names need it.
 12. **iTerm2, once:**
     - Open iTerm2, then the menu **iTerm2 > Install Claude Code Integration**; choose **Mark Rewritable and Install**.
-    - Settings > Profiles, select **Default (Left Option as Alt)**, then Other Actions > **Set as Default**.
+    - chezmoi's profile, **Default (Left Option as Alt)**, becomes the default by itself when the apply runs while
+      iTerm2 is closed; if iTerm2 was open, the list says to quit it and apply again.
     - Quit and reopen iTerm2, so it loads the shared global settings chezmoi wrote (cheatsheet: "Same iTerm2 on Every
       Mac"). New tabs then have the shared look: JetBrains Mono Nerd Font Mono, the Atom colours, a silent bell.
 13. **Warp, if you use it:** Settings > Features > Keys: Left Option is Meta on, Right Option is Meta off. Warp's

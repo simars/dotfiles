@@ -692,7 +692,15 @@ check "iTerm2 script: a missing global is written (iTerm2 not running)" "OK:   i
 for guid in 246D2B5F ""; do
     it_reset
     printf '%s\n' "$guid" > "$it/defaults/Default Bookmark Guid"
-    check "iTerm2 script: default profile [$guid] is not chezmoi's" 1 "$(iterm_after | grep -c "^NOTE: iTerm2's default profile is not chezmoi's")"
+    check "iTerm2 script: default profile [$guid], iTerm2 closed: made chezmoi's, command printed" \
+        "1|1|chezmoi-left-option-as-alt|0" \
+        "$(iterm_after > "$it/out"; grep -c '^\$ defaults write com.googlecode.iterm2 "Default Bookmark Guid" -string chezmoi-left-option-as-alt$' "$it/out")|$(grep -c "^OK:   iTerm2's default profile is chezmoi's (set now)" "$it/out")|$(cat "$it/defaults/Default Bookmark Guid")|$(it_todo | grep -c 'Set as Default')"
+    it_reset
+    printf '%s\n' "$guid" > "$it/defaults/Default Bookmark Guid"
+    echo 0 > "$it/running"
+    check "iTerm2 script: default profile [$guid], iTerm2 running: left alone, quit and apply again" \
+        "1|1|$guid" \
+        "$(iterm_after | grep -c "^NOTE: iTerm2's default profile is not chezmoi's")|$(it_todo | grep -c 'Quit iTerm2, then run chezmoi apply')|$(cat "$it/defaults/Default Bookmark Guid")"
 done
 it_reset
 printf '{}\n' > "$it/home/.claude/settings.json"
@@ -1429,7 +1437,7 @@ check "darwin Ghostty reload key is Cmd+Shift+," 1 "$(render darwin run_after_99
 check "darwin checks the dotfiles-local links; omarchy does not" "1 0" \
     "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'for local_file in zshrc.local aliases.local') $(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'for local_file in')"
 check "darwin iTerm2 script checks the default profile and the Claude Code integration" 2 \
-    "$(render darwin run_after_96_macos_iterm2.sh.tmpl | grep -cE 'Default Bookmark Guid|handle-agent-hook')"
+    "$(render darwin run_after_96_macos_iterm2.sh.tmpl | grep -cE 'defaults read com.googlecode.iterm2 "Default Bookmark Guid"|handle-agent-hook')"
 check "omarchy stock-drift notes go on the to-do list" 2 "$(render omarchy run_after_95_omarchy_stock_drift.sh.tmpl | grep -c '^        todo ')"
 
 # chezmoi init answers -> [data.work] (rendered as `chezmoi init` would, against throwaway configs, so this machine's

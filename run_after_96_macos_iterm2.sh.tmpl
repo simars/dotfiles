@@ -48,12 +48,21 @@ else
     echo "OK:   iTerm2 global settings updated: $(join "${updated[@]}")"
 fi
 
-# Once per Mac, by hand (cheatsheet: "Option as Alt in the Mac Terminals", "iTerm2 Shell Integration and Claude Code").
+# chezmoi's profile as the default (cheatsheet: "Option as Alt in the Mac Terminals"): set here while iTerm2 is closed
+# (it rewrites its preferences when it quits, so a change made while it runs would be lost).
 if [[ "$(defaults read com.googlecode.iterm2 "Default Bookmark Guid" 2> /dev/null)" == chezmoi-left-option-as-alt ]]; then
     echo "OK:   iTerm2's default profile is chezmoi's (left Option as Alt)"
+elif ! pgrep -xq iTerm2; then
+    echo "\$ defaults write com.googlecode.iterm2 \"Default Bookmark Guid\" -string chezmoi-left-option-as-alt"
+    if defaults write com.googlecode.iterm2 "Default Bookmark Guid" -string chezmoi-left-option-as-alt; then
+        echo "OK:   iTerm2's default profile is chezmoi's (set now)"
+    else
+        echo "NOTE: iTerm2's default profile could not be set to chezmoi's"
+        todo "Make chezmoi's iTerm2 profile the default: Settings > Profiles, select \"Default (Left Option as Alt)\", Other Actions > Set as Default"
+    fi
 else
     echo "NOTE: iTerm2's default profile is not chezmoi's, so new tabs lack the shared look, left Option as Alt and the Claude Code triggers"
-    todo "Make chezmoi's iTerm2 profile the default: Settings > Profiles, select \"Default (Left Option as Alt)\", Other Actions > Set as Default"
+    todo "Quit iTerm2, then run chezmoi apply (from another terminal) to make chezmoi's profile iTerm2's default"
 fi
 # settings.json escapes the slashes in the hook's path, so match the hook's own argument, not "iterm2/it2".
 if [[ -x "$HOME/.config/iterm2/it2" ]] && grep -q 'handle-agent-hook' "$HOME/.claude/settings.json" 2> /dev/null; then
