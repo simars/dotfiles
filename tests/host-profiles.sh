@@ -629,6 +629,33 @@ check "foot: sets selection-target at the end of [main]" "[main]|font=x|selectio
 check "foot: replaces an existing selection-target" "[main]|selection-target=both|font=x" "$(foot '[main]\nselection-target=primary\nfont=x\n')"
 check "foot: settings above the first header are [main]" "font=x|selection-target=both|[colors]|bg=1" "$(foot 'font=x\n[colors]\nbg=1\n')"
 check "foot: second run changes nothing" "$(foot '[main]\nfont=x\n')" "$(printf '[main]\nfont=x\n' | bash dot_config/foot/modify_foot.ini | bash dot_config/foot/modify_foot.ini | paste -sd'|' -)"
+
+# SSH agent on Linux: a dead SSH_AUTH_SOCK (a tmux or Herdr server started over SSH, after that login ended) falls back to
+# GNOME keyring's agent; a live socket, and an unset one, are left alone. The Macs use their own agent.
+for host in omarchy arch ubuntu debian; do check "$host ~/.zshrc replaces a dead SSH agent socket" 1 "$(grep -c '! -S "$SSH_AUTH_SOCK"' "$work/$host.zshrc")"; done
+for host in darwin intel; do check "$host ~/.zshrc leaves the SSH agent socket alone" 0 "$(grep -c 'gcr/ssh' "$work/$host.zshrc")"; done
+if command -v zsh > /dev/null 2>&1 && command -v python3 > /dev/null 2>&1; then
+    agent_dir="$work/agent"
+    mkdir -p "$agent_dir/gcr"
+    # Real sockets, since the guard tests with -S: GNOME keyring's, and one standing for a live forwarded agent.
+    python3 -c 'import socket, sys
+for p in sys.argv[1:]: socket.socket(socket.AF_UNIX).bind(p)' "$agent_dir/gcr/ssh" "$agent_dir/forwarded"
+    ln -s "$agent_dir/gone" "$agent_dir/dangling"
+    sed -n '/^# SSH agent: /,/^fi$/p' "$work/omarchy.zshrc" > "$work/ssh-agent-guard.zsh"
+    agent_after() { # agent_after SSH_AUTH_SOCK|-: the socket the guard leaves (- for unset)
+        if [[ "$1" == - ]]; then
+            env -u SSH_AUTH_SOCK XDG_RUNTIME_DIR="$agent_dir" zsh -fc 'source "$1"; print -r -- "${SSH_AUTH_SOCK:-unset}"' zsh "$work/ssh-agent-guard.zsh"
+        else
+            SSH_AUTH_SOCK="$1" XDG_RUNTIME_DIR="$agent_dir" zsh -fc 'source "$1"; print -r -- "${SSH_AUTH_SOCK:-unset}"' zsh "$work/ssh-agent-guard.zsh"
+        fi
+    }
+    check "SSH agent: a dangling link (Herdr's herdr.sock.agent) moves to GNOME keyring's agent" "$agent_dir/gcr/ssh" "$(agent_after "$agent_dir/dangling")"
+    check "SSH agent: a missing socket moves to GNOME keyring's agent" "$agent_dir/gcr/ssh" "$(agent_after "$agent_dir/missing")"
+    check "SSH agent: a live forwarded socket stays" "$agent_dir/forwarded" "$(agent_after "$agent_dir/forwarded")"
+    check "SSH agent: an unset socket stays unset" unset "$(agent_after -)"
+    check "SSH agent: without GNOME keyring's agent a dead socket stays" "$agent_dir/missing" \
+        "$(SSH_AUTH_SOCK="$agent_dir/missing" XDG_RUNTIME_DIR="$work/no-agent" zsh -fc 'source "$1"; print -r -- "$SSH_AUTH_SOCK"' zsh "$work/ssh-agent-guard.zsh")"
+fi
 check "omarchy packages include alacritty and waveterm-bin" 2 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -oE '"(alacritty|waveterm-bin)"' | sort -u | wc -l | tr -d ' ')"
 
 # Closing a pane, window/tab or session always asks first (left Option is Alt on the Macs); Alt+Left/Right jump words in zsh.

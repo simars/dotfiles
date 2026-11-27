@@ -4,6 +4,16 @@
 
 # 1. Environment & Paths
 export PATH="$HOME/.local/bin:$PATH"
+{{- if eq .chezmoi.os "linux" }}
+
+# SSH agent: a tmux or Herdr server started over SSH hands its panes that login's forwarded agent socket, which is
+# gone once that login ends, so every ssh and git in them asks for the key's passphrase again. Use GNOME keyring's
+# agent (gcr-ssh-agent; it unlocks the key with the passphrase ssh-key-remember saved) when the socket is dead. A
+# live socket, forwarded or not, is left alone. Cheatsheet: "SSH Key Passphrase".
+if [[ -n "${SSH_AUTH_SOCK:-}" && ! -S "$SSH_AUTH_SOCK" && -S "${XDG_RUNTIME_DIR:-/run/user/$UID}/gcr/ssh" ]]; then
+    export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR:-/run/user/$UID}/gcr/ssh"
+fi
+{{- end }}
 
 # Architecture-Aware Homebrew
 {{ if eq .chezmoi.os "darwin" -}}
