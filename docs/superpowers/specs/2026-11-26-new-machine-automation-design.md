@@ -1,6 +1,6 @@
 # New-Machine Automation: Fewer Hand Steps on a Fresh Mac or Omarchy Machine
 
-Date: 2026-11-26. Status: draft, awaiting the user's approval. A builder check found nothing open; its points are
+Date: 2026-11-26. Status: approved by the user 2026-11-26. A builder check found nothing open; its points are
 recorded as calls below.
 
 ## Intent
@@ -69,6 +69,15 @@ must act): Command Line Tools, Homebrew, SSH key (stops and says where to copy i
 `init --apply` (the four questions), chezmoi's remote switched to SSH, `ssh-key-remember`, `ssh -T git@github.com`,
 then the `.cfg` line from Piece 2. `docs/NEW_MACHINE.md` section A becomes: run it, then the manual list.
 Apple silicon only; on an Intel Mac it stops and points to `docs/INTEL_MACS.md`.
+
+## Transparency (user's requirement, 2026-11-26)
+
+The `.cfg` installer and both bootstraps show what they do: before each step, one plain line saying why
+(`==> Link this Mac's own shell settings from ~/dotfiles-local`), then **every command exactly as it runs**
+(`$ ln -s ~/dotfiles-local/zshrc.local ~/.zshrc.local`), then its outcome (`done`, `skipped: already linked`,
+`FAILED: <reason>`). Questions show the command they would run before asking. Nothing that changes the machine runs
+without its command printed first (one shared `run` helper does print-then-execute; checks that only read stay quiet
+unless they decide something).
 
 ## Constraints
 
