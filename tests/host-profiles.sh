@@ -234,6 +234,8 @@ for host in darwin omarchy; do
     check "$host herdr has tmux's ( ) for previous/next workspace and f for find" "1 1 1" \
         "$(grep -c '^previous_workspace = \["prefix+(",' "$work/$host.herdr") $(grep -c '^next_workspace = \["prefix+)",' "$work/$host.herdr") $(grep -c '^goto = .*"prefix+f"' "$work/$host.herdr")"
 done
+check "requirement check reports Claude Code's copy on select when off, read-only" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c "jq -e '.copyOnSelect == false'")"
+check "requirement check never writes ~/.claude.json" 0 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -cE '>>? *"?\$HOME/\.claude\.json')"
 check "requirement check names a stale Herdr server" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'server_binary_stale')"
 # tmux's layout keys after the prefix run herdr-layout: Space, Alt+1..7, Ctrl+o, Alt+o.
 for host in darwin omarchy; do
@@ -650,14 +652,21 @@ if command -v jq > /dev/null 2>&1; then
     check "Copilot: second run changes nothing" "$(printf '{"a": 1}' | bash "$work/copilot.sh")" "$(printf '{"a": 1}' | bash "$work/copilot.sh" | bash "$work/copilot.sh")"
     check "Copilot: false intents write the opposite values" '{"editorMode":"normal","copyOnSelect":false,"mouse":false}' "$(printf '{}' | bash "$work/copilot-false.sh" | jq -c .)"
     check "Copilot: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/copilot.sh")"
-    check "Claude: keys set, the mouse switch-off removed, other env kept" '{"model":"x","env":{"K":"v"},"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '{"model":"x","env":{"CLAUDE_CODE_DISABLE_MOUSE":"1","K":"v"}}' | bash "$work/claude.sh" | jq -c .)"
-    check "Claude: no env key when there is nothing to put in it" '{"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '{}' | bash "$work/claude.sh" | jq -c .)"
-    check "Claude: an emptied env is dropped" '{"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '{"env":{"CLAUDE_CODE_DISABLE_MOUSE":"1"}}' | bash "$work/claude.sh" | jq -c .)"
-    check "Claude: a missing file gets only the keys" '{"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '' | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: keys set, the mouse switch-off removed, other env kept" '{"model":"x","env":{"K":"v"},"editorMode":"vim","tui":"fullscreen"}' "$(printf '{"model":"x","env":{"CLAUDE_CODE_DISABLE_MOUSE":"1","K":"v"}}' | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: no env key when there is nothing to put in it" '{"editorMode":"vim","tui":"fullscreen"}' "$(printf '{}' | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: an emptied env is dropped" '{"editorMode":"vim","tui":"fullscreen"}' "$(printf '{"env":{"CLAUDE_CODE_DISABLE_MOUSE":"1"}}' | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: a missing file gets only the keys" '{"editorMode":"vim","tui":"fullscreen"}' "$(printf '' | bash "$work/claude.sh" | jq -c .)"
     check "Claude: second run changes nothing" "$(printf '{"env":{"K":"v","CLAUDE_CODE_DISABLE_MOUSE":"1"}}' | bash "$work/claude.sh")" "$(printf '{"env":{"K":"v","CLAUDE_CODE_DISABLE_MOUSE":"1"}}' | bash "$work/claude.sh" | bash "$work/claude.sh")"
-    check "Claude: false intents write the opposite values" '{"editorMode":"normal","copyOnSelect":false,"tui":"fullscreen","env":{"CLAUDE_CODE_DISABLE_MOUSE":"1"}}' "$(printf '{}' | bash "$work/claude-false.sh" | jq -c .)"
-    check "Claude: false then true removes the mouse switch-off again" '{"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}' "$(printf '{}' | bash "$work/claude-false.sh" | bash "$work/claude.sh" | jq -c .)"
+    check "Claude: false intents write the opposite values" '{"editorMode":"normal","tui":"fullscreen","env":{"CLAUDE_CODE_DISABLE_MOUSE":"1"}}' "$(printf '{}' | bash "$work/claude-false.sh" | jq -c .)"
+    check "Claude: false then true removes the mouse switch-off again" '{"editorMode":"vim","tui":"fullscreen"}' "$(printf '{}' | bash "$work/claude-false.sh" | bash "$work/claude.sh" | jq -c .)"
     check "Claude: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash "$work/claude.sh")"
+    check "Claude: a copyOnSelect already in the file is kept as it is" "false" "$(printf '{"copyOnSelect": false}' | bash "$work/claude.sh" | jq -c .copyOnSelect)"
+    # Pass-through is byte for byte, trailing newline included ($(...) would strip it).
+    for agent in copilot claude; do
+        check "$agent: a non-JSON file ending in a newline comes back byte for byte" "6e6f74206a736f6e0a" "$(printf 'not json\n' | bash "$work/$agent.sh" | od -An -tx1 | tr -d ' \n')"
+    done
+    check "Copilot: whitespace-only input gives the keys only" '{"editorMode":"vim","copyOnSelect":true,"mouse":true}' "$(printf '  \n' | bash "$work/copilot.sh" | jq -c .)"
+    check "Claude: whitespace-only input gives the keys only" '{"editorMode":"vim","tui":"fullscreen"}' "$(printf '  \n' | bash "$work/claude.sh" | jq -c .)"
     # ~/.claude is a 755 folder (dot_), only settings.json is 600 (private_ in the script's name).
     check "Claude: settings.json is private, the folder is not" "yes" "$([[ -f dot_claude/modify_private_settings.json.tmpl && ! -e private_dot_claude ]] && echo yes || echo no)"
 fi

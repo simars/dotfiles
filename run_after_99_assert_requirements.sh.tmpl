@@ -383,6 +383,12 @@ if command -v herdr > /dev/null 2>&1; then
 fi
 reload_hint "$HOME/.config/herdr/config.toml" herdr "Herdr's config changed: run herdr server reload-config (or press Ctrl-b r in Herdr)"
 reload_hint "$HOME/.config/tmux/tmux.conf" tmux "tmux's config changed: press Ctrl-b r in tmux"
+{{- if .agent_usability.copy_on_select }}
+# Claude Code keeps copy on select in its global config (/config writes it there), not in settings.json: report, never write.
+if [[ -f "$HOME/.claude.json" ]] && command -v jq > /dev/null 2>&1 && jq -e '.copyOnSelect == false' "$HOME/.claude.json" > /dev/null 2>&1; then
+    todo "Claude Code's copy on select is off: turn it on in Claude Code's /config (it is kept in ~/.claude.json, which chezmoi does not write)"
+fi
+{{- end }}
 reload_hint "$HOME/.claude/settings.json" claude "Claude Code's settings changed: restart open Claude Code sessions to pick them up"
 reload_hint "$HOME/.copilot/settings.json" copilot "Copilot CLI's settings changed: restart open Copilot sessions (/restart) to pick them up"
 for startup_file in .zshrc .zprofile .aliases; do
