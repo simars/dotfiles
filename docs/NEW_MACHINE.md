@@ -86,8 +86,7 @@ and apps whose config just changed and need a reload. Follow it until it says no
 10. **GitHub CLI:**
     ```bash
     brew install gh
-    gh auth login
-    gh config set git_protocol ssh
+    gh auth login                    # the apply sets gh to clone over SSH
     ```
 11. **Sign in to the apps:** 1Password (then Settings > Developer > Integrate with 1Password CLI, for `op`), Claude,
     Chrome, Slack, VS Code and Cursor (Settings Sync carries their settings): chezmoi installed them. Tailscale is the
@@ -138,8 +137,7 @@ and apps whose config just changed and need a reload. Follow it until it says no
    ```bash
    claude                           # log in, then quit
    cd ~/ai-tooling && make setup
-   gh auth login
-   gh config set git_protocol ssh
+   gh auth login                    # the apply sets gh to clone over SSH
    ```
 5. **LunarVim, if the list asks:**
    ```bash

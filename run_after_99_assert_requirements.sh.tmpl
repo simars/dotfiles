@@ -266,12 +266,21 @@ else
     note "Hammerspoon is not installed, so the window keys, the Caps Lock prefix and the Cmd+Ctrl+U window rescue do not work. Fix: brew install --cask hammerspoon{{ if ne .chezmoi.arch "arm64" }} (docs/INTEL_MACS.md){{ end }}"
 fi
 {{- end }}
-if command -v gh &> /dev/null; then
+# gh clones over SSH (repositories store SSH URLs, CLAUDE.md 3.2a): set it when it is not, printing the command.
+ensure_gh_ssh() {
     if [[ "$(gh config get git_protocol 2> /dev/null)" == ssh ]]; then
         echo "OK:   gh clones over SSH"
+        return 0
+    fi
+    echo "\$ gh config set git_protocol ssh"
+    if gh config set git_protocol ssh > /dev/null 2>&1; then
+        echo "OK:   gh clones over SSH (set now)"
     else
         note "gh clones over https, so new clones get https remotes. Fix: gh config set git_protocol ssh"
     fi
+}
+if command -v gh &> /dev/null; then
+    ensure_gh_ssh
     if gh auth token -h github.com &> /dev/null; then
         echo "OK:   gh is logged in to github.com"
 {{- if eq .chezmoi.os "darwin" }}

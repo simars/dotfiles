@@ -1335,6 +1335,19 @@ check "arch requirement check suggests pacman for gitleaks" 1 "$(grep -c 'sudo p
 check "omarchy requirement check suggests omarchy pkg add for gitleaks" 1 "$(grep -c 'omarchy pkg add gitleaks' "$work/omarchy.requirements")"
 check "omarchy requirement check never suggests pacman or sudo" 0 "$(grep -cE 'pacman|sudo' "$work/omarchy.requirements")"
 check "omarchy requirement check reports missing listed packages" 1 "$(grep -c 'lists packages that are not installed. Fix: omarchy pkg add ' "$work/omarchy.requirements")"
+# gh clones over SSH: the requirement check sets it (ensure_gh_ssh), printing the command; a stub gh keeps the setting
+# in a file.
+sed -n '/^ensure_gh_ssh() {/,/^}/p' "$work/omarchy.requirements" > "$work/gh_ssh.sh"
+mkdir -p "$work/ghs/bin"
+printf '#!/bin/sh\ncase "$1 $2" in "config get") cat "$GHS/proto" ;; "config set") echo "$4" > "$GHS/proto"; echo set >> "$GHS/log" ;; esac\n' > "$work/ghs/bin/gh"
+chmod +x "$work/ghs/bin/gh"
+gh_ssh() { GHS="$work/ghs" PATH="$work/ghs/bin:$PATH" bash -c 'note() { echo "NOTE: $1"; }; source "$0"; ensure_gh_ssh' "$work/gh_ssh.sh" 2>&1 | paste -sd'|' -; }
+echo https > "$work/ghs/proto"; rm -f "$work/ghs/log"
+check "gh on https: the apply sets SSH, printing the command" '$ gh config set git_protocol ssh|OK:   gh clones over SSH (set now)|ssh|set' \
+    "$(gh_ssh)|$(cat "$work/ghs/proto")|$(cat "$work/ghs/log")"
+rm -f "$work/ghs/log"
+check "gh already on SSH: nothing set" "OK:   gh clones over SSH|no-set" "$(gh_ssh)|$([[ -e "$work/ghs/log" ]] && echo set || echo no-set)"
+check "darwin requirement check uses the same gh step" 1 "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c '^ensure_gh_ssh() {')"
 # Ghostty's terminal leader on Omarchy needs Super+B free in Hyprland: the check warns when a SUPER-only B bind appears.
 sed -n '/^check_super_b() {/,/^}/p' "$work/omarchy.requirements" > "$work/super_b.sh"
 mkdir -p "$work/hypr-taken" "$work/hypr-free"

@@ -312,7 +312,7 @@ Common Zsh Git aliases and customized Git config aliases:
 | `git pf` | `git push --force-with-lease` | Push safely with lease verification to avoid overwriting teammate commits. |
 | `git st` | `git status` | Native Git status alias. |
 | `git clone git@github.com:<owner>/<repo>.git` | Clone over SSH | Git rewrites no URLs, so an `https://` clone stays HTTPS: fine for public repositories, but private ones then ask for a token. Clone your own and work repositories with the SSH URL. |
-| `gh config set git_protocol ssh` | Once per machine | Makes `gh repo clone` store SSH URLs. Check with `gh config get git_protocol`. |
+| `gh config set git_protocol ssh` | Set by every apply when it is not | Makes `gh repo clone` store SSH URLs. Check with `gh config get git_protocol`. |
 | `git remote set-url origin git@github.com:<owner>/<repo>.git` | Move a clone to SSH | For an existing clone whose `git config --get remote.origin.url` starts with `https://github.com/`. |
 | `git branches` | `git for-each-ref ...` | View branches formatted with relative commit age, author, and branch name. |
 
