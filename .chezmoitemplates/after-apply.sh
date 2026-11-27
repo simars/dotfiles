@@ -3,7 +3,9 @@
 # of every apply, so what needs a hand never scrolls away among the OK lines.
 #   todo MESSAGE                     add one line to the list
 #   reload_hint FILE PROCESS MESSAGE add MESSAGE when FILE changed since the last apply and PROCESS is running (an app
-#                                    that reads its config only at start or on a reload key); PROCESS "" skips that test
+#                                    that reads its config only at start or on a reload key); PROCESS "" skips that test.
+#                                    PROCESS matches the process name, or the first word of its command line (Copilot
+#                                    CLI's process is named MainThread but started as copilot)
 #   print_todo                       print the list (or "Nothing to do"), then forget it; run_after_99 calls it last
 # The scripts of one apply share chezmoi's process ID, so the list file is per apply. Checksums of the watched files
 # live in ~/.local/state/chezmoi-after-apply; the first apply on a machine only records them.
@@ -22,7 +24,8 @@ reload_hint() {
     old="$(cat "$record" 2> /dev/null)"
     mkdir -p "$after_apply_state" 2> /dev/null && printf '%s\n' "$sum" > "$record"
     [[ -n "$old" && "$old" != "$sum" ]] || return 0
-    [[ -z "$process" ]] || pgrep -x "$process" > /dev/null 2>&1 || return 0
+    [[ -z "$process" ]] || pgrep -x "$process" > /dev/null 2>&1 \
+        || pgrep -f "^([^ ]*/)?$process( |\$)" > /dev/null 2>&1 || return 0
     todo "$message"
 }
 

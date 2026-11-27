@@ -630,6 +630,18 @@ check "foot: replaces an existing selection-target" "[main]|selection-target=bot
 check "foot: settings above the first header are [main]" "font=x|selection-target=both|[colors]|bg=1" "$(foot 'font=x\n[colors]\nbg=1\n')"
 check "foot: second run changes nothing" "$(foot '[main]\nfont=x\n')" "$(printf '[main]\nfont=x\n' | bash dot_config/foot/modify_foot.ini | bash dot_config/foot/modify_foot.ini | paste -sd'|' -)"
 
+# Copilot CLI copies what the mouse selects (copyOnSelect; its default is on only on macOS), on every host. Only that
+# key is set; the rest of the file, which Copilot writes, is kept.
+for host in $hosts; do check "$host manages Copilot CLI's settings" yes "$(manages "$host" .copilot/settings.json)"; done
+if command -v jq > /dev/null 2>&1; then
+    copilot_modify=private_dot_copilot/modify_settings.json
+    check "Copilot: copy on select, rest kept" '{"a":1,"copyOnSelect":true}' "$(printf '{"a": 1}' | bash "$copilot_modify" | jq -c .)"
+    check "Copilot: turns copy on select back on" '{"copyOnSelect":true}' "$(printf '{"copyOnSelect": false}' | bash "$copilot_modify" | jq -c .)"
+    check "Copilot: a missing file gets only copy on select" '{"copyOnSelect":true}' "$(printf '' | bash "$copilot_modify" | jq -c .)"
+    check "Copilot: second run changes nothing" "$(printf '{"a": 1}' | bash "$copilot_modify")" "$(printf '{"a": 1}' | bash "$copilot_modify" | bash "$copilot_modify")"
+fi
+check "Copilot: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash private_dot_copilot/modify_settings.json)"
+
 # SSH agent on Linux: a dead SSH_AUTH_SOCK (a tmux or Herdr server started over SSH, after that login ended) falls back to
 # GNOME keyring's agent; a live socket, and an unset one, are left alone. The Macs use their own agent.
 for host in omarchy arch ubuntu debian; do check "$host ~/.zshrc replaces a dead SSH agent socket" 1 "$(grep -c '! -S "$SSH_AUTH_SOCK"' "$work/$host.zshrc")"; done
