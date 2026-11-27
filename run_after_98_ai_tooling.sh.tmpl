@@ -3,22 +3,26 @@
 # settings, instructions and skills follow the repository without a hand-run `make setup`. The deploy prints one line
 # per step and hides a step's output unless it fails; its output and stderr go through to the apply output. A failed
 # deploy becomes one line on the to-do list. On a Mac, /usr/bin/make is a stub until the Xcode command line tools are
-# installed, so `xcode-select -p` failing counts as make missing. Never fails the apply (always exits 0).
+# installed, so `xcode-select -p` failing counts as make missing or not usable. The PATH line is run_after_99's: a thin
+# PATH (an ssh command, launchd) lacks /opt/homebrew/bin, where the deploy finds herdr and jq. Never fails the apply (always exits 0).
 set -u
 {{ template "after-apply.sh" . }}
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 dir="$HOME/ai-tooling"
 [[ -f "$dir/Makefile" ]] || exit 0
 
 if ! command -v make > /dev/null 2>&1{{ if eq .chezmoi.os "darwin" }} || ! xcode-select -p > /dev/null 2>&1{{ end }}; then
-    echo "NOTE: ai-tooling was not deployed: make is missing"
-    todo "ai-tooling was not deployed: make is missing (Xcode command line tools on a Mac)"
+    echo "NOTE: ai-tooling was not deployed: make is missing or not usable (the Xcode command line tools on a Mac)"
+    todo "ai-tooling was not deployed: make is missing or not usable (the Xcode command line tools on a Mac)"
     exit 0
 fi
 
 # Print the command exactly as it runs (redirect included), then run it. The deploy reads nothing: stdin is /dev/null.
-printf '+ make -C %q --no-print-directory deploy < /dev/null\n' "$dir"
-if ! make -C "$dir" --no-print-directory deploy < /dev/null; then
+# ARGS= pins the Makefile's exported ARGS empty: an ARGS=--dry-run in the user's shell would otherwise make every apply
+# a silent dry run (a command-line ARGS= beats the environment).
+printf '+ make -C %q --no-print-directory deploy ARGS= < /dev/null\n' "$dir"
+if ! make -C "$dir" --no-print-directory deploy ARGS= < /dev/null; then
     todo "ai-tooling's deploy failed (see above): run make -C ~/ai-tooling deploy. If it says there is no rule for deploy, pull ~/.cfg first (config pull --rebase origin main)"
 fi
 exit 0

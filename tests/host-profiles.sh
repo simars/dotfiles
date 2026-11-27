@@ -1910,13 +1910,33 @@ if command -v make > /dev/null 2>&1; then
 
     # (b) a deploy that succeeds; its stdin must be /dev/null (the stub reports what it can read)
     res="$(at_run 'deploy:\n\t@if read -r x; then echo "READ:$$x"; else echo noinput; fi; echo deployed\n')"
-    shown="+ make -C $(printf '%q' "$at/home/ai-tooling") --no-print-directory deploy < /dev/null"
+    shown="+ make -C $(printf '%q' "$at/home/ai-tooling") --no-print-directory deploy ARGS= < /dev/null"
     check "ai-tooling deploy: prints the real command first, redirect included" "$shown" "$(printf '%s' "${res#*|}" | head -1)"
     check "ai-tooling deploy: lets the deploy's output through" 1 "$(printf '%s\n' "$res" | grep -c '^deployed$')"
     check "ai-tooling deploy: the deploy's stdin is /dev/null, not the apply's" "1 0" \
         "$(printf '%s\n' "$res" | grep -c '^noinput$') $(printf '%s\n' "$res" | grep -c '^READ:')"
     check "ai-tooling deploy: success exits 0" 0 "${res%%|*}"
     check "ai-tooling deploy: success adds no to-do" "" "$(at_todo)"
+
+    # (b2) ARGS exported in the user's shell must not reach the deploy (the Makefile exports ARGS and hands it to
+    # deploy.sh, so ARGS=--dry-run would turn every apply into a silent dry run): the script pins it empty
+    res="$(ARGS=--dry-run at_run 'deploy:\n\t@echo "args=[$(ARGS)]"\n')"
+    check "ai-tooling deploy: an exported ARGS=--dry-run is pinned empty" 1 "$(printf '%s\n' "$res" | grep -c '^args=\[\]$')"
+    check "ai-tooling deploy: an exported ARGS=--dry-run never reaches the deploy" 0 "$(printf '%s\n' "$res" | grep -c 'dry-run')"
+    # the same stub without the pin, to show the test can fail: make takes ARGS from the environment
+    printf 'deploy:\n\t@echo "args=[$(ARGS)]"\n' > "$at/home/ai-tooling/Makefile"
+    check "ai-tooling deploy: without the pin the environment's ARGS reaches the Makefile" "args=[--dry-run]" \
+        "$(ARGS=--dry-run make -C "$at/home/ai-tooling" --no-print-directory deploy < /dev/null)"
+
+    # (b3) Homebrew is on PATH for the deploy (a thin PATH over ssh or launchd lacks it), on both renders
+    mkdir -p "$at/xcs"
+    printf '#!/bin/sh\nexit 0\n' > "$at/xcs/xcode-select"
+    chmod +x "$at/xcs/xcode-select"
+    for script in script.sh script-darwin.sh; do
+        res="$(at_run 'deploy:\n\t@echo "path=$$PATH"\n' "$at/xcs:$PATH" "$at/$script")"
+        check "ai-tooling deploy ($script): the deploy runs with Homebrew on PATH" 1 \
+            "$(printf '%s\n' "$res" | grep -c '^path=.*/opt/homebrew/bin')"
+    done
 
     # (c) a deploy that fails
     res="$(at_run 'deploy:\n\t@echo deploy-output-here; echo "ai-tooling deploy: failed: x" >&2; exit 1\n')"
@@ -1939,7 +1959,8 @@ if command -v make > /dev/null 2>&1; then
     check "ai-tooling deploy: the no-make PATH really hides make" "" "$(PATH="$at/nomake" command -v make)"
     res="$(at_run 'deploy:\n\t@echo deployed\n' "$at/nomake")"
     check "ai-tooling deploy: make missing still exits 0" 0 "${res%%|*}"
-    check "ai-tooling deploy: make missing adds one to-do" "ai-tooling was not deployed: make is missing (Xcode command line tools on a Mac)" "$(at_todo)"
+    check "ai-tooling deploy: make missing prints the NOTE with the reworded text" 1 "$(printf '%s\n' "${res#*|}" | grep -cxF 'NOTE: ai-tooling was not deployed: make is missing or not usable (the Xcode command line tools on a Mac)')"
+    check "ai-tooling deploy: make missing adds one to-do" "ai-tooling was not deployed: make is missing or not usable (the Xcode command line tools on a Mac)" "$(at_todo)"
 
     # (f) a Mac: /usr/bin/make exists but is a stub until the Xcode command line tools are installed. Stub xcode-select
     # and make (the stub make records that it ran) ahead of PATH, on the darwin render.
@@ -1953,11 +1974,18 @@ if command -v make > /dev/null 2>&1; then
     chmod +x "$at/mac-bad/xcode-select" "$at/mac-ok/xcode-select"
     res="$(at_run 'deploy:\n\t@echo deployed\n' "$at/mac-bad:$PATH" "$at/script-darwin.sh")"
     check "ai-tooling deploy, Mac without the command line tools: exits 0" 0 "${res%%|*}"
-    check "ai-tooling deploy, Mac without the command line tools: the make-missing to-do" "ai-tooling was not deployed: make is missing (Xcode command line tools on a Mac)" "$(at_todo)"
+    check "ai-tooling deploy, Mac without the command line tools: the NOTE says make is missing or not usable" 1 "$(printf '%s\n' "${res#*|}" | grep -cxF 'NOTE: ai-tooling was not deployed: make is missing or not usable (the Xcode command line tools on a Mac)')"
+    check "ai-tooling deploy, Mac without the command line tools: the make-missing to-do" "ai-tooling was not deployed: make is missing or not usable (the Xcode command line tools on a Mac)" "$(at_todo)"
     check "ai-tooling deploy, Mac without the command line tools: make never ran" no "$([[ -e "$at/home/make-ran" ]] && echo yes || echo no)"
     res="$(at_run 'deploy:\n\t@echo deployed\n' "$at/mac-ok:$PATH" "$at/script-darwin.sh")"
     check "ai-tooling deploy, Mac with the command line tools: runs the deploy, exit 0, no to-do" "yes 0 " \
         "$([[ -e "$at/home/make-ran" ]] && echo yes || echo no) ${res%%|*} $(at_todo)"
+    # the PATH line is the one run_after_99 uses, after set -u and the include, before the checks
+    for script in script.sh script-darwin.sh; do
+        check "ai-tooling deploy ($script): Homebrew PATH line sits after set -u and the include, before the checks" ordered \
+            "$(awk '/^set -u$/ {u=NR} /^print_todo\(\) \{/ {t=NR} /^export PATH="\$HOME\/\.local\/bin:\/opt\/homebrew\/bin:\/usr\/local\/bin:\$PATH"$/ {p=NR} /^dir=/ {d=NR}
+                END {print (u && t && p && d && u < t && t < p && p < d) ? "ordered" : "wrong"}' "$at/$script")"
+    done
     check "ai-tooling deploy: only the Mac render asks xcode-select" "0 1" \
         "$(grep -c '^if .*xcode-select' "$at/script.sh") $(grep -c '^if ! command -v make.*xcode-select -p' "$at/script-darwin.sh")"
 else
