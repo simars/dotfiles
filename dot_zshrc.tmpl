@@ -204,24 +204,12 @@ if command -v mise &> /dev/null; then
     eval "$(mise activate zsh)"
 fi
 
-# host_label [HOST]: this machine's short name for the prompt: its line in ~/dotfiles-local/host-labels (private:
-# "hostname label" per line, matched without case; the labels are the SSH aliases), else the short hostname in lower
-# case. Cheatsheet: "Which Machine Am I On".
-host_label() {
-    local host="${${1:-$HOST}%%.*}" name label
-    if [[ -r "$HOME/dotfiles-local/host-labels" ]]; then
-        while read -r name label; do
-            [[ -z "$name" || "$name" == \#* ]] && continue
-            [[ "${(L)name}" == "${(L)host}" ]] && { print -r -- "$label"; return; }
-        done < "$HOME/dotfiles-local/host-labels"
-    fi
-    print -r -- "${(L)host}"
-}
 if command -v starship &> /dev/null; then
     eval "$(starship init zsh)"
-    # Over SSH, the machine's short name on the right of the prompt line (Starship's right side is unused here, and its
-    # prompt starts with a blank line, so a tag on the left would sit on that empty line).
-    [[ -n "${SSH_CONNECTION:-}" ]] && RPROMPT="%F{magenta}[$(host_label)]%f"
+    # Over SSH, the machine's short name (~/.local/bin/host-label) on the right of the prompt line: Starship's right
+    # side is unused here, and its prompt starts with a blank line, so a tag on the left would sit on that empty line.
+    # Cheatsheet: "Which Machine Am I On".
+    [[ -n "${SSH_CONNECTION:-}" ]] && command -v host-label > /dev/null && RPROMPT="%F{magenta}[$(host-label)]%f"
 fi
 
 # 8. Sourcing Local Files & Secrets (if present)

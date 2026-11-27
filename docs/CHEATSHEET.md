@@ -545,12 +545,18 @@ Agent forwarding is on for your own machines only, so `git pull`, `chezmoi updat
 | `tailscale ping <host>` | Whether a peer answers through Tailscale, and by which path |
 | `tailscale debug prefs` | This machine's settings (Tailscale SSH, exit node, auto-update) |
 
-### Which Machine Am I On (prompt tag over SSH)
-In an SSH session the prompt shows the machine's short name on the right of the line you type on: `~/proj ❯ … [works]`, in magenta. Local terminals show nothing extra. The names are the SSH aliases (`works`, `mbp`, `mbp-work`, `mbp-16i`, `mbp-32i`), from `~/dotfiles-local/host-labels` in the private `~/.cfg` ("hostname label" per line, the hostname as `hostname -s` prints it, any case); a machine not in that table shows its short hostname in lower case.
+### Which Machine Am I On (prompt tag, tmux and Herdr bars)
+Every machine's short name is in three places:
 
-* **Where:** `host_label` and one line after Starship's setup in `~/.zshrc` (every host, zsh only). Starship's prompt starts with a blank line, so the tag sits on the right rather than in front.
-* **Inside tmux or Herdr over SSH:** the tag shows only in shells that know they run over SSH (`SSH_CONNECTION`). A pane of a tmux or Herdr session started on the machine itself and attached later over SSH does not; its status bar or `host_label` tells you the machine.
+| Where | Shows | When |
+| :--- | :--- | :--- |
+| zsh prompt | `~/proj ❯ … [works]` on the right of the line you type on, magenta | SSH sessions only (local terminals unchanged) |
+| tmux status bar | the name at the right end of the top bar, magenta | always |
+| Herdr tab bar | the name at the right end of the tab bar (after `ZOOM` when zoomed) | always; it runs on the Herdr server, so a session attached from another machine names the machine it runs on |
+
+* **The names** are the SSH aliases (`works`, `mbp`, `mbp-work`, `mbp-16i`, `mbp-32i`): `~/.local/bin/host-label` prints this machine's from `~/dotfiles-local/host-labels` in the private `~/.cfg` ("hostname label" per line, the hostname as `hostname -s` prints it, any case), else its short hostname in lower case. `host-label` alone prints it; `host-label <hostname>` looks one up.
 * **A new machine:** add its line to `~/dotfiles-local/host-labels`, commit with `config`.
+* **The prompt** puts it on the right because Starship's prompt starts with a blank line. Inside a tmux or Herdr session started on the machine itself and attached over SSH, the shell does not know it runs over SSH, so there the bar names the machine instead of the prompt.
 
 ### SSH Key Passphrase (`ssh-key-remember`)
 `ssh-key-remember` (`~/.local/bin`, every host) saves the `~/.ssh/id_rsa` passphrase in the machine's own keyring once, so the SSH agent unlocks the key by itself after every login and reboot instead of asking. On Omarchy it stores the entry GNOME keyring's SSH agent (`gcr-ssh-agent`) looks up, after checking the passphrase against the key; on macOS it runs `ssh-add --apple-use-keychain`, and `UseKeychain yes` plus `ssh-add --apple-load-keychain` in `~/.zprofile` read it back. Nothing goes into this repository. Run it in a terminal on the machine itself: macOS's Keychain is locked to SSH sessions. After every `chezmoi apply` the requirement check runs `--check` and warns while the passphrase is not saved.

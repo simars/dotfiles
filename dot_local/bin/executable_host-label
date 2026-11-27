@@ -1,0 +1,19 @@
+#!/bin/sh
+# host-label [HOST]: this machine's (or HOST's) short name, for the zsh prompt over SSH, tmux's status bar and Herdr's
+# tab bar. From ~/dotfiles-local/host-labels (private, in ~/.cfg: "hostname label" per line, matched without case; the
+# labels are the SSH aliases), else the short hostname in lower case. Cheatsheet: "Which Machine Am I On".
+host="${1:-$(hostname)}"
+host="${host%%.*}"
+table="$HOME/dotfiles-local/host-labels"
+lower() { printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]'; }
+if [ -r "$table" ]; then
+    want="$(lower "$host")"
+    while read -r name label; do
+        case "$name" in '' | '#'*) continue ;; esac
+        if [ "$(lower "$name")" = "$want" ] && [ -n "$label" ]; then
+            printf '%s\n' "$label"
+            exit 0
+        fi
+    done < "$table"
+fi
+lower "$host"

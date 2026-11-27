@@ -200,6 +200,10 @@ mouse_capture = true
 # Every close asks first (pane, tab, workspace), as tmux does, on every host (Omarchy's stock has false): with Option
 # as Alt on the Macs, alt+esc is easy to hit by accident.
 confirm_close = true
+# tmux's status-right: the zoom flag, then the machine's short name (~/.local/bin/host-label; runs on the herdr server,
+# so a session attached from another machine names the machine it runs on). Every host; Omarchy's stock shows the full
+# hostname here. Cheatsheet: "Which Machine Am I On".
+tab_bar_right = [{ type = "zoom" }, { type = "command", command = "~/.local/bin/host-label", interval_seconds = 3600, timeout_seconds = 2 }]
 {{- if $omarchy }}
 accent = "blue"
 
@@ -212,9 +216,6 @@ pane_scrollbars = false
 
 # automatic-rename gave windows a name without prompting
 prompt_new_tab_name = false
-
-# status-right had the zoom flag followed by #h
-tab_bar_right = [{ type = "zoom" }, { type = "hostname" }]
 
 # set -g set-titles on / set -g set-titles-string '#h:#W', where tmux's #W was
 # the basename of the pane cwd. This is what Hyprland shows in the group bar,

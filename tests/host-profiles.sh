@@ -224,7 +224,7 @@ done
 check "darwin herdr has no Omarchy chrome" 0 "$(grep -cE 'window_title|panel_bg|^\[theme' "$work/darwin.herdr")"
 # Omarchy's [ui] holds exactly its stock [ui] settings (order, comments and blank lines aside), except confirm_close:
 # every host asks before closing (stock false).
-check "omarchy herdr [ui] is Omarchy's stock [ui]" "" "$(diff <(sed -n '/^\[ui\]/,$p' docs/omarchy-stock/herdr.toml | grep -vE '^(#|$|confirm_close)' | sort) <(sed -n '/^\[ui\]/,$p' "$work/omarchy.herdr" | grep -vE '^(#|$|confirm_close)' | sort))"
+check "omarchy herdr [ui] is Omarchy's stock [ui]" "" "$(diff <(sed -n '/^\[ui\]/,$p' docs/omarchy-stock/herdr.toml | grep -vE '^(#|$|confirm_close|tab_bar_right)' | sort) <(sed -n '/^\[ui\]/,$p' "$work/omarchy.herdr" | grep -vE '^(#|$|confirm_close|tab_bar_right)' | sort))"
 for host in darwin omarchy; do
     check "$host herdr asks before every close" 1 "$(grep -cx 'confirm_close = true' "$work/$host.herdr")"
 done
@@ -481,20 +481,24 @@ check "omarchy ~/.zshrc loads omarchy-zsh options in interactive shells only" 1 
     "$(grep -c '^if \[\[ -o interactive && -r /usr/share/omarchy-zsh/shell/zoptions ' "$work/omarchy.zshrc")"
 check "omarchy ~/.zshrc loads Omarchy's aliases" 1 "$(grep -c 'source "$OMARCHY_PATH/default/bash/aliases"' "$work/omarchy.zshrc")"
 check "omarchy ~/.zshrc runs ssh and the drive helpers in bash" 3 "$(grep -cE '^ +(ssh|iso2sd|format-drive)\(\) \{ _omarchy_bash ' "$work/omarchy.zshrc")"
-# Machine tag over SSH (host_label): the short name from ~/dotfiles-local/host-labels (private), else the short
-# hostname in lower case; shown on the right of the prompt only when SSH_CONNECTION is set.
-if command -v zsh > /dev/null 2>&1; then
-    mkdir -p "$work/hl/dotfiles-local"
-    printf '# hostname label\nSimars-MacBook-Work mbp-work\nsimars-works works\n' > "$work/hl/dotfiles-local/host-labels"
-    sed -n '/^host_label() {/,/^}/p' "$work/omarchy.zshrc" > "$work/host_label.zsh"
-    hl() { HOME="$1" zsh -fc 'source "$0"; host_label "$1"' "$work/host_label.zsh" "$2" 2>&1; }
-    check "host label: from the private table, any case" "mbp-work|works" "$(hl "$work/hl" simars-macbook-work.local)|$(hl "$work/hl" simars-works)"
-    check "host label: without the table, the short hostname in lower case" "simar-mbp" "$(hl "$work/none" Simar-MBP.local)"
-    for host in darwin omarchy; do
-        check "$host ~/.zshrc tags the prompt with the machine only over SSH" 1 \
-            "$(render "$host" dot_zshrc.tmpl | grep -c '^    \[\[ -n "${SSH_CONNECTION:-}" \]\] && RPROMPT="%F{magenta}\[$(host_label)\]%f"$')"
-    done
-fi
+# The machine's short name (~/.local/bin/host-label): from ~/dotfiles-local/host-labels (private), else the short
+# hostname in lower case. Used by the zsh prompt over SSH, tmux's status bar and Herdr's tab bar.
+mkdir -p "$work/hl/dotfiles-local"
+printf '# hostname label\nSimars-MacBook-Work mbp-work\nsimars-works works\n' > "$work/hl/dotfiles-local/host-labels"
+hl() { HOME="$1" sh dot_local/bin/executable_host-label ${2:+"$2"} 2>&1; }
+check "host-label: from the private table, any case, comments skipped" "mbp-work|works" "$(hl "$work/hl" simars-macbook-work.local)|$(hl "$work/hl" simars-works)"
+check "host-label: without the table, the short hostname in lower case" "simar-mbp" "$(hl "$work/none" Simar-MBP.local)"
+check "host-label: with no argument it names this machine" "$(hostname | cut -d. -f1 | tr '[:upper:]' '[:lower:]')" "$(hl "$work/none")"
+for host in darwin omarchy; do
+    check "$host ~/.zshrc tags the prompt with the machine only over SSH" 1 \
+        "$(render "$host" dot_zshrc.tmpl | grep -cF '[[ -n "${SSH_CONNECTION:-}" ]] && command -v host-label > /dev/null && RPROMPT="%F{magenta}[$(host-label)]%f"')"
+    check "$host gets host-label" yes "$(manages "$host" .local/bin/host-label)"
+    render "$host" dot_config/herdr/config.toml.tmpl > "$work/$host.herdr-hl"
+    check "$host Herdr's tab bar shows the machine's short name" 1 \
+        "$(grep -cxF 'tab_bar_right = [{ type = "zoom" }, { type = "command", command = "~/.local/bin/host-label", interval_seconds = 3600, timeout_seconds = 2 }]' "$work/$host.herdr-hl")"
+done
+check "tmux's status bar shows the machine's short name in magenta" 1 \
+    "$(grep -cF '#[fg=magenta]#(~/.local/bin/host-label 2>/dev/null || hostname -s)' dot_config/tmux/tmux.conf)"
 check "omarchy ~/.zshrc sets SHELL to zsh" 1 "$(grep -c '^ *export SHELL=/usr/bin/zsh$' "$work/omarchy.zshrc")"
 check "omarchy ~/.zshrc keeps Claude Code on bash" 1 "$(grep -c '^ *export CLAUDE_CODE_SHELL=/usr/bin/bash$' "$work/omarchy.zshrc")"
 omarchy_block=$(grep -n 'omarchy-zsh/shell/zoptions ' "$work/omarchy.zshrc" | head -1 | cut -d: -f1)
