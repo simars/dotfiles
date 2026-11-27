@@ -1067,6 +1067,14 @@ check "bootstrap/omarchy.sh is valid bash" "" "$(bash -n bootstrap/omarchy.sh 2>
 if command -v shellcheck > /dev/null 2>&1; then
     check "bootstrap/omarchy.sh passes shellcheck" "" "$(shellcheck -S warning bootstrap/omarchy.sh 2>&1)"
 fi
+check "bootstrap/omarchy.sh hands over to the .cfg installer (works before ~/.cfg is checked out)" 1 \
+    "$(grep -cxF 'bash <(git --git-dir="$HOME/.cfg" show HEAD:guides/install.sh) || echo "    The installer reported a step that failed (above); fix it and run ~/guides/install.sh again."' bootstrap/omarchy.sh)"
+check "bootstrap/omarchy.sh prints the installer line readably (not /dev/fd)" 1 \
+    "$(grep -cF "printf '    \$ bash <(git --git-dir=%s/.cfg show HEAD:guides/install.sh)" bootstrap/omarchy.sh)"
+check "bootstrap/omarchy.sh prints each command it runs (run helper)" "1 1 1" \
+    "$(grep -c '^run() {' bootstrap/omarchy.sh) $(grep -c '^run omarchy pkg add chezmoi git$' bootstrap/omarchy.sh) $(grep -c '^    run git clone --bare' bootstrap/omarchy.sh)"
+check "bootstrap/omarchy.sh leaves the .cfg settings and guides to the installer" 0 \
+    "$(grep -cE 'setup-guides\" apply|config status.showUntrackedFiles|set-upstream-to' bootstrap/omarchy.sh)"
 check "bootstrap refuses to run without a terminal" 1 "$(bash bootstrap/omarchy.sh < /dev/null > /dev/null 2>&1; echo $?)"
 check "omarchy setup runs the Tailscale and 1Password installers" 2 "$(grep -cE '^        omarchy install service (tailscale|1password) ' "$work/omarchy.setup")"
 check "omarchy packages include the declared apps" 6 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -oE '"(chezmoi|claude-desktop|cursor-bin|google-chrome|slack-desktop|visual-studio-code-bin)"' | sort -u | wc -l | tr -d ' ')"

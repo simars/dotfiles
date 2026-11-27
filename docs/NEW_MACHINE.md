@@ -125,18 +125,15 @@ and apps whose config just changed and need a reload. Follow it until it says no
    - Add `--with-remote-unlock` only for unlocking the disk over SSH. That guide's README has the router steps and
      the first unlock at the machine.
    - It installs chezmoi and git, then applies the dotfiles, packages, apps, runtimes, Tailscale, 1Password and shell
-     plugins. It also copies in your SSH key, clones `~/.cfg` and applies the guides (zsh, terminals-clipboard,
-     wave-keys, window-rescue, window-keys, caps-prefix).
+     plugins. It checks your SSH key, clones `~/.cfg` and runs its installer (`~/guides/install.sh`), which asks
+     about the Claude Code login, ai-tooling, the `gh` login and the guides (zsh, terminals-clipboard, wave-keys,
+     window-rescue, window-keys, caps-prefix). Every command is printed before it runs.
    - It pauses for the sudo password, chezmoi's four questions (as on the Mac: Git email and name, work email or
      `none`, work GitHub orgs), the Tailscale login link, the SSH key and its passphrase.
    - It is safe to run again: after any stop, fix what it says and run the same command.
 3. **Open a new terminal.** It starts zsh; the login shell stays bash.
-4. **Claude Code and ai-tooling.** Omarchy ships `claude` and `gh`; the bootstrap does not set up ai-tooling.
-   ```bash
-   claude                           # log in, then quit
-   cd ~/ai-tooling && make setup
-   gh auth login                    # the apply sets gh to clone over SSH
-   ```
+4. **Claude Code, ai-tooling and `gh`:** the bootstrap's installer asked about each. Anything you said No to, or that
+   failed: run `~/guides/install.sh` again (it skips what is done).
 5. **LunarVim:** nothing to do: the apply links it for you once LunarVim is installed (never its `init-lvim.sh`).
    If LunarVim arrives later, the list names the link command.
 6. **Per machine, by hand:**

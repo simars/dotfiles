@@ -407,10 +407,11 @@ bash <(curl -fsSL https://raw.githubusercontent.com/simars/dotfiles/main/bootstr
 | 1. chezmoi, git | `omarchy pkg add chezmoi git` | sudo password |
 | 2. Dotfiles and setup | `chezmoi init --apply` (https): packages and apps, Tailscale and 1Password installers, `python` / `go` runtimes, shell plugins | chezmoi's four questions (Git email and name, work email or `none`, work GitHub orgs); the Tailscale login link |
 | 3. SSH key | stops until `~/.ssh/id_rsa` is there (copy it by hand), saves its passphrase (`ssh-key-remember`), checks GitHub over SSH, switches chezmoi's remote to SSH | copy the key; its passphrase once |
-| 4. `~/.cfg` | clones and checks out the private bare repository (never overwrites a file; stops and names it) | — |
-| 5. Guides | `setup-guides apply`: zsh, terminals-clipboard, wave-keys, window-rescue, window-keys, caps-prefix | — |
-| 6. Remote disk unlock | only with `--with-remote-unlock`: the guide's `apply.sh`; the router steps are in its README | router, first unlock at the machine |
-| 7. Summary | the requirement check and the guides' verdicts | read it |
+| 4. `~/.cfg` and the rest | clones the private bare repository, then runs its installer (`~/guides/install.sh`): checkout (never overwrites a file; stops and names it), the Claude Code login, ai-tooling, the `gh` login, `setup-guides apply` (zsh, terminals-clipboard, wave-keys, window-rescue, window-keys, caps-prefix) | answer its questions (Enter takes the default) |
+| 5. Remote disk unlock | only with `--with-remote-unlock`: the guide's `apply.sh`; the router steps are in its README | router, first unlock at the machine |
+| 6. Summary | the requirement check and the guides' verdicts | read it |
+
+Every command that changes the machine is printed (`$ command`) before it runs, in the bootstrap and in the installer.
 
 Safe to run again: after a stop (the SSH key, a failed step) fix the cause and run the same command. Per machine afterwards: monitors (the bar's Display widget, monitor-layout), the tablet mapping, theme, web apps, and signing in to the apps. Then, not done by the bootstrap: `claude` (log in), `cd ~/ai-tooling && make setup`, `gh auth login` and `gh config set git_protocol ssh`; the to-do list at the end of `chezmoi apply` names whatever is left. The whole list, Mac included: `docs/NEW_MACHINE.md`.
 

@@ -13,10 +13,13 @@
 #      runtimes, shell plugins          Tailscale and 1Password installers, dev-env runtimes, shell plugins
 #   3. SSH key                          copied by hand to ~/.ssh/id_rsa (the script stops and says how); its passphrase
 #                                       saved once with ssh-key-remember; GitHub reached over SSH
-#   4. ~/.cfg                           the private bare repository (ai-tooling, dotfiles-local, guides, llm, scripts)
-#   5. guides                           setup-guides apply: zsh, terminals-clipboard, wave-keys, window-rescue, window-keys, caps-prefix
-#   6. remote disk unlock (opt-in)      --with-remote-unlock: that guide's apply.sh, then its README for the router steps
-#   7. summary                          the requirement check and every guide's verdict
+#   4. ~/.cfg and the rest              the private bare repository's installer (~/guides/install.sh): checkout and
+#                                       settings, Claude Code login and ai-tooling, gh login, the guides (setup-guides
+#                                       apply: zsh, terminals-clipboard, wave-keys, window-rescue, window-keys,
+#                                       caps-prefix); it asks before each step
+#   5. remote disk unlock (opt-in)      --with-remote-unlock: that guide's apply.sh, then its README for the router steps
+#   6. summary                          the requirement check and every guide's verdict
+# Every command that changes the machine is printed (as "$ command") before it runs.
 #
 # Not done here (per machine, or yours to do): monitors (~/.config/hypr/monitors.lua, monitor-layout), the tablet
 # mapping, the theme, web apps, signing in to 1Password, Slack and the rest. docs/CHEATSHEET.md, "New Omarchy Machine".
@@ -46,7 +49,7 @@ done
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf '\nbootstrap: %s\n' "$*" >&2; exit 1; }
-cfg() { git --git-dir="$HOME/.cfg" --work-tree="$HOME" "$@"; }
+run() { printf '    $ %s\n' "$*"; "$@"; } # print the command, then run it
 
 # 0. Where we are
 grep -qx 'ID=omarchy' /etc/os-release 2> /dev/null || die "this is not Omarchy (/etc/os-release has no ID=omarchy)."
@@ -55,19 +58,19 @@ grep -qx 'ID=omarchy' /etc/os-release 2> /dev/null || die "this is not Omarchy (
 command -v omarchy > /dev/null || die "the omarchy command is missing; finish Omarchy's own installation first."
 
 # 1. chezmoi and git
-step "1/7 chezmoi and git"
-omarchy pkg add chezmoi git
+step "1/6 chezmoi and git"
+run omarchy pkg add chezmoi git
 
 # 2. Dotfiles, packages, apps, runtimes, shell plugins
-step "2/7 Dotfiles, packages, apps, runtimes and shell plugins (chezmoi)"
+step "2/6 Dotfiles, packages, apps, runtimes and shell plugins (chezmoi)"
 if [[ -d "$HOME/.local/share/chezmoi/.git" ]]; then
-    chezmoi update || die "chezmoi update failed; fix what it reports, then run this again."
+    run chezmoi update || die "chezmoi update failed; fix what it reports, then run this again."
 else
-    chezmoi init --apply "$REPO_HTTPS" || die "chezmoi init failed; fix what it reports, then run this again."
+    run chezmoi init --apply "$REPO_HTTPS" || die "chezmoi init failed; fix what it reports, then run this again."
 fi
 
 # 3. SSH key, copied by hand
-step "3/7 SSH key"
+step "3/6 SSH key"
 if [[ ! -f "$HOME/.ssh/id_rsa" ]]; then
     cat >&2 << 'EOF'
 No ~/.ssh/id_rsa yet. Copy your key here by hand, then run this command again:
@@ -78,10 +81,10 @@ No ~/.ssh/id_rsa yet. Copy your key here by hand, then run this command again:
 EOF
     exit 1
 fi
-chmod 700 "$HOME/.ssh"
-chmod 600 "$HOME/.ssh/id_rsa"
+run chmod 700 "$HOME/.ssh"
+run chmod 600 "$HOME/.ssh/id_rsa"
 # Saves the passphrase in the login keyring once (it says so if already saved); asks for it here.
-"$BIN/ssh-key-remember" || echo "    ssh-key-remember did not finish; the agent will ask for the passphrase instead."
+run "$BIN/ssh-key-remember" || echo "    ssh-key-remember did not finish; the agent will ask for the passphrase instead."
 # GitHub's test login always exits 1 (no shell), so judge by its message, not the exit status.
 github_reply="$(ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 || true)"
 if [[ "$github_reply" == *"successfully authenticated"* ]]; then
@@ -89,45 +92,32 @@ if [[ "$github_reply" == *"successfully authenticated"* ]]; then
 else
     die "GitHub does not accept ~/.ssh/id_rsa over SSH yet (ssh -T git@github.com). Check the key, then run this again."
 fi
-git -C "$HOME/.local/share/chezmoi" remote set-url origin "$REPO_SSH"
+run git -C "$HOME/.local/share/chezmoi" remote set-url origin "$REPO_SSH"
 
-# 4. The private ~/.cfg repository
-step "4/7 ~/.cfg (private repository)"
+# 4. The private ~/.cfg repository, then its installer for the rest (it asks before each step and prints its commands)
+step "4/6 ~/.cfg and the rest (~/guides/install.sh)"
 if [[ ! -d "$HOME/.cfg" ]]; then
-    git clone --bare "$CFG_SSH" "$HOME/.cfg"
+    run git clone --bare "$CFG_SSH" "$HOME/.cfg"
 fi
-cfg config status.showUntrackedFiles no
-cfg config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
-cfg fetch -q origin
-if [[ -z "$(cfg ls-files | head -n 1)" ]]; then
-    # First checkout (a bare clone has no index yet). Never overwrite: a checkout that would replace existing files
-    # stops and names them.
-    if ! out="$(cfg checkout 2>&1)"; then
-        echo "$out" >&2
-        die "$HOME/.cfg could not check out without overwriting the files above; move them aside, then run this again."
-    fi
-fi
-cfg branch -q --set-upstream-to=origin/main main 2> /dev/null || true
-echo "    ~/.cfg at $(cfg log -1 --format='%h %s')"
-
-# 5. Guides
-step "5/7 Guides (setup-guides apply)"
-"$BIN/setup-guides" apply || echo "    Some guides are not active; see their README in ~/guides/omarchy/<guide>."
+# Run from the repository itself, so it works before ~/.cfg is checked out (the installer checks it out).
+# (printed by hand: run would show bash's /dev/fd/63 for the <(...) part)
+printf '    $ bash <(git --git-dir=%s/.cfg show HEAD:guides/install.sh)\n' "$HOME"
+bash <(git --git-dir="$HOME/.cfg" show HEAD:guides/install.sh) || echo "    The installer reported a step that failed (above); fix it and run ~/guides/install.sh again."
 
 # 6. Remote disk unlock, opt-in
 if [[ $with_remote_unlock -eq 1 ]]; then
-    step "6/7 Remote disk unlock (--with-remote-unlock)"
+    step "5/6 Remote disk unlock (--with-remote-unlock)"
     guide="$HOME/guides/omarchy/remote-disk-unlock"
     [[ -x "$guide/apply.sh" ]] || die "$guide/apply.sh is missing."
-    (cd "$guide" && ./apply.sh)
+    run "$guide/apply.sh"
     echo "    Next: the router steps and the first unlock at the machine, in $guide/README.md."
 else
-    step "6/7 Remote disk unlock: skipped (opt-in: --with-remote-unlock)"
+    step "5/6 Remote disk unlock: skipped (opt-in: --with-remote-unlock)"
 fi
 
 # 7. Summary
-step "7/7 Summary"
-chezmoi apply || true
+step "6/6 Summary"
+run chezmoi apply || true
 "$BIN/setup-guides" || true
 cat << 'EOF'
 
