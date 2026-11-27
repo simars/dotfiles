@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Every host. Where ~/ai-tooling exists (it comes with the private ~/.cfg), run its deploy on every apply, so the agents'
 # settings, instructions and skills follow the repository without a hand-run `make setup`. The deploy prints one line
-# per step and hides a step's output unless it fails; its output and stderr go through to the apply output. A failed
-# deploy becomes one line on the to-do list. On a Mac, /usr/bin/make is a stub until the Xcode command line tools are
+# per step and hides a step's output unless it fails or warns (⚠); its output and stderr go through to the apply output.
+# A failed deploy becomes one line on the to-do list, and so does a deploy that warned: make exits 2 on any failure, so
+# the deploy exits 0 for a warning and reports it through a status file (AI_DEPLOY_STATUS_FILE: ok, warnings: <names>
+# or failed: <names>; missing or empty counts as ok). On a Mac, /usr/bin/make is a stub until the Xcode command line tools are
 # installed, so `xcode-select -p` failing counts as make missing or not usable. The PATH line is run_after_99's: a thin
 # PATH (an ssh command, launchd) lacks /opt/homebrew/bin, where the deploy finds herdr and jq. Never fails the apply (always exits 0).
 set -u
@@ -18,11 +20,16 @@ if ! command -v make > /dev/null 2>&1{{ if eq .chezmoi.os "darwin" }} || ! xcode
     exit 0
 fi
 
-# Print the command exactly as it runs (redirect included), then run it. The deploy reads nothing: stdin is /dev/null.
+status="$(mktemp "${TMPDIR:-/tmp}/ai-tooling-deploy.XXXXXX")" || status=""
+[[ -z "$status" ]] || trap 'rm -f "$status"' EXIT
+
+# Print the command exactly as it runs (status file and redirect included), then run it. The deploy reads nothing: stdin is /dev/null.
 # ARGS= pins the Makefile's exported ARGS empty: an ARGS=--dry-run in the user's shell would otherwise make every apply
 # a silent dry run (a command-line ARGS= beats the environment).
-printf '+ make -C %q --no-print-directory deploy ARGS= < /dev/null\n' "$dir"
-if ! make -C "$dir" --no-print-directory deploy ARGS= < /dev/null; then
+printf '+ AI_DEPLOY_STATUS_FILE=%q make -C %q --no-print-directory deploy ARGS= < /dev/null\n' "$status" "$dir"
+if ! AI_DEPLOY_STATUS_FILE="$status" make -C "$dir" --no-print-directory deploy ARGS= < /dev/null; then
     todo "ai-tooling's deploy failed (see above): run make -C ~/ai-tooling deploy. If it says there is no rule for deploy, pull ~/.cfg first (config pull --rebase origin main)"
+elif [[ -n "$status" && "$(head -n 1 "$status" 2> /dev/null)" == warnings:* ]]; then
+    todo "ai-tooling's deploy warned (see the ⚠ lines above): fix what they name, then run make -C ~/ai-tooling deploy"
 fi
 exit 0

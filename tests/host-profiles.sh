@@ -1954,10 +1954,10 @@ if command -v make > /dev/null 2>&1; then
     # reads it would see "leaked"); prints "EXIT|output". Arguments, not variables, so nothing leaks into the next case.
     at_run() {
         local out rc
-        rm -rf "$at/home" "$at/cache"
-        mkdir -p "$at/home" "$at/cache"
+        rm -rf "$at/home" "$at/cache" "$at/tmp"
+        mkdir -p "$at/home" "$at/cache" "$at/tmp"
         [[ -z "$1" ]] || { mkdir -p "$at/home/ai-tooling" && printf '%b' "$1" > "$at/home/ai-tooling/Makefile"; }
-        out="$(printf 'leaked\n' | HOME="$at/home" CHEZMOI_CACHE_DIR="$at/cache" PATH="${2:-$PATH}" bash "${3:-$at/script.sh}" 2>&1)"
+        out="$(printf 'leaked\n' | HOME="$at/home" TMPDIR="$at/tmp" CHEZMOI_CACHE_DIR="$at/cache" PATH="${2:-$PATH}" bash "${3:-$at/script.sh}" 2>&1)"
         rc=$?
         printf '%s|%s' "$rc" "$out"
     }
@@ -1970,13 +1970,40 @@ if command -v make > /dev/null 2>&1; then
 
     # (b) a deploy that succeeds; its stdin must be /dev/null (the stub reports what it can read)
     res="$(at_run 'deploy:\n\t@if read -r x; then echo "READ:$$x"; else echo noinput; fi; echo deployed\n')"
-    shown="+ make -C $(printf '%q' "$at/home/ai-tooling") --no-print-directory deploy ARGS= < /dev/null"
-    check "ai-tooling deploy: prints the real command first, redirect included" "$shown" "$(printf '%s' "${res#*|}" | head -1)"
+    first="$(printf '%s' "${res#*|}" | head -1)"
+    sfile="${first#+ AI_DEPLOY_STATUS_FILE=}"; sfile="${sfile%% make -C *}"
+    shown="+ AI_DEPLOY_STATUS_FILE=$sfile make -C $(printf '%q' "$at/home/ai-tooling") --no-print-directory deploy ARGS= < /dev/null"
+    check "ai-tooling deploy: prints the real command first, status file and redirect included" "$shown" "$first"
+    check "ai-tooling deploy: the status file is a mktemp file in TMPDIR" "$at/tmp/ai-tooling-deploy." "${sfile%.*}."
     check "ai-tooling deploy: lets the deploy's output through" 1 "$(printf '%s\n' "$res" | grep -c '^deployed$')"
     check "ai-tooling deploy: the deploy's stdin is /dev/null, not the apply's" "1 0" \
         "$(printf '%s\n' "$res" | grep -c '^noinput$') $(printf '%s\n' "$res" | grep -c '^READ:')"
     check "ai-tooling deploy: success exits 0" 0 "${res%%|*}"
     check "ai-tooling deploy: success adds no to-do" "" "$(at_todo)"
+
+    # (b1) the deploy reports through a status file named in AI_DEPLOY_STATUS_FILE (the printed command is the real one:
+    # the stub records the path it was given). Its warnings become one to-do; the file is removed when the script ends.
+    wmk='deploy:\n\t@echo "$$AI_DEPLOY_STATUS_FILE" > "$$HOME/status-path"; echo "warnings: skills" > "$$AI_DEPLOY_STATUS_FILE"; echo "  ⚠ check me"\n'
+    res="$(at_run "$wmk")"
+    given="$(cat "$at/home/status-path")"
+    first="$(printf '%s' "${res#*|}" | head -1)"
+    check "ai-tooling deploy: a deploy warning still exits 0" 0 "${res%%|*}"
+    check "ai-tooling deploy: a deploy warning adds exactly the warning to-do" "ai-tooling's deploy warned (see the ⚠ lines above): fix what they name, then run make -C ~/ai-tooling deploy" "$(at_todo)"
+    check "ai-tooling deploy: the printed + line starts with the status file assignment" "+ AI_DEPLOY_STATUS_FILE=" "${first:0:24}"
+    check "ai-tooling deploy: the deploy got the path the + line printed" "$(printf '%q' "$given")" "$(sfile="${first#+ AI_DEPLOY_STATUS_FILE=}"; printf '%s' "${sfile%% make -C *}")"
+    check "ai-tooling deploy: the status file is gone afterwards" "no" "$([[ -e "$given" ]] && echo yes || echo no)"
+    check "ai-tooling deploy: no status file is left in TMPDIR" "" "$(ls -A "$at/tmp")"
+    res="$(at_run 'deploy:\n\t@echo "ok" > "$$AI_DEPLOY_STATUS_FILE"\n')"
+    check "ai-tooling deploy: a status of ok adds no to-do" "0 " "${res%%|*} $(at_todo)"
+    res="$(at_run 'deploy:\n\t@echo "warnings: skills agents" > "$$AI_DEPLOY_STATUS_FILE"\n')"
+    check "ai-tooling deploy: several warned steps are still one to-do" 1 "$(at_todo | wc -l | tr -d ' ')"
+    res="$(at_run 'deploy:\n\t@echo "failed: cursor" > "$$AI_DEPLOY_STATUS_FILE"; exit 1\n')"
+    check "ai-tooling deploy: a failed deploy with a failed status is only the failure to-do" "1 1" \
+        "$(at_todo | wc -l | tr -d ' ') $(at_todo | grep -c "^ai-tooling's deploy failed")"
+    res="$(at_run 'deploy:\n\t@echo "warnings: skills" > "$$AI_DEPLOY_STATUS_FILE"; exit 2\n')"
+    check "ai-tooling deploy: a failed deploy that also wrote warnings adds only the failure to-do" "1 1" \
+        "$(at_todo | wc -l | tr -d ' ') $(at_todo | grep -c "^ai-tooling's deploy failed")"
+    check "ai-tooling deploy: the status file is gone after a failed deploy" "" "$(ls -A "$at/tmp")"
 
     # (b2) ARGS exported in the user's shell must not reach the deploy (the Makefile exports ARGS and hands it to
     # deploy.sh, so ARGS=--dry-run would turn every apply into a silent dry run): the script pins it empty
