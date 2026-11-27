@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Every host. Where ~/ai-tooling exists (it comes with the private ~/.cfg), run its deploy on every apply, so the agents'
+# settings, instructions and skills follow the repository without a hand-run `make setup`. The deploy prints one line
+# per step and hides a step's output unless it fails; its output and stderr go through to the apply output. A failed
+# deploy becomes one line on the to-do list. Never fails the apply (always exits 0).
+set -u
+{{ template "after-apply.sh" . }}
+
+dir="$HOME/ai-tooling"
+[[ -f "$dir/Makefile" ]] || exit 0
+
+if ! command -v make > /dev/null 2>&1; then
+    echo "NOTE: ai-tooling was not deployed: make is missing"
+    todo "ai-tooling was not deployed: make is missing (Xcode command line tools on a Mac)"
+    exit 0
+fi
+
+# Print the command exactly as it runs, then run it. The deploy reads nothing: stdin is /dev/null.
+printf '+ make -C %q --no-print-directory deploy\n' "$dir"
+if ! make -C "$dir" --no-print-directory deploy < /dev/null; then
+    todo "ai-tooling's deploy failed (see above): run make -C ~/ai-tooling deploy. If it says there is no rule for deploy, pull ~/.cfg first (config pull --rebase origin main)"
+fi
+exit 0

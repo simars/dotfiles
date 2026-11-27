@@ -240,7 +240,7 @@ if [[ -d "$HOME/ai-tooling" ]]; then
     if [[ "$(readlink "$HOME/.claude/CLAUDE.md" 2> /dev/null)" == "$HOME/ai-tooling/claude/CLAUDE.md" ]]; then
         echo "OK:   ai-tooling is set up for Claude Code"
     else
-        note "ai-tooling is not set up here (~/.claude/CLAUDE.md is not its link). Fix: cd ~/ai-tooling && make setup"
+        note "ai-tooling is not set up here (~/.claude/CLAUDE.md is not its link). Fix: make -C ~/ai-tooling deploy (the apply runs it; see its output above)"
     fi
 fi
 {{- if eq .chezmoi.os "darwin" }}

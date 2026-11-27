@@ -41,7 +41,9 @@ and apps whose config just changed and need a reload. Follow it until it says no
    - It then switches chezmoi to SSH, saves the key's passphrase in the Keychain (`ssh-key-remember`, asks for it once),
      clones `~/.cfg` and runs its installer (`~/guides/install.sh`), which asks about each of: linking this Mac's own
      settings from `~/dotfiles-local`, installing Claude Code and logging in, ai-tooling, the `gh` login, remote access
-     (Remote Login, Touch ID for sudo; sudo) and power (always-on or normal; normal by default).
+     (Remote Login, Touch ID for sudo; sudo) and power (always-on or normal; normal by default). Once `~/.cfg` is
+     checked out, every `chezmoi apply` deploys ai-tooling (`make -C ~/ai-tooling deploy`; a failure lands on the
+     to-do list); `make setup` is still how the Copilot CLI install and the `gh` hint run.
    - Every command that changes the Mac is printed (`$ command`) before it runs. It is safe to run again: after any
      stop, fix what it says and run the same command. Later, `~/guides/install.sh` alone repeats the private part.
    - On a work Mac, also create any work env files `~/.zshrc.local` sources. They are never committed.
@@ -85,7 +87,9 @@ and apps whose config just changed and need a reload. Follow it until it says no
    - It is safe to run again: after any stop, fix what it says and run the same command.
 3. **Open a new terminal.** It starts zsh; the login shell stays bash.
 4. **Claude Code, ai-tooling and `gh`:** the bootstrap's installer asked about each. Anything you said No to, or that
-   failed: run `~/guides/install.sh` again (it skips what is done).
+   failed: run `~/guides/install.sh` again (it skips what is done). ai-tooling is deployed by every `chezmoi apply`
+   once `~/.cfg` is checked out (`run_after_98_ai_tooling.sh` runs `make -C ~/ai-tooling deploy`; a failure lands on the
+   to-do list). `make setup` in `~/ai-tooling` is still how the Copilot CLI install and the `gh` hint run.
 5. **LunarVim:** nothing to do: the apply links it for you once LunarVim is installed (never its `init-lvim.sh`).
    If LunarVim arrives later, the list names the link command.
 6. **Per machine, by hand:**

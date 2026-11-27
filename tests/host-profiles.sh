@@ -1874,5 +1874,70 @@ for d in wdata odata ndata; do
     check "requirements with work data ($d) is valid bash" "" "$(r99 "$data" | bash -n 2>&1)"
 done
 
+# run_after_98_ai_tooling.sh (every host): chezmoi runs ai-tooling's deploy where ~/ai-tooling exists. It always exits 0;
+# a failed deploy becomes one to-do line. Behaviour runs use stub Makefiles in a scratch HOME (never the real deploy).
+at98=run_after_98_ai_tooling.sh.tmpl
+for host in $hosts; do
+    check "$host manages the ai-tooling deploy script" yes "$(manages "$host" 98_ai_tooling.sh)"
+done
+for host in omarchy darwin; do
+    check "$host ai-tooling deploy script is valid bash" "" "$(render "$host" "$at98" | bash -n 2>&1)"
+    check "$host ai-tooling deploy script starts with set -u and the after-apply include" "set -u todo" \
+        "$(render "$host" "$at98" | awk '/^set -u$/ {u="set -u"} /^todo\(\) \{/ {t="todo"} END {print u, t}')"
+done
+if command -v make > /dev/null 2>&1; then
+    at="$work/ai-tooling-run"
+    mkdir -p "$at"
+    render omarchy "$at98" > "$at/script.sh"
+    at_run() { # at_run: run the rendered script in a fresh scratch HOME; prints "EXIT|output"; the to-do file is read after
+        local out rc
+        rm -rf "$at/home" "$at/cache"
+        mkdir -p "$at/home" "$at/cache"
+        [[ -z "${AT_MAKEFILE:-}" ]] || { mkdir -p "$at/home/ai-tooling" && printf '%b' "$AT_MAKEFILE" > "$at/home/ai-tooling/Makefile"; }
+        out="$(HOME="$at/home" CHEZMOI_CACHE_DIR="$at/cache" PATH="${AT_PATH:-$PATH}" bash "$at/script.sh" 2>&1)"
+        rc=$?
+        printf '%s|%s' "$rc" "$out"
+    }
+    at_todo() { cat "$at/cache"/after-apply.* 2> /dev/null; }
+
+    # (a) no ~/ai-tooling
+    AT_MAKEFILE='' res="$(at_run)"
+    check "ai-tooling deploy: no ~/ai-tooling is silent, exit 0" "0|" "$res"
+    check "ai-tooling deploy: no ~/ai-tooling adds no to-do" "" "$(at_todo)"
+
+    # (b) a deploy that succeeds; it must not wait on stdin
+    AT_MAKEFILE='deploy:\n\t@read -r x || true; echo deployed\n' res="$(at_run)"
+    shown="+ make -C $(printf '%q' "$at/home/ai-tooling") --no-print-directory deploy"
+    check "ai-tooling deploy: prints the real command first" "$shown" "$(printf '%s' "${res#*|}" | head -1)"
+    check "ai-tooling deploy: lets the deploy's output through" 1 "$(printf '%s\n' "$res" | grep -c '^deployed$')"
+    check "ai-tooling deploy: success exits 0" 0 "${res%%|*}"
+    check "ai-tooling deploy: success adds no to-do" "" "$(at_todo)"
+
+    # (c) a deploy that fails
+    AT_MAKEFILE='deploy:\n\t@echo deploy-output-here; echo "ai-tooling deploy: failed: x" >&2; exit 1\n' res="$(at_run)"
+    check "ai-tooling deploy: a failed deploy still exits 0" 0 "${res%%|*}"
+    check "ai-tooling deploy: a failed deploy shows its output and stderr" "1 1" \
+        "$(printf '%s\n' "$res" | grep -c '^deploy-output-here$') $(printf '%s\n' "$res" | grep -c '^ai-tooling deploy: failed: x$')"
+    check "ai-tooling deploy: a failed deploy adds exactly one to-do line" 1 "$(at_todo | wc -l | tr -d ' ')"
+    check "ai-tooling deploy: the failure to-do" "ai-tooling's deploy failed (see above): run make -C ~/ai-tooling deploy. If it says there is no rule for deploy, pull ~/.cfg first (config pull --rebase origin main)" "$(at_todo)"
+
+    # (d) a Makefile without a deploy target (ai-tooling not yet pulled)
+    AT_MAKEFILE='setup:\n\t@echo setup\n' res="$(at_run)"
+    check "ai-tooling deploy: no deploy target still exits 0" 0 "${res%%|*}"
+    check "ai-tooling deploy: no deploy target adds the pull hint" 1 "$(at_todo | grep -c "^ai-tooling's deploy failed.*config pull")"
+
+    # (e) make missing: a PATH of symlinks to only the tools the script and the include need
+    mkdir -p "$at/nomake"
+    for tool in bash mkdir cat cksum dirname; do
+        ln -sf "$(command -v "$tool")" "$at/nomake/$tool"
+    done
+    check "ai-tooling deploy: the no-make PATH really hides make" "" "$(PATH="$at/nomake" command -v make)"
+    AT_MAKEFILE='deploy:\n\t@echo deployed\n' AT_PATH="$at/nomake" res="$(at_run)"
+    check "ai-tooling deploy: make missing still exits 0" 0 "${res%%|*}"
+    check "ai-tooling deploy: make missing adds one to-do" "ai-tooling was not deployed: make is missing (Xcode command line tools on a Mac)" "$(at_todo)"
+else
+    echo "SKIP ai-tooling deploy behaviour checks: make not found"
+fi
+
 echo "$pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
