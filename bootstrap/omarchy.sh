@@ -86,6 +86,7 @@ run chmod 600 "$HOME/.ssh/id_rsa"
 # Saves the passphrase in the login keyring once (it says so if already saved); asks for it here.
 run "$BIN/ssh-key-remember" || echo "    ssh-key-remember did not finish; the agent will ask for the passphrase instead."
 # GitHub's test login always exits 1 (no shell), so judge by its message, not the exit status.
+echo '    $ ssh -o StrictHostKeyChecking=accept-new -T git@github.com' # (adds GitHub's host key to ~/.ssh/known_hosts)
 github_reply="$(ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 || true)"
 if [[ "$github_reply" == *"successfully authenticated"* ]]; then
     echo "    GitHub accepts this key over SSH."
@@ -105,7 +106,7 @@ installer="$(git --git-dir="$HOME/.cfg" show HEAD:guides/install.sh 2> /dev/null
 printf '    $ bash <(git --git-dir=%s/.cfg show HEAD:guides/install.sh)\n' "$HOME"
 bash <(printf '%s\n' "$installer") || echo "    The installer reported a step that failed (above); fix it, then run this bootstrap again."
 
-# 6. Remote disk unlock, opt-in
+# 5. Remote disk unlock, opt-in
 if [[ $with_remote_unlock -eq 1 ]]; then
     step "5/6 Remote disk unlock (--with-remote-unlock)"
     guide="$HOME/guides/omarchy/remote-disk-unlock"
@@ -116,7 +117,7 @@ else
     step "5/6 Remote disk unlock: skipped (opt-in: --with-remote-unlock)"
 fi
 
-# 7. Summary
+# 6. Summary
 step "6/6 Summary"
 run chezmoi apply || true
 "$BIN/setup-guides" || true

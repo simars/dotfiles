@@ -813,7 +813,7 @@ check "macOS settings on a new Mac: desktops keep their order; separate Spaces l
 check "desktop shortcuts on a new Mac: Desktops 1-16 (ids 118-133) written once, enabled, settings activated once" "16|$(seq 118 133 | paste -sd' ' -)|16|1|1" \
     "$(awk '$1 >= 118' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(awk '$1 >= 118 { print $1 }' "$md/hotkeys-written" | paste -sd' ' -)|$(awk '$1 >= 118 && $2 == 1' "$md/hotkeys-written" | wc -l | tr -d ' ')|$(wc -l < "$md/activated" | tr -d ' ')|$(grep -c '^OK:   macOS settings updated: .*desktop shortcuts' "$md/out")"
 check "desktop shortcuts: when macOS cannot reload them, log out goes on the to-do list" "1|1" \
-    "$(md_reset; printf '#!/bin/sh\nexit 1\n' > "$md/bin/activateSettings-fails"; chmod +x "$md/bin/activateSettings-fails"; MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings-fails" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1 | grep -c '^NOTE: macOS did not reload its keyboard shortcuts')|$(md_todo | grep -c 'Log out of macOS and back in, so the desktop shortcuts')"
+    "$(md_reset; printf '#!/bin/sh\nexit 1\n' > "$md/bin/activateSettings-fails"; chmod +x "$md/bin/activateSettings-fails"; MD="$md" PATH="$md/bin:$PATH" ACTIVATE_SETTINGS="$md/bin/activateSettings-fails" CHEZMOI_CACHE_DIR="$md/cache" XDG_STATE_HOME="$md/state" bash "$md/script.sh" 2>&1 | grep -c '^NOTE: macOS did not reload the keyboard shortcuts it just wrote (window-key desktops, Ctrl+Space), so they work only after a log out$')|$(md_todo | grep -c 'Log out of macOS and back in, so the keyboard shortcuts the apply wrote take effect')"
 md_reset
 md_run > "$md/out"
 check "desktop shortcuts use one hidden modifier mask and 16 different keys" "1|16" \
@@ -1076,6 +1076,10 @@ for b in omarchy macos; do
     check "bootstrap/$b.sh reads the installer first and stops loudly without it, or when the clone fails" "1 1 1" \
         "$(grep -cF 'installer="$(git --git-dir="$HOME/.cfg" show HEAD:guides/install.sh 2> /dev/null)" || die' bootstrap/$b.sh) $(grep -cF 'run git clone --bare "$CFG_SSH" "$HOME/.cfg" || die' bootstrap/$b.sh) $(grep -cF 'bash <(printf '"'"'%s\n'"'"' "$installer") || echo "    The installer reported a step that failed (above); fix it, then run this bootstrap again."' bootstrap/$b.sh)"
 done
+check "bootstrap/omarchy.sh prints its GitHub test login (it writes known_hosts)" 1 \
+    "$(grep -cF "echo '    \$ ssh -o StrictHostKeyChecking=accept-new -T git@github.com'" bootstrap/omarchy.sh)"
+check "bootstrap/omarchy.sh section comments match its step numbers" "1 1" \
+    "$(grep -c '^# 5\. Remote disk unlock' bootstrap/omarchy.sh) $(grep -c '^# 6\. Summary' bootstrap/omarchy.sh)"
 check "bootstrap/omarchy.sh prints the installer line readably (not /dev/fd)" 1 \
     "$(grep -cF "printf '    \$ bash <(git --git-dir=%s/.cfg show HEAD:guides/install.sh)" bootstrap/omarchy.sh)"
 check "bootstrap/omarchy.sh prints each command it runs (run helper)" "1 1 1" \
@@ -1121,8 +1125,8 @@ BOOTSTRAP_ASSUME_TTY=1 macboot > "$bm/out"
 check "bootstrap/macos.sh: chezmoi, SSH remote, passphrase, .cfg clone, installer, in that order" \
     "chezmoi|git -C|ssh-key-remember|git clone --bare|installer ran|chezmoi|exit=0" \
     "$(cut -d' ' -f1-2 "$bm/log" | sed -E 's/^(chezmoi|ssh-key-remember|installer ran).*/\1/; s/^git (-C|clone).*/git \1/; s/^git clone$/git clone --bare/' | paste -sd'|' -)|$(tail -1 "$bm/out")"
-check "bootstrap/macos.sh prints each command before it runs" "1 1 1 1" \
-    "$(grep -c '^    \$ git -C .* remote set-url origin git@github.com:simars/dotfiles.git' "$bm/out") $(grep -c '^    \$ .*ssh-key-remember' "$bm/out") $(grep -c '^    \$ git clone --bare git@github.com:simars/.cfg.git' "$bm/out") $(grep -c '^    \$ bash <(git --git-dir=.*/.cfg show HEAD:guides/install.sh)' "$bm/out")"
+check "bootstrap/macos.sh prints each command before it runs" "1 1 1 1 1" \
+    "$(grep -c '^    \$ ssh -o StrictHostKeyChecking=accept-new -T git@github.com' "$bm/out") $(grep -c '^    \$ git -C .* remote set-url origin git@github.com:simars/dotfiles.git' "$bm/out") $(grep -c '^    \$ .*ssh-key-remember' "$bm/out") $(grep -c '^    \$ git clone --bare git@github.com:simars/.cfg.git' "$bm/out") $(grep -c '^    \$ bash <(git --git-dir=.*/.cfg show HEAD:guides/install.sh)' "$bm/out")"
 bm_reset
 check "bootstrap/macos.sh without a terminal lists the steps and changes nothing" "no-log|exit=0|1" \
     "$(macboot < /dev/null > "$bm/out"; [[ -e "$bm/log" ]] && echo logged || echo no-log)|$(tail -1 "$bm/out")|$(grep -c 'run it in a terminal' "$bm/out")"

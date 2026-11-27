@@ -85,8 +85,8 @@ if [[ $desktop_keys_written -gt 0 ]]; then
     [[ "${updated[*]:-}" == *"input-source shortcut off"* && $desktop_keys_written -eq 1 ]] || updated+=("desktop shortcuts")
     # Without this, macOS reads changed shortcuts only at the next login.
     if ! "${ACTIVATE_SETTINGS:-/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings}" -u > /dev/null 2>&1; then
-        echo "NOTE: macOS did not reload its keyboard shortcuts, so the window keys' desktops work only after a log out"
-        todo "Log out of macOS and back in, so the desktop shortcuts (window keys) take effect"
+        echo "NOTE: macOS did not reload the keyboard shortcuts it just wrote (window-key desktops, Ctrl+Space), so they work only after a log out"
+        todo "Log out of macOS and back in, so the keyboard shortcuts the apply wrote take effect"
     fi
 fi
 # Invert Colors (Accessibility, id 21) is Ctrl+Option+Cmd+8 unless changed: turned on, macOS takes the window key for

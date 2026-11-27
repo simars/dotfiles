@@ -101,6 +101,7 @@ run git -C "$SOURCE" remote set-url origin "$REPO_SSH"
 # Saves the passphrase in the login Keychain once (it says so if already saved); asks for it here.
 run "$HOME/.local/bin/ssh-key-remember" || echo "    ssh-key-remember did not finish; the agent will ask for the passphrase instead."
 # GitHub's test login always exits 1 (no shell), so judge by its message, not the exit status.
+echo '    $ ssh -o StrictHostKeyChecking=accept-new -T git@github.com' # (adds GitHub's host key to ~/.ssh/known_hosts)
 github_reply="$(ssh -o StrictHostKeyChecking=accept-new -T git@github.com 2>&1 || true)"
 if [[ "$github_reply" == *"successfully authenticated"* ]]; then
     echo "    GitHub accepts this key over SSH."
