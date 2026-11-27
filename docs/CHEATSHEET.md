@@ -47,6 +47,15 @@ All aliases are for interactive shells. When `~/.zshrc` is sourced by a shell th
 
 The letters mean the same for every agent: `o` runs it under `with-op` (the project's 1Password secrets), `y` adds its no-prompt flag, `oy` does both, and the plain name is the tool itself. Only Claude, Copilot and Cursor get `o`, since they are the agents used with project secrets. Each alias exists only where its tool is installed, and extra arguments append (`cldy -p "hi"`). Codex has no `--yolo`: its flag also turns off its sandbox. `cld` and `csr` were replaced by `cldo` and `csro`. These are aliases, so interactive shells only.
 
+**Alternate Claude account (`claude-a`, `-a` suffix).** For when the main account's credits run out: `claude-a` (a script in `~/.local/bin`, so it also works under `with-op` and without aliases) is plain `claude` with the alternate account's long-lived token in `CLAUDE_CODE_OAUTH_TOKEN`, which outranks the `/login` sign-in for that process only. Everything else is the same config, `~/.claude` and `~/.claude.json`: settings, plugins, MCP servers, memory and history, so `claude-a --resume` continues a session the main account started. `cldo-a`, `cldy-a` and `cldoy-a` are `cldo`, `cldy` and `cldoy` on it. The token is the last `CLAUDE_A_OAUTH_TOKEN=` line of `~/.config/ai-tooling/secrets.env` (chmod 600, never committed; read, not sourced), or `CLAUDE_A_OAUTH_TOKEN` in the environment; make it with `claude setup-token`, approved in a browser signed in as the alternate account (a browser still signed in to the main one mints the main account's token). It prints `→ claude <args>  (CLAUDE_CODE_OAUTH_TOKEN = CLAUDE_A_OAUTH_TOKEN from <file>)` to a terminal, never the token, and warns when `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` would outrank it. Inside it: never run `/login` or `/logout` (they write the shared sign-in); claude.ai connectors, Remote Control and `/schedule` are off (a token makes model requests only); the banner and `/usage` show the main account, cached in `~/.claude.json`.
+
+| Command | Expands to |
+| :--- | :--- |
+| `claude-a` | `CLAUDE_CODE_OAUTH_TOKEN=<CLAUDE_A_OAUTH_TOKEN> claude` |
+| `cldo-a` | `with-op claude-a` |
+| `cldy-a` | `claude-a --dangerously-skip-permissions` |
+| `cldoy-a` | `with-op claude-a --dangerously-skip-permissions` |
+
 ### GNU & Linux-Compatible Tools (macOS)
 On macOS, `userland` decides which variant the plain names `ls`, `sed`, `grep`, `find`, `tar`, `awk`, `make` and the rest of coreutils run. The default, `gnu`, aliases them to the GNU versions in your interactive shell only; scripts and other child processes keep Apple's tools, so macOS scripts that use BSD flags keep working. On Ubuntu the plain names are GNU already.
 

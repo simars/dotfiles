@@ -175,11 +175,15 @@ with-op() {
 
 # Agent shortcuts, one scheme for every agent: plain = the tool's own name, o = under with-op (project 1Password
 # secrets; Claude, Copilot and Cursor only), y = the tool's no-prompt flag, oy = both. Each exists only where its
-# tool is installed.
+# tool is installed. A trailing -a runs Claude on the alternate account (~/.local/bin/claude-a): same config, the
+# other account's credits.
 if command -v claude &> /dev/null; then
   alias cldo="with-op claude"
   alias cldy="claude --dangerously-skip-permissions"
   alias cldoy="with-op claude --dangerously-skip-permissions"
+  alias cldo-a="with-op claude-a"
+  alias cldy-a="claude-a --dangerously-skip-permissions"
+  alias cldoy-a="with-op claude-a --dangerously-skip-permissions"
 fi
 if command -v copilot &> /dev/null; then
   alias cplo="with-op copilot"

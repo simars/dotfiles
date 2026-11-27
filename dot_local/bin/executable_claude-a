@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#
+# claude-a: Claude Code on the alternate account ("a"), for when the main account's credits run out.
+#
+# It is plain `claude` with the same config (~/.claude, ~/.claude.json): settings, plugins, MCP servers, memory and
+# session history are shared, so `claude-a --resume` continues a session the main account started. Only the
+# credential differs: CLAUDE_CODE_OAUTH_TOKEN, set for this process alone, outranks the /login sign-in without
+# touching it (https://code.claude.com/docs/en/authentication#authentication-precedence).
+#
+# The token comes from `claude setup-token`, approved in a browser signed in as the alternate account. claude-a
+# reads it as CLAUDE_A_OAUTH_TOKEN, from the environment or else from the secrets file. The name differs from
+# CLAUDE_CODE_OAUTH_TOKEN on purpose: anything that sources the secrets file must not move plain `claude` to the
+# other account.
+#
+# Inside claude-a:
+#   - never run /login or /logout: they write the sign-in that plain `claude` shares;
+#   - a token makes model requests only, so claude.ai connectors, Remote Control and /schedule are off;
+#   - the banner and /usage show the main account, cached in ~/.claude.json; requests still use the token.
+set -euo pipefail
+
+secrets="${CLAUDE_A_SECRETS_FILE:-$HOME/.config/ai-tooling/secrets.env}"
+case "$secrets" in
+  "$HOME"/*) shown="~${secrets#"$HOME"}" ;;
+  *) shown="$secrets" ;;
+esac
+
+token="${CLAUDE_A_OAUTH_TOKEN:-}"
+from="the environment"
+if [ -z "$token" ] && [ -r "$secrets" ]; then
+  # The last CLAUDE_A_OAUTH_TOKEN= line, with or without `export` and one pair of quotes. The file is read, never
+  # sourced, so its other variables stay out of claude's environment.
+  token="$(sed -n 's/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}CLAUDE_A_OAUTH_TOKEN=//p' "$secrets" | tail -n 1)"
+  token="${token#\"}" token="${token%\"}"
+  token="${token#\'}" token="${token%\'}"
+  from="$shown"
+fi
+if [ -z "$token" ]; then
+  echo "claude-a: no token. Add CLAUDE_A_OAUTH_TOKEN=<token> to $shown (chmod 600); make the token with" \
+    "'claude setup-token', approved in a browser signed in as the alternate account." >&2
+  exit 1
+fi
+
+# These outrank CLAUDE_CODE_OAUTH_TOKEN; with either set, requests would bill elsewhere.
+for var in ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY; do
+  if [ -n "${!var:-}" ]; then
+    echo "claude-a: warning: $var is set and outranks the alternate account's token (unset it to use account a)" >&2
+  fi
+done
+
+if [ -t 2 ]; then
+  printf '→' >&2
+  printf ' %q' claude "$@" >&2
+  printf '  (CLAUDE_CODE_OAUTH_TOKEN = CLAUDE_A_OAUTH_TOKEN from %s)\n' "$from" >&2
+fi
+export CLAUDE_CODE_OAUTH_TOKEN="$token"
+exec claude "$@"

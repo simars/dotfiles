@@ -1111,13 +1111,16 @@ for agent in claude copilot cursor-agent cursor codex agy; do
     chmod +x "$work/agents/bin/$agent"
 done
 cp "$work/agents/bin/codex" "$work/agents/bin/agy" "$work/agents/some/"
-agent_aliases="cldo cldy cldoy cplo cply cploy csao csay csaoy csro cdxy agyy"
+agent_aliases="cldo cldy cldoy cldo-a cldy-a cldoy-a cplo cply cploy csao csay csaoy csro cdxy agyy"
 agent_shell() { # PATH, then the command body; the alias list arrives as $AGENT_ALIASES
     PATH="$1" AGENT_ALIASES="$agent_aliases" /bin/bash -c "source dot_aliases 2> /dev/null; $2"
 }
 check "agent aliases expand as designed" "alias cldo='with-op claude'
 alias cldy='claude --dangerously-skip-permissions'
 alias cldoy='with-op claude --dangerously-skip-permissions'
+alias cldo-a='with-op claude-a'
+alias cldy-a='claude-a --dangerously-skip-permissions'
+alias cldoy-a='with-op claude-a --dangerously-skip-permissions'
 alias cplo='with-op copilot'
 alias cply='copilot --yolo'
 alias cploy='with-op copilot --yolo'
@@ -1130,6 +1133,30 @@ alias agyy='agy --dangerously-skip-permissions'" "$(agent_shell "$work/agents/bi
 check "only installed agents get aliases" "cdxy agyy" "$(agent_shell "$work/agents/some" 'out=; for n in $AGENT_ALIASES; do alias "$n" > /dev/null 2>&1 && out="$out $n"; done; echo "${out# }"')"
 check "cld and csr are gone" "" "$(agent_shell "$work/agents/bin:$PATH" 'alias cld csr 2> /dev/null')"
 check "codex and agy never run under with-op" "" "$(agent_shell "$work/agents/bin:$PATH" 'alias | grep -E "with-op (codex|agy)"')"
+
+# claude-a: plain claude with the alternate account's token in CLAUDE_CODE_OAUTH_TOKEN, read (never sourced) from the
+# secrets file's last CLAUDE_A_OAUTH_TOKEN= line, or from CLAUDE_A_OAUTH_TOKEN in the environment, which wins. A stub
+# `claude` prints the token it got and its arguments.
+claude_a="$repo/dot_local/bin/executable_claude-a"
+mkdir -p "$work/claude-a/bin"
+printf '#!/bin/sh\necho "token=$CLAUDE_CODE_OAUTH_TOKEN args=$* other=${OTHER_SECRET-unset}"\n' > "$work/claude-a/bin/claude"
+chmod +x "$work/claude-a/bin/claude"
+printf 'OTHER_SECRET=x\nCLAUDE_A_OAUTH_TOKEN=old\nexport CLAUDE_A_OAUTH_TOKEN="tok-file"\n' > "$work/claude-a/secrets.env"
+claude_a_run() { # env assignments, then claude-a's arguments
+    env -u CLAUDE_A_OAUTH_TOKEN -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
+        PATH="$work/claude-a/bin:$PATH" CLAUDE_A_SECRETS_FILE="$work/claude-a/secrets.env" "$@"
+}
+check "claude-a passes the secrets file's token and every argument" "token=tok-file args=--resume fix the bug other=unset" \
+    "$(claude_a_run bash "$claude_a" --resume "fix the bug" 2>&1)"
+check "claude-a prefers CLAUDE_A_OAUTH_TOKEN from the environment" "token=tok-env args=-p hi other=unset" \
+    "$(claude_a_run CLAUDE_A_OAUTH_TOKEN=tok-env bash "$claude_a" -p hi 2>&1)"
+claude_a_out="$(claude_a_run CLAUDE_A_SECRETS_FILE="$work/claude-a/missing" bash "$claude_a" 2>&1)" && claude_a_rc=0 || claude_a_rc=$?
+check "claude-a without a token fails before running claude" "1 claude-a: no token." "$claude_a_rc ${claude_a_out%% Add*}"
+check "claude-a warns when an API key outranks its token" "yes" \
+    "$(claude_a_run ANTHROPIC_API_KEY=k bash "$claude_a" 2>&1 | grep -q 'warning: ANTHROPIC_API_KEY is set' && echo yes)"
+tty_check "claude-a echoes the command, never the token" "→ claude --resume  (CLAUDE_CODE_OAUTH_TOKEN = CLAUDE_A_OAUTH_TOKEN from $work/claude-a/secrets.env)
+token=tok-file args=--resume other=unset" "$work" env -u CLAUDE_A_OAUTH_TOKEN PATH="$work/claude-a/bin:$PATH" \
+    CLAUDE_A_SECRETS_FILE="$work/claude-a/secrets.env" bash "$claude_a" --resume
 
 # with-op prints the command it runs, to a terminal only (the two checks above capture stderr and see nothing).
 mkdir -p "$work/no-secrets"
