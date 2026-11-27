@@ -275,6 +275,27 @@ check_hammerspoon() {
     fi
 }
 check_hammerspoon
+{{- if eq .chezmoi.arch "arm64" }}
+# Apps chezmoi installs with Homebrew (.chezmoidata/packages.toml, darwin.brew.cask_apps) that are in /Applications but
+# not Homebrew's and not from the App Store: taking them over failed at install, and the package step does not run
+# again until the package list changes, so name the fix here on every apply.
+check_casks() {
+    local apps_dir="$1" cask app have
+    have="$(brew list --cask 2> /dev/null || true)"
+    while IFS=$'\t' read -r cask app; do
+        [[ -n "$cask" && -d "$apps_dir/$app" && ! -d "$apps_dir/$app/Contents/_MASReceipt" ]] || continue
+        grep -qxF "$cask" <<< "$have" && continue
+        note "$app is not managed by Homebrew (taking it over failed?). Fix: brew install --cask --adopt $cask"
+    done << 'CASK_APPS'
+{{ range $cask, $app := (index . "packages" | default .).darwin.brew.cask_apps -}}
+{{ $cask }}	{{ $app }}
+{{ end -}}
+CASK_APPS
+}
+if command -v brew &> /dev/null; then
+check_casks /Applications
+fi
+{{- end }}
 {{- end }}
 # gh clones over SSH (repositories store SSH URLs, CLAUDE.md 3.2a): set it when it is not, printing the command.
 ensure_gh_ssh() {

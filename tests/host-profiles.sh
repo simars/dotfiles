@@ -1013,6 +1013,11 @@ check "LunarVim: linked for you, commands printed, lvim run headless once" \
 rm -f "$work/lv/log"
 check "LunarVim: already linked, nothing done" "|no-run" "$(lvim_link)|$([[ -e "$work/lv/log" ]] && echo ran || echo no-run)"
 check "LunarVim: never its init-lvim.sh" 0 "$(grep -c 'init-lvim' "$work/lvim.sh")"
+check "LunarVim: the setup script reaches the link (before its exit 0)" yes \
+    "$(awk '/^    link_lunarvim$/ { call = NR } /^exit 0$/ { ex = NR } END { print (call && ex && call < ex) ? "yes" : "no" }' "$work/omarchy.setup")"
+mkdir -p "$work/lv/home2/.local/share/lunarvim" && ln -s "$work/lv/missing" "$work/lv/home2/.local/share/lunarvim/lvim"
+check "LunarVim: a dangling link counts as linked (no ln error)" "" \
+    "$(LV="$work/lv" HOME="$work/lv/home2" LVIM_SHARE="$work/lv/share" PATH="$work/lv/bin:$PATH" bash -c 'source "$0"; link_lunarvim' "$work/lvim.sh" 2>&1)"
 
 check "omarchy setup script is valid bash" "" "$(bash -n "$work/omarchy.setup" 2>&1)"
 check "omarchy setup adds the three shell plugins" 3 "$(grep -cE '^    if omarchy plugin add "https://github.com/[^"]+" --yes; then$' "$work/omarchy.setup")"
@@ -1067,8 +1072,10 @@ check "bootstrap/omarchy.sh is valid bash" "" "$(bash -n bootstrap/omarchy.sh 2>
 if command -v shellcheck > /dev/null 2>&1; then
     check "bootstrap/omarchy.sh passes shellcheck" "" "$(shellcheck -S warning bootstrap/omarchy.sh 2>&1)"
 fi
-check "bootstrap/omarchy.sh hands over to the .cfg installer (works before ~/.cfg is checked out)" 1 \
-    "$(grep -cxF 'bash <(git --git-dir="$HOME/.cfg" show HEAD:guides/install.sh) || echo "    The installer reported a step that failed (above); fix it and run ~/guides/install.sh again."' bootstrap/omarchy.sh)"
+for b in omarchy macos; do
+    check "bootstrap/$b.sh reads the installer first and stops loudly without it, or when the clone fails" "1 1 1" \
+        "$(grep -cF 'installer="$(git --git-dir="$HOME/.cfg" show HEAD:guides/install.sh 2> /dev/null)" || die' bootstrap/$b.sh) $(grep -cF 'run git clone --bare "$CFG_SSH" "$HOME/.cfg" || die' bootstrap/$b.sh) $(grep -cF 'bash <(printf '"'"'%s\n'"'"' "$installer") || echo "    The installer reported a step that failed (above); fix it, then run this bootstrap again."' bootstrap/$b.sh)"
+done
 check "bootstrap/omarchy.sh prints the installer line readably (not /dev/fd)" 1 \
     "$(grep -cF "printf '    \$ bash <(git --git-dir=%s/.cfg show HEAD:guides/install.sh)" bootstrap/omarchy.sh)"
 check "bootstrap/omarchy.sh prints each command it runs (run helper)" "1 1 1" \
@@ -1163,6 +1170,17 @@ mkdir -p "$ad/Applications/Visual Studio Code.app/Contents"
 echo visual-studio-code > "$ad/brew-has"
 check "adopt: an app Homebrew already has, or one not installed, is left to brew bundle" "skipped=[]|no-log" \
     "$(adopt)|$([[ -e "$ad/brew-log" ]] && echo logged || echo no-log)"
+# The requirement check names an app Homebrew should have but does not manage (a failed adoption), never an App Store
+# one: check_casks, extracted from the rendered darwin script, with the same stub brew and scratch APPS_DIR.
+render darwin run_after_99_assert_requirements.sh.tmpl | sed -n '/^check_casks() {/,/^}/p' > "$ad/check.sh"
+check_casks_out() { AD="$ad" PATH="$ad/bin:$PATH" bash -c 'note() { echo "NOTE: $1"; }; source "$0"; check_casks "$1"' "$ad/check.sh" "$ad/Applications" 2>&1 | paste -sd'|' -; }
+rm -rf "$ad/Applications/"* "$ad/brew-has"; mkdir -p "$ad/Applications/Cursor.app/Contents" "$ad/Applications/Slack.app/Contents/_MASReceipt"
+check "requirement check: an app Homebrew does not manage goes on the to-do list with the fix; App Store ones never" \
+    "NOTE: Cursor.app is not managed by Homebrew (taking it over failed?). Fix: brew install --cask --adopt cursor" "$(check_casks_out)"
+echo cursor > "$ad/brew-has"
+check "requirement check: managed apps say nothing" "" "$(check_casks_out)"
+check "only Apple-silicon Macs check the casks" "1 0" \
+    "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c '^check_casks /Applications$') $(render intel run_after_99_assert_requirements.sh.tmpl | grep -c '^check_casks /Applications$')"
 check "the package script drops skipped casks from the Brewfile" 1 \
     "$(render darwin run_onchange_before_00_install_packages.sh.tmpl | grep -c 'drop_casks "$brewfile" $skipped_casks')"
 check "darwin casks include Hammerspoon" 1 "$(render darwin run_onchange_before_00_install_packages.sh.tmpl | grep -cx 'cask "hammerspoon"')"

@@ -66,13 +66,11 @@ fi
 [[ "$(plugin_state {{ .replaces | quote }})" != enabled ]] || omarchy plugin disable {{ .replaces | quote }} || true
 {{- end }}
 {{- end }}
-exit 0
-
 # LunarVim (lunarvim-git) needs a one-time link per user; never its init-lvim.sh. Done here so a new machine needs no
 # hand step; the requirement check still names it if lvim arrives later. Commands are printed before they run.
 link_lunarvim() {
     local share="${LVIM_SHARE:-/usr/share/lunarvim}" dir="$HOME/.local/share/lunarvim"
-    [[ -e "$dir/lvim" ]] && return 0
+    [[ -e "$dir/lvim" || -L "$dir/lvim" ]] && return 0
     echo "\$ mkdir -p $dir" && mkdir -p "$dir"
     echo "\$ ln -s $share $dir/lvim" && ln -s "$share" "$dir/lvim"
     echo "\$ lvim --headless +qa" && lvim --headless +qa < /dev/null > /dev/null 2>&1 || echo "NOTE: lvim --headless +qa failed; run it once by hand"
@@ -81,4 +79,6 @@ if command -v lvim > /dev/null 2>&1; then
     echo "==> LunarVim: link it for you (once)"
     link_lunarvim
 fi
+
+exit 0
 {{ end -}}

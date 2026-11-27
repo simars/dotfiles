@@ -97,12 +97,13 @@ run git -C "$HOME/.local/share/chezmoi" remote set-url origin "$REPO_SSH"
 # 4. The private ~/.cfg repository, then its installer for the rest (it asks before each step and prints its commands)
 step "4/6 ~/.cfg and the rest (~/guides/install.sh)"
 if [[ ! -d "$HOME/.cfg" ]]; then
-    run git clone --bare "$CFG_SSH" "$HOME/.cfg"
+    run git clone --bare "$CFG_SSH" "$HOME/.cfg" || die "cloning $HOME/.cfg failed (is the SSH key on GitHub?); fix it, then run this again."
 fi
+installer="$(git --git-dir="$HOME/.cfg" show HEAD:guides/install.sh 2> /dev/null)" || die "$HOME/.cfg has no guides/install.sh (an older copy?): git --git-dir=$HOME/.cfg fetch origin, then run this again."
 # Run from the repository itself, so it works before ~/.cfg is checked out (the installer checks it out).
 # (printed by hand: run would show bash's /dev/fd/63 for the <(...) part)
 printf '    $ bash <(git --git-dir=%s/.cfg show HEAD:guides/install.sh)\n' "$HOME"
-bash <(git --git-dir="$HOME/.cfg" show HEAD:guides/install.sh) || echo "    The installer reported a step that failed (above); fix it and run ~/guides/install.sh again."
+bash <(printf '%s\n' "$installer") || echo "    The installer reported a step that failed (above); fix it, then run this bootstrap again."
 
 # 6. Remote disk unlock, opt-in
 if [[ $with_remote_unlock -eq 1 ]]; then
