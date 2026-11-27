@@ -647,6 +647,7 @@ check "Copilot: leaves a file that is not JSON alone" "not json" "$(printf 'not 
 agents=".copilot/settings.json"   # each agent's target is added as its script lands
 for host in $hosts; do for t in $agents; do check "$host manages $t where the agent is present" yes "$(manages "$host" "$t")"; done; done
 absent="$(chezmoi --override-data "$(host_data omarchy | jq -c '.agents_present = false')" managed --include=all)"
+check "no agent: the rest of the repository is still managed" 1 "$(printf '%s\n' "$absent" | grep -cx '\.zshrc')"
 for t in .claude .copilot .cursor .codex .gemini; do check "no agent: $t is left alone" 0 "$(printf '%s\n' "$absent" | grep -cE "^${t//./\\.}(/|$)")"; done
 check "usability intents are vim keys, copy on select and mouse" "true true true" "$(chezmoi --override-data "$(host_data omarchy)" execute-template '{{ .agent_usability.vim_keys }} {{ .agent_usability.copy_on_select }} {{ .agent_usability.mouse }}')"
 
