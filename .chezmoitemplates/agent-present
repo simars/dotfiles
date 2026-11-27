@@ -1,0 +1,7 @@
+{{- /* "yes" when an agent is set up on this host, empty otherwise. Called as
+  includeTemplate "agent-present" (dict "data" . "dir" ".codex" "cmd" "codex")
+  Present: its config folder in $HOME exists, or its command is found (mise shims included).
+  Tests set agents_present (true or false) to skip the detection. */ -}}
+{{- if hasKey .data "agents_present" -}}
+{{-   if .data.agents_present }}yes{{ end -}}
+{{- else if or (stat (joinPath .data.chezmoi.destDir .dir)) (lookPath .cmd) }}yes{{ end -}}

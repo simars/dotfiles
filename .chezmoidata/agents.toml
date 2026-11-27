@@ -1,0 +1,8 @@
+# What every CLI coding agent (Claude Code, Copilot CLI, Cursor's agent, Antigravity, Codex) is set to, in each
+# agent's own setting names. One list: each agent's modify_ script reads it, and the cheatsheet's "Same Keys in
+# Every Agent" says what each agent's key does. An agent that is not set up on a host is left alone (see
+# .chezmoitemplates/agent-present and .chezmoiignore).
+[agent_usability]
+vim_keys = true
+copy_on_select = true
+mouse = true

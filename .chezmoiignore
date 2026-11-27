@@ -91,3 +91,12 @@ Library/**
 .config/zsh/shared-helpers.zsh
 .config/zsh/ssh-reconnect.bash
 {{ end }}
+# Agent settings (vim keys, copy on select, mouse): only for an agent that is set up here, so chezmoi never creates the
+# folder of an agent that is not installed. Each pair is the agent's config folder and its command. Never ignore
+# .gemini itself: ai-tooling writes ~/.gemini/AGENTS.md and Antigravity's skills there.
+{{ range (list (list ".claude" "claude") (list ".copilot" "copilot") (list ".cursor" "cursor-agent") (list ".codex" "codex") (list ".gemini/antigravity-cli" "agy")) }}
+{{- if ne (includeTemplate "agent-present" (dict "data" $ "dir" (index . 0) "cmd" (index . 1))) "yes" }}
+{{ index . 0 }}
+{{ index . 0 }}/**
+{{ end }}
+{{- end }}

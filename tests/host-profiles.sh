@@ -29,12 +29,12 @@ repo="$PWD"
 # ID_LIKE=debian would otherwise leak into the Arch host.
 host_data() {
     case "$1" in
-        darwin) echo '{"chezmoi":{"os":"darwin","arch":"arm64","osRelease":{"id":"","idLike":""}}}' ;;
-        intel) echo '{"chezmoi":{"os":"darwin","arch":"amd64","osRelease":{"id":"","idLike":""}}}' ;;
-        omarchy) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"omarchy","idLike":"arch"}}}' ;;
-        arch) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"arch","idLike":""}}}' ;;
-        ubuntu) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"ubuntu","idLike":"debian"}}}' ;;
-        debian) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"debian","idLike":""}}}' ;;
+        darwin) echo '{"chezmoi":{"os":"darwin","arch":"arm64","osRelease":{"id":"","idLike":""}},"agents_present":true}' ;;
+        intel) echo '{"chezmoi":{"os":"darwin","arch":"amd64","osRelease":{"id":"","idLike":""}},"agents_present":true}' ;;
+        omarchy) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"omarchy","idLike":"arch"}},"agents_present":true}' ;;
+        arch) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"arch","idLike":""}},"agents_present":true}' ;;
+        ubuntu) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"ubuntu","idLike":"debian"}},"agents_present":true}' ;;
+        debian) echo '{"chezmoi":{"os":"linux","osRelease":{"id":"debian","idLike":""}},"agents_present":true}' ;;
     esac
 }
 hosts="darwin intel omarchy arch ubuntu debian"
@@ -641,6 +641,14 @@ if command -v jq > /dev/null 2>&1; then
     check "Copilot: second run changes nothing" "$(printf '{"a": 1}' | bash "$copilot_modify")" "$(printf '{"a": 1}' | bash "$copilot_modify" | bash "$copilot_modify")"
 fi
 check "Copilot: leaves a file that is not JSON alone" "not json" "$(printf 'not json' | bash private_dot_copilot/modify_settings.json)"
+
+# Every CLI coding agent gets the same usability settings (vim keys, copy on select, mouse), but only where it is set up:
+# a host without the agent gets no folder for it. `agents_present` (tests only) stands in for the detection.
+agents=".copilot/settings.json"   # each agent's target is added as its script lands
+for host in $hosts; do for t in $agents; do check "$host manages $t where the agent is present" yes "$(manages "$host" "$t")"; done; done
+absent="$(chezmoi --override-data "$(host_data omarchy | jq -c '.agents_present = false')" managed --include=all)"
+for t in .claude .copilot .cursor .codex .gemini; do check "no agent: $t is left alone" 0 "$(printf '%s\n' "$absent" | grep -cE "^${t//./\\.}(/|$)")"; done
+check "usability intents are vim keys, copy on select and mouse" "true true true" "$(chezmoi --override-data "$(host_data omarchy)" execute-template '{{ .agent_usability.vim_keys }} {{ .agent_usability.copy_on_select }} {{ .agent_usability.mouse }}')"
 
 # SSH agent on Linux: a dead SSH_AUTH_SOCK (a tmux or Herdr server started over SSH, after that login ended) falls back to
 # GNOME keyring's agent; a live socket, and an unset one, are left alone. The Macs use their own agent.
