@@ -394,6 +394,20 @@ Every `git commit`, in any repo, runs `~/.config/git/hooks/gitleaks-pre-commit` 
 | `mise-audit` | Find Missing Project Pins | List the runtime pins under `$HOME` that mise has not installed (also run, as a warning, after every `chezmoi apply`):<br>`mise-audit` |
 | `mise-audit --install` | Install Missing Project Pins | Run `mise install` in every project with a missing pin, then report what still failed:<br>`mise-audit --install` |
 
+### New Mac (one command)
+From Terminal on a fresh Apple-silicon Mac (Intel Macs: `docs/INTEL_MACS.md`):
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/simars/dotfiles/main/bootstrap/macos.sh)
+```
+
+Command Line Tools (macOS's dialog, then run it again), Homebrew, the SSH key (stops until `~/.ssh/id_rsa` is there),
+`chezmoi init --apply` (apps, macOS settings, Ctrl+Space off, iTerm2's default profile, `gh` over SSH, Hammerspoon
+opened once), GitHub over SSH and the passphrase, then `~/.cfg` and its installer (`~/guides/install.sh`: dotfiles-local
+links, Claude Code, ai-tooling, `gh` login, remote access, power; it asks). Every command is printed before it runs;
+safe to run again. Then yours: sign-ins, Tailscale, Hammerspoon's permission, iTerm2's Claude Code integration, Screen
+Sharing control, a log out (`docs/NEW_MACHINE.md`, section A).
+
 ### New Omarchy Machine (one command)
 From a terminal on a fresh Omarchy, signed in as yourself:
 

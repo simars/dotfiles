@@ -234,7 +234,7 @@ fi
 if [[ -d "$HOME/.cfg" ]]; then
     echo "OK:   ~/.cfg (ai-tooling, guides, dotfiles-local)"
 else
-    note "the private ~/.cfg is not cloned, so ai-tooling, the guides and dotfiles-local are missing. Fix: docs/NEW_MACHINE.md in the chezmoi source, step \"Private files\""
+    note "the private ~/.cfg is not cloned, so ai-tooling, the guides and dotfiles-local are missing. Fix: git clone --bare git@github.com:simars/.cfg.git ~/.cfg && bash <(git --git-dir=\$HOME/.cfg show HEAD:guides/install.sh)"
 fi
 if [[ -d "$HOME/ai-tooling" ]]; then
     if [[ "$(readlink "$HOME/.claude/CLAUDE.md" 2> /dev/null)" == "$HOME/ai-tooling/claude/CLAUDE.md" ]]; then

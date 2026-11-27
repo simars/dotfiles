@@ -9,8 +9,8 @@ Step by step, with what is yours to do: [`docs/NEW_MACHINE.md`](docs/NEW_MACHINE
 # Omarchy, from a terminal on the machine (stops until your SSH key is copied in, then continues):
 bash <(curl -fsSL https://raw.githubusercontent.com/simars/dotfiles/main/bootstrap/omarchy.sh)
 
-# Apple-silicon Mac, after Homebrew and your SSH key (~/.ssh/id_rsa):
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin" init --apply https://github.com/simars/dotfiles.git
+# Apple-silicon Mac, from Terminal (Command Line Tools, Homebrew, then stops until your SSH key is copied in):
+bash <(curl -fsSL https://raw.githubusercontent.com/simars/dotfiles/main/bootstrap/macos.sh)
 ```
 
 Every `chezmoi apply` ends with `==> To do on this machine after this apply:` (or `Nothing to do`): follow it until nothing is left.

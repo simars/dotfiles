@@ -1075,6 +1075,50 @@ check "bootstrap/omarchy.sh prints each command it runs (run helper)" "1 1 1" \
     "$(grep -c '^run() {' bootstrap/omarchy.sh) $(grep -c '^run omarchy pkg add chezmoi git$' bootstrap/omarchy.sh) $(grep -c '^    run git clone --bare' bootstrap/omarchy.sh)"
 check "bootstrap/omarchy.sh leaves the .cfg settings and guides to the installer" 0 \
     "$(grep -cE 'setup-guides\" apply|config status.showUntrackedFiles|set-upstream-to' bootstrap/omarchy.sh)"
+# New Mac: bootstrap/macos.sh, run with stand-ins (uname, xcode-select, brew, curl, chezmoi, ssh, git, ssh-key-remember)
+# in a scratch HOME; BREW_PREFIX points at a scratch Homebrew; BOOTSTRAP_ASSUME_TTY stands in for a terminal.
+check "bootstrap/macos.sh is valid bash" "" "$(bash -n bootstrap/macos.sh 2>&1)"
+if command -v shellcheck > /dev/null 2>&1; then
+    check "bootstrap/macos.sh passes shellcheck" "" "$(shellcheck -S warning bootstrap/macos.sh 2>&1)"
+fi
+bm="$work/bm"
+bm_reset() { # bm_reset [nokey]: a Mac with the Command Line Tools and Homebrew, and the SSH key unless nokey
+    rm -rf "$bm"; mkdir -p "$bm/bin" "$bm/home/.ssh" "$bm/home/.local/bin" "$bm/brew/bin"
+    [[ "${1:-}" == nokey ]] || touch "$bm/home/.ssh/id_rsa"
+    printf '#!/bin/sh\nprintf "export PATH=%s/brew/bin:\\$PATH\\n"\n' "$bm" > "$bm/brew/bin/brew"
+    printf '#!/bin/sh\ncase "$1" in -s) echo "${UNAME_S:-Darwin}" ;; -m) echo "${UNAME_M:-arm64}" ;; esac\n' > "$bm/bin/uname"
+    printf '#!/bin/sh\n[ "$1" = -p ] && { echo /Library/Developer/CommandLineTools; exit 0; }\necho "xcode-select $*" >> "$BM/log"\n' > "$bm/bin/xcode-select"
+    printf '#!/bin/sh\necho "chezmoi $*" >> "$BM/log"\nmkdir -p "$HOME/.local/share/chezmoi/.git"\n' > "$bm/bin/chezmoi"
+    printf '#!/bin/sh\necho "Hi! You'"'"'ve successfully authenticated, but GitHub does not provide shell access."\n' > "$bm/bin/ssh"
+    printf '#!/bin/sh\necho "ssh-key-remember" >> "$BM/log"\n' > "$bm/home/.local/bin/ssh-key-remember"
+    cat > "$bm/bin/git" << 'EOF_GIT'
+#!/bin/bash
+case " $* " in
+  *" show HEAD:guides/install.sh "*) echo 'echo "installer ran" >> "$BM/log"' ;;
+  *" clone --bare "*) echo "git $*" >> "$BM/log"; mkdir -p "$HOME/.cfg" ;;
+  *) echo "git $*" >> "$BM/log" ;;
+esac
+EOF_GIT
+    chmod +x "$bm/bin/"* "$bm/brew/bin/brew" "$bm/home/.local/bin/ssh-key-remember"
+}
+macboot() { BM="$bm" HOME="$bm/home" BREW_PREFIX="$bm/brew" PATH="$bm/bin:/usr/bin:/bin" bash bootstrap/macos.sh "$@" 2>&1; echo "exit=$?"; }
+bm_reset
+check "bootstrap/macos.sh on an Intel Mac stops, pointing to INTEL_MACS.md, nothing run" "1|exit=1|no-log" \
+    "$(UNAME_M=x86_64 BOOTSTRAP_ASSUME_TTY=1 macboot | grep -c 'docs/INTEL_MACS.md')|$(UNAME_M=x86_64 BOOTSTRAP_ASSUME_TTY=1 macboot | tail -1)|$([[ -e "$bm/log" ]] && echo logged || echo no-log)"
+check "bootstrap/macos.sh off macOS stops" "exit=1" "$(UNAME_S=Linux BOOTSTRAP_ASSUME_TTY=1 macboot | tail -1)"
+bm_reset nokey
+check "bootstrap/macos.sh without the SSH key: stops before chezmoi, naming the copy command, nothing run" "1|exit=1|no-log" \
+    "$(BOOTSTRAP_ASSUME_TTY=1 macboot > "$bm/out"; grep -c 'install -m 600 <copy>/id_rsa' "$bm/out")|$(tail -1 "$bm/out")|$([[ -e "$bm/log" ]] && echo logged || echo no-log)"
+bm_reset
+BOOTSTRAP_ASSUME_TTY=1 macboot > "$bm/out"
+check "bootstrap/macos.sh: chezmoi, SSH remote, passphrase, .cfg clone, installer, in that order" \
+    "chezmoi|git -C|ssh-key-remember|git clone --bare|installer ran|chezmoi|exit=0" \
+    "$(cut -d' ' -f1-2 "$bm/log" | sed -E 's/^(chezmoi|ssh-key-remember|installer ran).*/\1/; s/^git (-C|clone).*/git \1/; s/^git clone$/git clone --bare/' | paste -sd'|' -)|$(tail -1 "$bm/out")"
+check "bootstrap/macos.sh prints each command before it runs" "1 1 1 1" \
+    "$(grep -c '^    \$ git -C .* remote set-url origin git@github.com:simars/dotfiles.git' "$bm/out") $(grep -c '^    \$ .*ssh-key-remember' "$bm/out") $(grep -c '^    \$ git clone --bare git@github.com:simars/.cfg.git' "$bm/out") $(grep -c '^    \$ bash <(git --git-dir=.*/.cfg show HEAD:guides/install.sh)' "$bm/out")"
+bm_reset
+check "bootstrap/macos.sh without a terminal lists the steps and changes nothing" "no-log|exit=0|1" \
+    "$(macboot < /dev/null > "$bm/out"; [[ -e "$bm/log" ]] && echo logged || echo no-log)|$(tail -1 "$bm/out")|$(grep -c 'run it in a terminal' "$bm/out")"
 check "bootstrap refuses to run without a terminal" 1 "$(bash bootstrap/omarchy.sh < /dev/null > /dev/null 2>&1; echo $?)"
 check "omarchy setup runs the Tailscale and 1Password installers" 2 "$(grep -cE '^        omarchy install service (tailscale|1password) ' "$work/omarchy.setup")"
 check "omarchy packages include the declared apps" 6 "$(render omarchy run_onchange_before_00_install_packages.sh.tmpl | grep -oE '"(chezmoi|claude-desktop|cursor-bin|google-chrome|slack-desktop|visual-studio-code-bin)"' | sort -u | wc -l | tr -d ' ')"
