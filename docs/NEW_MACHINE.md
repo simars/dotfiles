@@ -44,7 +44,8 @@ and apps whose config just changed and need a reload. Follow it until it says no
      repository, and chezmoi builds the work rules in `~/.gitconfig` and `~/.gitconfig.work` from them. To change
      them later: `chezmoi init --prompt`, then `chezmoi apply`.
    - It then installs the Homebrew tools and apps in `.chezmoidata/packages.toml` (iTerm2, Ghostty, kitty, Wave, Warp,
-     the Herdr app, Hammerspoon, the 1Password CLI, the Nerd Font), LunarVim and the mise runtimes.
+     the Herdr app, Hammerspoon, the 1Password CLI, the Nerd Font, 1Password, Claude, Chrome, Slack, VS Code, Cursor, `gh`),
+     LunarVim and the mise runtimes. Apps already installed by hand are taken over by Homebrew; App Store copies are left alone.
    - It sets macOS's own settings (Dock, Mission Control, Finder, trackpad, appearance, menu bar; cheatsheet: "Same
      macOS Settings on Every Mac"), restarts the Dock and Finder, and lists a log out for the trackpad settings.
    - It ends with the to-do list. Most of it is the steps below.
@@ -88,9 +89,9 @@ and apps whose config just changed and need a reload. Follow it until it says no
     gh auth login
     gh config set git_protocol ssh
     ```
-11. **Apps chezmoi does not install:** 1Password (sign in, then Settings > Developer > Integrate with 1Password CLI,
-    for `op`), Tailscale (sign in: the short SSH host names need it), Claude, Chrome, Slack, VS Code and Cursor
-    (Settings Sync carries their settings).
+11. **Sign in to the apps:** 1Password (then Settings > Developer > Integrate with 1Password CLI, for `op`), Claude,
+    Chrome, Slack, VS Code and Cursor (Settings Sync carries their settings): chezmoi installed them. Tailscale is the
+    one app it does not install: install it (App Store or standalone) and sign in; the short SSH host names need it.
 12. **iTerm2, once:**
     - Open iTerm2, then the menu **iTerm2 > Install Claude Code Integration**; choose **Mark Rewritable and Install**.
     - Settings > Profiles, select **Default (Left Option as Alt)**, then Other Actions > **Set as Default**.

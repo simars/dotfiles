@@ -18,6 +18,7 @@ formulae = [
     "fx",
     "fzf",
     "gawk",
+    "gh",
     "git",
     "gitleaks",
     "gnu-sed",
@@ -48,16 +49,32 @@ formulae = [
     "zsh-syntax-highlighting"
 ]
 casks = [
+    "1password",
     "1password-cli",
+    "claude",
+    "cursor",
     "font-jetbrains-mono-nerd-font",
     "ghostty",
+    "google-chrome",
     "hammerspoon",
     "herdr-app",
     "iterm2",
     "kitty",
+    "slack",
+    "visual-studio-code",
     "warp",
     "wave"
 ]
+# cask_apps: the app each of these casks puts in /Applications. An app already there that Homebrew did not install is
+# adopted (brew install --cask --adopt) before brew bundle runs; one from the App Store is left alone and left out of
+# brew bundle (.chezmoitemplates/adopt-casks.sh). Tailscale stays per Mac (App Store or standalone variant).
+[darwin.brew.cask_apps]
+"1password" = "1Password.app"
+claude = "Claude.app"
+cursor = "Cursor.app"
+"google-chrome" = "Google Chrome.app"
+slack = "Slack.app"
+"visual-studio-code" = "Visual Studio Code.app"
 
 # Omarchy: installed only with Omarchy's own commands (`omarchy pkg add`, `omarchy pkg aur add`), never pacman, apt
 # or downloads. Apps that need setup beyond the package (Tailscale, 1Password) are omarchy_installers in omarchy.toml. Omarchy already ships the rest of the Mac list (tmux, neovim, herdr, mise, eza, bat, fd, fzf, ...).

@@ -29,6 +29,10 @@ if ! command -v brew &> /dev/null; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
+{{ template "adopt-casks.sh" . }}
+echo "==> Taking over apps already in /Applications that Homebrew did not install..."
+adopt_casks /Applications
+
 echo "==> Synchronizing Homebrew Formulae & Casks via Brew Bundle..."
 # Give brew bundle the Brewfile as a file, not on stdin: its auto-update runs first and can start builds that inherit
 # stdin. On 2026-10-20 the pkgconf rebuild after a macOS upgrade swallowed the whole Brewfile, and nothing installed.
@@ -41,6 +45,8 @@ brew {{ . | quote }}
 cask {{ . | quote }}
 {{ end -}}
 EOF
+# shellcheck disable=SC2086 # one word per skipped cask
+drop_casks "$brewfile" $skipped_casks
 if ! brew bundle --no-upgrade --file="$brewfile" < /dev/null; then
     echo "WARNING: Some Homebrew packages could not be installed. Continuing..."
 fi

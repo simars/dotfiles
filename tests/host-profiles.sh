@@ -1079,6 +1079,30 @@ done
 for host in omarchy arch ubuntu debian; do
     check "$host leaves ~/.hammerspoon alone" no "$(manages "$host" .hammerspoon/init.lua)"
 done
+check "darwin installs the hand-installed apps and gh with Homebrew" 7 \
+    "$(render darwin run_onchange_before_00_install_packages.sh.tmpl | grep -cxE 'cask "(1password|claude|google-chrome|slack|visual-studio-code|cursor)"|brew "gh"')"
+# Adopting apps already in /Applications (adopt-casks.sh): a stub brew logs its arguments; APPS_DIR is a scratch folder.
+ad="$work/adopt"
+mkdir -p "$ad/bin" "$ad/Applications"
+printf '#!/bin/sh\n[ "$1" = list ] && { cat "$AD/brew-has" 2>/dev/null; exit 0; }\necho "$*" >> "$AD/brew-log"\n' > "$ad/bin/brew"
+chmod +x "$ad/bin/brew"
+render darwin run_onchange_before_00_install_packages.sh.tmpl > /dev/null
+chezmoi --override-data "$(host_data darwin)" execute-template '{{ template "adopt-casks.sh" . }}' > "$ad/adopt.sh" 2>&1
+adopt() { AD="$ad" PATH="$ad/bin:$PATH" bash -c 'source "$0"; adopt_casks "$1"; echo "skipped=[$skipped_casks]"' "$ad/adopt.sh" "$ad/Applications" 2>&1 | paste -sd'|' -; }
+mkdir -p "$ad/Applications/Google Chrome.app/Contents"
+check "adopt: a hand-installed app is adopted, its command printed first" \
+    '$ brew install --cask --adopt google-chrome|skipped=[]|install --cask --adopt google-chrome' "$(adopt)|$(cat "$ad/brew-log")"
+rm -rf "$ad/Applications/"* "$ad/brew-log"
+mkdir -p "$ad/Applications/Slack.app/Contents/_MASReceipt"
+check "adopt: an App Store app is skipped, named, and left out of the Brewfile" \
+    'skipped: Slack.app is from the App Store; Homebrew leaves it alone|skipped=[slack]|no-log' "$(adopt)|$([[ -e "$ad/brew-log" ]] && echo logged || echo no-log)"
+rm -rf "$ad/Applications/"*
+mkdir -p "$ad/Applications/Visual Studio Code.app/Contents"
+echo visual-studio-code > "$ad/brew-has"
+check "adopt: an app Homebrew already has, or one not installed, is left to brew bundle" "skipped=[]|no-log" \
+    "$(adopt)|$([[ -e "$ad/brew-log" ]] && echo logged || echo no-log)"
+check "the package script drops skipped casks from the Brewfile" 1 \
+    "$(render darwin run_onchange_before_00_install_packages.sh.tmpl | grep -c 'drop_casks "$brewfile" $skipped_casks')"
 check "darwin casks include Hammerspoon" 1 "$(render darwin run_onchange_before_00_install_packages.sh.tmpl | grep -cx 'cask "hammerspoon"')"
 check "the Mac requirement check names Hammerspoon; only Intel points to INTEL_MACS.md" "1 0 1" \
     "$(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'cask hammerspoon"$') $(render darwin run_after_99_assert_requirements.sh.tmpl | grep -c 'hammerspoon (docs/INTEL_MACS.md)') $(render intel run_after_99_assert_requirements.sh.tmpl | grep -c 'hammerspoon (docs/INTEL_MACS.md)')"
