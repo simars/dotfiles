@@ -2,10 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `chezmoi apply` gives every installed CLI coding agent (Claude Code, Copilot CLI, Cursor's agent, Codex, OpenCode) the same usability settings, vim keys and copy on select, on every machine, and puts them back after a manual change.
+**Goal:** `chezmoi apply` gives every installed CLI coding agent in scope (Claude Code, Copilot CLI, Cursor's agent, Antigravity, Codex) the same usability settings, vim keys, copy on select and mouse, on every machine, and puts them back after a manual change. OpenCode is out of scope: the user does not use it.
 
 **Architecture:**
-- One data file holds the two intents.
+- One data file holds the three intents.
 - One `modify_` script per agent translates them into that agent's own keys and passes everything else in the file through. JSON files go through a shared jq include; Codex's TOML goes through a small section-aware awk include.
 - A `.chezmoiignore` rule skips agents that are neither set up nor installed.
 - Claude's `editorMode` and `tui` move here from ai-tooling, so each key has one owner.
@@ -13,6 +13,11 @@
 **Tech Stack:** chezmoi templates, bash 3.2-compatible scripts, jq, POSIX awk; `tests/host-profiles.sh`.
 
 **Spec:** `~/ai-tooling/docs/superpowers/specs/2026-11-27-unified-agent-experience-design.md` (private `~/.cfg`), Part 1. Parts 2 (the apply runs ai-tooling) and 3 (capability baseline) get their own plans.
+
+**Changes from the spec (2026-11-27, the user's):**
+- OpenCode is dropped.
+- Antigravity gets real settings: its CLI has `editorMode` and `copyOnSelect`.
+- `mouse` is on wherever an agent can switch it, unless that conflicts with something.
 
 ## Global Constraints
 
@@ -25,13 +30,13 @@
   - Input it cannot parse, or a missing `jq`, passes through unchanged.
   - A second run changes nothing.
 - Keep the target's existing modes:
-  - folders `.claude`, `.cursor`, `.codex` and `.config/opencode` stay 755, so their sources use `dot_` (not `private_dot_`);
+  - folders `.claude`, `.cursor`, `.codex`, `.gemini` and `.gemini/antigravity-cli` stay 755, so their sources use `dot_` (not `private_dot_`);
   - `.copilot` is 700 (`private_dot_copilot`, already in place);
-  - the files `~/.claude/settings.json`, `~/.codex/config.toml` and `~/.config/opencode/cli.json` are 600 (`modify_private_…`);
+  - the files `~/.claude/settings.json`, `~/.codex/config.toml` and `~/.gemini/antigravity-cli/settings.json` are 600 (`modify_private_…`);
   - `~/.cursor/cli-config.json` and `~/.copilot/settings.json` are 644 (`modify_…`).
 
   Spiked on 2026-11-27: `dot_x/modify_private_f` keeps a 755 folder and a 600 file, with an empty diff.
-- Intents, all `true`: `vim_keys`, `copy_on_select`. A `false` writes the agent's opposite value; it does not leave the key alone.
+- Intents, all `true`: `vim_keys`, `copy_on_select`, `mouse`. A `false` writes the agent's opposite value; it does not leave the key alone. Mouse is on wherever an agent can switch it, unless that conflicts with something; none of these agents has a conflict, because each one that takes the mouse also copies on select.
 - `docs/CHEATSHEET.md` changes in the same commit as the code (AGENTS.md section 2).
 - Each commit passes `bash tests/host-profiles.sh` (0 failed) and `gitleaks detect --source . -v` (no leaks).
 - Conventional commits as `Simar Singh <simarpaulsingh@gmail.com>`, with no agent trailers and no push.
@@ -39,7 +44,7 @@
 
 ## Review Focus
 
-1. **A settings file the agent wrote with comments or trailing commas** (OpenCode reads JSONC). The script must leave it byte-for-byte unchanged, not empty it. Every JSON task has a "not JSON passes through" test.
+1. **A settings file the agent or the user wrote with comments or trailing commas.** The script must leave it byte-for-byte unchanged, not empty it. Every JSON task has a "not JSON passes through" test.
 2. **Codex `config.toml` with subtables after `[tui]`** (`[tui.notifications]`, `[hooks.state."…"]`), with `[tui]` missing, or with the keys already set to other values. Keys go into `[tui]` only, exactly once. Task 4 tests all four shapes.
 3. **A host without the agent** (a Mac without Codex, CI): nothing is managed, so no folder is created. Task 1 tests presence true and false.
 4. **The agent rewrites the file in its own key order between applies.** The next apply changes only the two intents, and a second apply changes nothing. Each task has an idempotence test.
@@ -56,7 +61,7 @@
 - Modify: `tests/host-profiles.sh` (`host_data`, and new checks after the Copilot block, around line 634)
 
 **Interfaces:**
-- Produces: data `.agent_usability.vim_keys` and `.agent_usability.copy_on_select` (bool).
+- Produces: data `.agent_usability.vim_keys`, `.agent_usability.copy_on_select` and `.agent_usability.mouse` (bool).
 - Produces: template `agent-present`, called as `includeTemplate "agent-present" (dict "data" . "dir" ".codex" "cmd" "codex")`. It renders `yes` when the agent is present and an empty string otherwise.
   - Present means: `.data.agents_present` when that key exists (tests only), else `stat (joinPath .data.chezmoi.destDir .dir)` or `lookPath .cmd`.
 - Produces: data key `agents_present` (bool, tests only), which overrides the detection.
@@ -68,18 +73,19 @@
   agents=".copilot/settings.json"   # Tasks 2-4 add each agent's target as its script lands
   for host in $hosts; do for t in $agents; do check "$host manages $t where the agent is present" yes "$(manages "$host" "$t")"; done; done
   absent="$(chezmoi --override-data "$(host_data omarchy | jq -c '.agents_present = false')" managed --include=all)"
-  for t in .claude .copilot .cursor .codex .config/opencode; do check "no agent: $t is left alone" 0 "$(printf '%s\n' "$absent" | grep -cE "^${t//./\\.}(/|$)")"; done
-  check "usability intents are vim keys and copy on select" "true true" "$(chezmoi --override-data "$(host_data omarchy)" execute-template '{{ .agent_usability.vim_keys }} {{ .agent_usability.copy_on_select }}')"
+  for t in .claude .copilot .cursor .codex .gemini; do check "no agent: $t is left alone" 0 "$(printf '%s\n' "$absent" | grep -cE "^${t//./\\.}(/|$)")"; done
+  check "usability intents are vim keys, copy on select and mouse" "true true true" "$(chezmoi --override-data "$(host_data omarchy)" execute-template '{{ .agent_usability.vim_keys }} {{ .agent_usability.copy_on_select }} {{ .agent_usability.mouse }}')"
   ```
 
 - [ ] **Step 2: Run** `bash tests/host-profiles.sh 2>&1 | tail -3`. Expected: FAIL. The intents check fails, and only the existing Copilot paths are managed.
 
 - [ ] **Step 3: Implement.**
-  - `agents.toml`: an `[agent_usability]` table with the two intents and a comment pointing to the cheatsheet ("Same Keys in Every Agent").
+  - `agents.toml`: an `[agent_usability]` table with the three intents and a comment pointing to the cheatsheet ("Same Keys in Every Agent").
   - `agent-present`, as specified under Interfaces.
-  - `.chezmoiignore`: one block per agent, each ignoring `<dir>` and `<dir>/**` unless `agent-present` renders `yes`. The pairs are `.claude`/`claude`, `.copilot`/`copilot`, `.cursor`/`cursor-agent`, `.codex`/`codex` and `.config/opencode`/`opencode`.
+  - `.chezmoiignore`: one block per agent, each ignoring `<dir>` and `<dir>/**` unless `agent-present` renders `yes`. The pairs are `.claude`/`claude`, `.copilot`/`copilot`, `.cursor`/`cursor-agent`, `.codex`/`codex` and `.gemini/antigravity-cli`/`agy`.
+  - For Antigravity, ignore `.gemini/antigravity-cli` and everything under it. Never ignore `.gemini` itself: ai-tooling writes `~/.gemini/AGENTS.md` and Antigravity's skills there.
 
-  The script files arrive in later tasks, so `$agents` starts with Copilot's target alone. The "no agent" check already covers all five folders: an ignore rule with nothing under it ignores nothing.
+  The script files arrive in later tasks, so `$agents` starts with Copilot's target alone. The "no agent" check already covers all five agents: an ignore rule with nothing under it ignores nothing.
 
 - [ ] **Step 4: Run** the suite. Expected: `0 failed`.
 
@@ -104,20 +110,27 @@
   - The include reads stdin and turns blank input into `{}`.
   - It runs `jq --indent 2 "${args[@]}" "$filter"` and prints the result; if `jq` is missing or fails, it prints the input unchanged.
   - Its body is today's Copilot script, generalised.
-- Produces: the jq arguments `$vim` and `$copy` (bool) in every JSON agent script.
+- Produces: the jq arguments `$vim`, `$copy` and `$mouse` (bool) in every JSON agent script.
 
 - [ ] **Step 1: Write the failing tests.** Replace the Copilot behaviour checks; add Claude's. Render each script with `render omarchy <file>` into `$work`, then pipe input to `bash`:
-  - Copilot `{"a":1}` gives `{"a":1,"editorMode":"vim","copyOnSelect":true}`.
-  - Claude `{"model":"x"}` gives `{"model":"x","editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}`.
+  - Copilot `{"a":1}` gives `{"a":1,"editorMode":"vim","copyOnSelect":true,"mouse":true}`.
+  - Claude `{"model":"x","env":{"CLAUDE_CODE_DISABLE_MOUSE":"1","K":"v"}}` gives `{"model":"x","env":{"K":"v"},"editorMode":"vim","copyOnSelect":true,"tui":"fullscreen"}`: the switch-off is removed, and `K` is kept.
+  - Claude `{}` gives no `env` key at all.
   - Both: blank input gives just the keys; `not json` passes through unchanged; a second run equals the first.
-  - With `agent_usability` overridden to `false`: Copilot writes `"editorMode":"normal","copyOnSelect":false`, Claude writes `"editorMode":"normal","copyOnSelect":false`, and `tui` stays `"fullscreen"`.
+  - With `agent_usability` overridden to `false`:
+    - Copilot writes `"editorMode":"normal","copyOnSelect":false,"mouse":false`.
+    - Claude writes `"editorMode":"normal","copyOnSelect":false` and `env.CLAUDE_CODE_DISABLE_MOUSE` = `"1"`; `tui` stays `"fullscreen"`.
   - Add `.claude/settings.json` to `$agents`.
 
 - [ ] **Step 2: Run** the suite. Expected: FAIL on the new Claude and Copilot checks.
 
 - [ ] **Step 3: Implement.** The jq filters:
-  - Copilot: `.editorMode = (if $vim then "vim" else "normal" end) | .copyOnSelect = $copy`
-  - Claude: `.editorMode = (if $vim then "vim" else "normal" end) | .copyOnSelect = $copy | .tui = "fullscreen"`
+  - Copilot: `.editorMode = (if $vim then "vim" else "normal" end) | .copyOnSelect = $copy | .mouse = $mouse`
+  - Claude: `.editorMode = (if $vim then "vim" else "normal" end) | .copyOnSelect = $copy | .tui = "fullscreen"`. Then, for the mouse:
+    - with `$mouse`, delete `.env.CLAUDE_CODE_DISABLE_MOUSE`, and delete `.env` if that leaves it empty;
+    - without `$mouse`, set `.env.CLAUDE_CODE_DISABLE_MOUSE = "1"`.
+
+    Claude Code has no mouse setting, only this environment switch, which it reads from the `env` block of `settings.json`. The mouse is on when the switch is unset.
 
   The `reload_hint` message for Claude: `Claude Code's settings changed: restart open Claude Code sessions to pick them up`. The process is `claude`.
 
@@ -125,37 +138,38 @@
 
 - [ ] **Step 5: Commit:** `feat(agents): vim keys and copy on select in Claude Code and Copilot CLI`.
 
-### Task 3: Cursor's agent and OpenCode
+### Task 3: Cursor's agent and Antigravity
 
 **Files:**
 - Create: `dot_cursor/modify_cli-config.json.tmpl`
-- Create: `dot_config/opencode/modify_private_cli.json.tmpl`
-- Modify: `run_after_99_assert_requirements.sh.tmpl`: `reload_hint` for both, with processes `cursor-agent` and `opencode`.
-- Modify: `docs/CHEATSHEET.md` ("Same Keys in Every Agent" rows)
+- Create: `dot_gemini/dot_antigravity-cli/modify_private_settings.json.tmpl`
+- Modify: `run_after_99_assert_requirements.sh.tmpl`: `reload_hint` for both, with processes `cursor-agent` and `agy`. Antigravity's process name may be `antigravity`; `reload_hint` already matches the first word of the command line, and the hint must fire for `agy` started either way.
+- Modify: `docs/CHEATSHEET.md` ("Same Keys in Every Agent" rows; this replaces Antigravity's "not available" row from Task 2)
 - Test: `tests/host-profiles.sh`
 
 **Interfaces:**
 - Consumes: `modify-json.sh` with `filter` and `args` (Task 2).
 
-- [ ] **Step 1: Write the failing tests.**
+- [ ] **Step 1: Confirm Antigravity's `editorMode` values.** The binary holds `json:"editorMode,omitempty"`, a "Vim mode" changelog line, and the strings `vim` and `normal`; `copyOnSelect` is a documented bool that defaults to on.
+  - Start `agy` in a scratch Herdr tab (`herdr tab create`, then `herdr pane run`).
+  - Switch Editor Mode to vim and back in `/settings`, and diff `~/.gemini/antigravity-cli/settings.json` each time, from a backup you restore afterwards.
+  - Expected: `"editorMode": "vim"`, and `"normal"` (or the key removed) for the other value.
+
+  Use what the diff shows. If the off value turns out to be "key absent", the `false` branch deletes the key instead.
+- [ ] **Step 2: Write the failing tests.**
   - Cursor `{"editor":{"vimMode":false},"display":{"mode":"zen"}}` gives `{"editor":{"vimMode":true},"display":{"mode":"zen"}}`.
-  - OpenCode `{"theme":{"name":"system"}}` gives `{"theme":{"name":"system"},"terminal":{"copy":"select"}}`.
-  - With the intents `false`: Cursor `vimMode` is `false`, and OpenCode's `terminal.copy` is `"manual"`.
-  - OpenCode input with a `//` comment passes through unchanged.
+  - Antigravity `{"trustedWorkspaces":["/x"]}` gives `{"trustedWorkspaces":["/x"],"editorMode":"vim","copyOnSelect":true}`.
+  - With the intents `false`: Cursor `vimMode` is `false`; Antigravity writes the off value Step 1 found, and `"copyOnSelect":false`.
   - Blank input, `not json` and the second run behave as in Task 2.
-  - Add both targets to `$agents`.
+  - Add `.cursor/cli-config.json` and `.gemini/antigravity-cli/settings.json` to `$agents`.
 
-- [ ] **Step 2: Run** the suite. Expected: FAIL on the new checks.
-
-- [ ] **Step 3: Implement.** The filters:
-  - Cursor: `.editor.vimMode = $vim`. Cursor's agent has no copy-on-select or mouse setting, so the cheatsheet row says "not available".
-  - OpenCode: `.terminal.copy = (if $copy then "select" else "manual" end)`. OpenCode 2.x has no vim mode, so the row says "not available".
-
-  These come from OpenCode's own migration code (`packages/cli/src/config/migrate.ts`, which writes `terminal.copy` = `select`|`manual` into `cli.json`).
-
-- [ ] **Step 4: Run** the suite and shellcheck. Expected: `0 failed`.
-
-- [ ] **Step 5: Commit:** `feat(agents): vim keys in Cursor's agent, copy on select in OpenCode`.
+  Also check that `.gemini/AGENTS.md` is not managed. It belongs to ai-tooling, so `manages omarchy .gemini/AGENTS.md` must print `no`.
+- [ ] **Step 3: Run** the suite. Expected: FAIL on the new checks.
+- [ ] **Step 4: Implement.** The filters:
+  - Cursor: `.editor.vimMode = $vim`. Cursor's agent has no copy-on-select or mouse setting, so its row says "not available".
+  - Antigravity: `.editorMode = (if $vim then "vim" else "normal" end) | .copyOnSelect = $copy`, adjusted to Step 1's result. Antigravity has no mouse setting; `enableMouseTools` is about agent tools, not the terminal. Its full-screen mode selects with the mouse anyway, so the row says "always on".
+- [ ] **Step 5: Run** the suite and shellcheck. Expected: `0 failed`.
+- [ ] **Step 6: Commit:** `feat(agents): vim keys and copy on select in Cursor's agent and Antigravity`.
 
 ### Task 4: Codex (TOML)
 
@@ -180,6 +194,7 @@
   - `[tui]\ncopy_on_select = "never"\n[tui.notifications]\nx = 1\n` gives `"always"` exactly once, under `[tui]` and not under `[tui.notifications]`.
   - Blank input gives `[tui]` and the two keys.
   - With the intents `false`: `vim_mode_default = false` and `copy_on_select = "never"`.
+  - Codex has no mouse setting (its `[tui]` has only `mouse_scroll_speed`), so its row says "not available".
   - A second run equals the first.
   - Add `.codex/config.toml` to `$agents`.
 
@@ -209,7 +224,7 @@
 ### Task 6: Roll out and check on this machine
 
 - [ ] **Step 1:** Fast-forward `main` onto the branch: `git merge --ff-only`, after confirming with `git merge-base --is-ancestor main <branch>`.
-- [ ] **Step 2:** Run `chezmoi diff`. Expected: changes only in the five agent files and `.cheatsheet.md`, with no `old mode`/`new mode` lines.
+- [ ] **Step 2:** Run `chezmoi diff`. Expected: changes only in the five agent files (Claude, Copilot, Cursor, Antigravity, Codex) and `.cheatsheet.md`, with no `old mode`/`new mode` lines.
 - [ ] **Step 3:** Run `chezmoi apply`, then `chezmoi diff | wc -l`. Expected: `0`.
 - [ ] **Step 4:** Pre-seeded files survive a first launch. This is the design's untested claim.
   - For each agent, start it once in a temporary `HOME` holding only the file this repository renders.
@@ -217,5 +232,5 @@
   - Diff the file afterwards. Expected: both intents still set.
 
   Record each result in the cheatsheet row. Where an agent overwrites the file, the row says that its settings arrive on the second apply after its first start.
-- [ ] **Step 5:** A drag in Copilot and in Codex copies, and `Esc` then `h`/`l` move the cursor in each agent's prompt. Expected: both work. Run this in a fresh Herdr pane after the user restarts Herdr.
+- [ ] **Step 5:** In each of the five agents, a drag copies, `Esc` then `h`/`l` move the cursor in the prompt, and the scroll wheel scrolls. Expected: all three work. Run this in a fresh Herdr pane after the user restarts Herdr.
 - [ ] **Step 6:** Remove the worktree and branch; report what was verified and what wasn't.
