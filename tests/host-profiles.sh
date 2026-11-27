@@ -1889,32 +1889,37 @@ if command -v make > /dev/null 2>&1; then
     at="$work/ai-tooling-run"
     mkdir -p "$at"
     render omarchy "$at98" > "$at/script.sh"
-    at_run() { # at_run: run the rendered script in a fresh scratch HOME; prints "EXIT|output"; the to-do file is read after
+    render darwin "$at98" > "$at/script-darwin.sh"
+    # at_run MAKEFILE [PATH [SCRIPT]]: run a rendered script in a fresh scratch HOME with data on stdin (a deploy that
+    # reads it would see "leaked"); prints "EXIT|output". Arguments, not variables, so nothing leaks into the next case.
+    at_run() {
         local out rc
         rm -rf "$at/home" "$at/cache"
         mkdir -p "$at/home" "$at/cache"
-        [[ -z "${AT_MAKEFILE:-}" ]] || { mkdir -p "$at/home/ai-tooling" && printf '%b' "$AT_MAKEFILE" > "$at/home/ai-tooling/Makefile"; }
-        out="$(HOME="$at/home" CHEZMOI_CACHE_DIR="$at/cache" PATH="${AT_PATH:-$PATH}" bash "$at/script.sh" 2>&1)"
+        [[ -z "$1" ]] || { mkdir -p "$at/home/ai-tooling" && printf '%b' "$1" > "$at/home/ai-tooling/Makefile"; }
+        out="$(printf 'leaked\n' | HOME="$at/home" CHEZMOI_CACHE_DIR="$at/cache" PATH="${2:-$PATH}" bash "${3:-$at/script.sh}" 2>&1)"
         rc=$?
         printf '%s|%s' "$rc" "$out"
     }
     at_todo() { cat "$at/cache"/after-apply.* 2> /dev/null; }
 
     # (a) no ~/ai-tooling
-    AT_MAKEFILE='' res="$(at_run)"
+    res="$(at_run '')"
     check "ai-tooling deploy: no ~/ai-tooling is silent, exit 0" "0|" "$res"
     check "ai-tooling deploy: no ~/ai-tooling adds no to-do" "" "$(at_todo)"
 
-    # (b) a deploy that succeeds; it must not wait on stdin
-    AT_MAKEFILE='deploy:\n\t@read -r x || true; echo deployed\n' res="$(at_run)"
-    shown="+ make -C $(printf '%q' "$at/home/ai-tooling") --no-print-directory deploy"
-    check "ai-tooling deploy: prints the real command first" "$shown" "$(printf '%s' "${res#*|}" | head -1)"
+    # (b) a deploy that succeeds; its stdin must be /dev/null (the stub reports what it can read)
+    res="$(at_run 'deploy:\n\t@if read -r x; then echo "READ:$$x"; else echo noinput; fi; echo deployed\n')"
+    shown="+ make -C $(printf '%q' "$at/home/ai-tooling") --no-print-directory deploy < /dev/null"
+    check "ai-tooling deploy: prints the real command first, redirect included" "$shown" "$(printf '%s' "${res#*|}" | head -1)"
     check "ai-tooling deploy: lets the deploy's output through" 1 "$(printf '%s\n' "$res" | grep -c '^deployed$')"
+    check "ai-tooling deploy: the deploy's stdin is /dev/null, not the apply's" "1 0" \
+        "$(printf '%s\n' "$res" | grep -c '^noinput$') $(printf '%s\n' "$res" | grep -c '^READ:')"
     check "ai-tooling deploy: success exits 0" 0 "${res%%|*}"
     check "ai-tooling deploy: success adds no to-do" "" "$(at_todo)"
 
     # (c) a deploy that fails
-    AT_MAKEFILE='deploy:\n\t@echo deploy-output-here; echo "ai-tooling deploy: failed: x" >&2; exit 1\n' res="$(at_run)"
+    res="$(at_run 'deploy:\n\t@echo deploy-output-here; echo "ai-tooling deploy: failed: x" >&2; exit 1\n')"
     check "ai-tooling deploy: a failed deploy still exits 0" 0 "${res%%|*}"
     check "ai-tooling deploy: a failed deploy shows its output and stderr" "1 1" \
         "$(printf '%s\n' "$res" | grep -c '^deploy-output-here$') $(printf '%s\n' "$res" | grep -c '^ai-tooling deploy: failed: x$')"
@@ -1922,7 +1927,7 @@ if command -v make > /dev/null 2>&1; then
     check "ai-tooling deploy: the failure to-do" "ai-tooling's deploy failed (see above): run make -C ~/ai-tooling deploy. If it says there is no rule for deploy, pull ~/.cfg first (config pull --rebase origin main)" "$(at_todo)"
 
     # (d) a Makefile without a deploy target (ai-tooling not yet pulled)
-    AT_MAKEFILE='setup:\n\t@echo setup\n' res="$(at_run)"
+    res="$(at_run 'setup:\n\t@echo setup\n')"
     check "ai-tooling deploy: no deploy target still exits 0" 0 "${res%%|*}"
     check "ai-tooling deploy: no deploy target adds the pull hint" 1 "$(at_todo | grep -c "^ai-tooling's deploy failed.*config pull")"
 
@@ -1932,9 +1937,29 @@ if command -v make > /dev/null 2>&1; then
         ln -sf "$(command -v "$tool")" "$at/nomake/$tool"
     done
     check "ai-tooling deploy: the no-make PATH really hides make" "" "$(PATH="$at/nomake" command -v make)"
-    AT_MAKEFILE='deploy:\n\t@echo deployed\n' AT_PATH="$at/nomake" res="$(at_run)"
+    res="$(at_run 'deploy:\n\t@echo deployed\n' "$at/nomake")"
     check "ai-tooling deploy: make missing still exits 0" 0 "${res%%|*}"
     check "ai-tooling deploy: make missing adds one to-do" "ai-tooling was not deployed: make is missing (Xcode command line tools on a Mac)" "$(at_todo)"
+
+    # (f) a Mac: /usr/bin/make exists but is a stub until the Xcode command line tools are installed. Stub xcode-select
+    # and make (the stub make records that it ran) ahead of PATH, on the darwin render.
+    mkdir -p "$at/mac-bad" "$at/mac-ok"
+    for d in mac-bad mac-ok; do
+        printf '#!/bin/sh\ntouch "$HOME/make-ran"\nexit 0\n' > "$at/$d/make"
+        chmod +x "$at/$d/make"
+    done
+    printf '#!/bin/sh\nexit 1\n' > "$at/mac-bad/xcode-select"
+    printf '#!/bin/sh\nexit 0\n' > "$at/mac-ok/xcode-select"
+    chmod +x "$at/mac-bad/xcode-select" "$at/mac-ok/xcode-select"
+    res="$(at_run 'deploy:\n\t@echo deployed\n' "$at/mac-bad:$PATH" "$at/script-darwin.sh")"
+    check "ai-tooling deploy, Mac without the command line tools: exits 0" 0 "${res%%|*}"
+    check "ai-tooling deploy, Mac without the command line tools: the make-missing to-do" "ai-tooling was not deployed: make is missing (Xcode command line tools on a Mac)" "$(at_todo)"
+    check "ai-tooling deploy, Mac without the command line tools: make never ran" no "$([[ -e "$at/home/make-ran" ]] && echo yes || echo no)"
+    res="$(at_run 'deploy:\n\t@echo deployed\n' "$at/mac-ok:$PATH" "$at/script-darwin.sh")"
+    check "ai-tooling deploy, Mac with the command line tools: runs the deploy, exit 0, no to-do" "yes 0 " \
+        "$([[ -e "$at/home/make-ran" ]] && echo yes || echo no) ${res%%|*} $(at_todo)"
+    check "ai-tooling deploy: only the Mac render asks xcode-select" "0 1" \
+        "$(grep -c '^if .*xcode-select' "$at/script.sh") $(grep -c '^if ! command -v make.*xcode-select -p' "$at/script-darwin.sh")"
 else
     echo "SKIP ai-tooling deploy behaviour checks: make not found"
 fi
