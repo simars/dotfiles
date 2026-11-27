@@ -393,6 +393,7 @@ reload_hint "$HOME/.claude/settings.json" claude "Claude Code's settings changed
 reload_hint "$HOME/.copilot/settings.json" copilot "Copilot CLI's settings changed: restart open Copilot sessions (/restart) to pick them up"
 reload_hint "$HOME/.cursor/cli-config.json" cursor-agent "Cursor's agent settings changed: restart open cursor-agent sessions to pick them up"
 reload_hint "$HOME/.gemini/antigravity-cli/settings.json" '(agy|antigravity)' "Antigravity's settings changed: restart open agy sessions to pick them up"
+reload_hint "$HOME/.codex/config.toml" codex "Codex's config changed: restart open Codex sessions to pick them up"
 for startup_file in .zshrc .zprofile .aliases; do
     reload_hint "$HOME/$startup_file" "" "Shell startup files changed: run exec zsh in open shells, or open new ones"
 done

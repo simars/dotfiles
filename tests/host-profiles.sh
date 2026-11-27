@@ -690,11 +690,51 @@ if command -v jq > /dev/null 2>&1; then
     check "Antigravity: settings.json is private, the folders are not" "yes" "$([[ -f dot_gemini/antigravity-cli/modify_private_settings.json.tmpl && ! -e private_dot_gemini && ! -e dot_gemini/private_antigravity-cli ]] && echo yes || echo no)"
     # ~/.claude is a 755 folder (dot_), only settings.json is 600 (private_ in the script's name).
     check "Claude: settings.json is private, the folder is not" "yes" "$([[ -f dot_claude/modify_private_settings.json.tmpl && ! -e private_dot_claude ]] && echo yes || echo no)"
+    # Codex keeps its settings in TOML: [tui] vim_mode_default and copy_on_select (a lowercase enum, auto|always|never);
+    # it has no mouse setting. The script has no jq dependency; the shared awk body is toml-section-set.awk.sh.
+    render omarchy dot_codex/modify_private_config.toml.tmpl > "$work/codex.sh"
+    chezmoi --source . --override-data "$false_data" execute-template < dot_codex/modify_private_config.toml.tmpl > "$work/codex-false.sh"
+    codex_shape=$'[features]\nhooks = true\n\n[tui]\nscreen_reader_detection_done = true\n\n[hooks.state]\n\n[hooks.state."/home/u/.codex/hooks.json:session_start:0:0"]\ntrusted_hash = "sha256:abc"\n'
+    toml_parses() { # toml_parses TEXT: yes when python's tomllib accepts it (skipped, as yes, without python3)
+        if ! command -v python3 > /dev/null 2>&1; then echo yes; return; fi
+        if printf '%s' "$1" | python3 -c 'import sys,tomllib; tomllib.loads(sys.stdin.read())' > /dev/null 2>&1; then echo yes; else echo no; fi
+    }
+    codex_out="$(printf '%s' "$codex_shape" | bash "$work/codex.sh"; printf x)"; codex_out="${codex_out%x}"
+    check "Codex: this machine's file keeps [features] and [hooks.state], [tui] gets both keys" $'[features]\nhooks = true\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"\nscreen_reader_detection_done = true\n\n[hooks.state]\n\n[hooks.state."/home/u/.codex/hooks.json:session_start:0:0"]\ntrusted_hash = "sha256:abc"\n' "$codex_out"
+    check "Codex: that output is TOML" yes "$(toml_parses "$codex_out")"
+    codex_out="$(printf '[features]\nhooks = true\n' | bash "$work/codex.sh")"
+    check "Codex: no [tui] gets one appended at the end" $'[features]\nhooks = true\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$codex_out"
+    check "Codex: the appended [tui] is TOML" yes "$(toml_parses "$codex_out")"
+    codex_out="$(printf '[features]\nhooks = true\n\n\n' | bash "$work/codex.sh")"
+    check "Codex: trailing blank lines before an appended [tui] become one" $'[features]\nhooks = true\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$codex_out"
+    codex_out="$(printf '[tui]\ncopy_on_select = "never"\n[tui.notifications]\nx = 1\n' | bash "$work/codex.sh")"
+    check "Codex: [tui.notifications] is another section" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"\n[tui.notifications]\nx = 1' "$codex_out"
+    check "Codex: copy_on_select is written exactly once" 1 "$(printf '%s\n' "$codex_out" | grep -c '^copy_on_select')"
+    check "Codex: that output is TOML" yes "$(toml_parses "$codex_out")"
+    codex_out="$(printf '[tui.notifications]\nx = 1\n[[tui]]\ncopy_on_select = "never"\n' | bash "$work/codex.sh")"
+    check "Codex: [tui.notifications] and [[tui]] are not [tui]" $'[tui.notifications]\nx = 1\n[[tui]]\ncopy_on_select = "never"\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$codex_out"
+    codex_out="$(printf '[tui]\nvim_mode_default = false\ncopy_on_select = "never"\nmouse_scroll_speed = 3\n[[other]]\ncopy_on_select = "auto"\n' | bash "$work/codex.sh")"
+    check "Codex: keys are replaced only inside [tui], an [[array]] header ends it" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"\nmouse_scroll_speed = 3\n[[other]]\ncopy_on_select = "auto"' "$codex_out"
+    codex_out="$(printf '  [tui]  \n  copy_on_select="never"\n' | bash "$work/codex.sh")"
+    check "Codex: whitespace around the header and the key is allowed" $'  [tui]  \nvim_mode_default = true\ncopy_on_select = "always"' "$codex_out"
+    check "Codex: a missing file gets [tui] and the keys" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$(printf '' | bash "$work/codex.sh")"
+    check "Codex: whitespace-only input gives [tui] and the keys only" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$(printf '  \n\n' | bash "$work/codex.sh")"
+    check "Codex: false intents write false and never" $'[tui]\nvim_mode_default = false\ncopy_on_select = "never"' "$(printf '' | bash "$work/codex-false.sh")"
+    check "Codex: turns the keys back on" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$(printf '[tui]\nvim_mode_default = false\ncopy_on_select = "never"\n' | bash "$work/codex.sh")"
+    check "Codex: false output is TOML" yes "$(toml_parses "$(printf '%s' "$codex_shape" | bash "$work/codex-false.sh")")"
+    check "Codex: second run changes nothing" "$(printf '%s' "$codex_shape" | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n')" "$(printf '%s' "$codex_shape" | bash "$work/codex.sh" | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n')"
+    check "Codex: second run changes nothing when [tui] was appended" "$(printf '[features]\nhooks = true\n' | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n')" "$(printf '[features]\nhooks = true\n' | bash "$work/codex.sh" | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n')"
+    check "Codex: a file with no [tui] keeps its bytes before the new section (no trailing newline too)" $'a = 1\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$(printf 'a = 1' | bash "$work/codex.sh")"
+    check "Codex: a comment line that mentions copy_on_select is kept" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"\n# copy_on_select = "never"' "$(printf '[tui]\n# copy_on_select = "never"\n' | bash "$work/codex.sh")"
+    check "Codex: config.toml is private, the folder is not" "yes" "$([[ -f dot_codex/modify_private_config.toml.tmpl && ! -e private_dot_codex ]] && echo yes || echo no)"
+    if command -v shellcheck > /dev/null 2>&1; then
+        check "Codex: the rendered script passes shellcheck" "" "$(shellcheck -S warning -s bash "$work/codex.sh" 2>&1)"
+    fi
 fi
 
 # Every CLI coding agent gets the same usability settings (vim keys, copy on select, mouse), but only where it is set up:
 # a host without the agent gets no folder for it. `agents_present` (tests only) stands in for the detection.
-agents=".copilot/settings.json .claude/settings.json .cursor/cli-config.json .gemini/antigravity-cli/settings.json"   # each agent's target is added as its script lands
+agents=".copilot/settings.json .claude/settings.json .cursor/cli-config.json .gemini/antigravity-cli/settings.json .codex/config.toml"   # each agent's target is added as its script lands
 for host in $hosts; do for t in $agents; do check "$host manages $t where the agent is present" yes "$(manages "$host" "$t")"; done; done
 absent="$(chezmoi --override-data "$(host_data omarchy | jq -c '.agents_present = false')" managed --include=all)"
 # .gemini/AGENTS.md belongs to ai-tooling and is never managed. .gemini itself is managed (as a folder) only where
@@ -1657,6 +1697,7 @@ check "reload hint: no process to test" "==> To do on this machine after this ap
 # Antigravity's `agy` is a symlink to the binary `antigravity`, so the process may carry either name: run_after_99 passes
 # an ERE alternation as PROCESS. A pgrep stand-in that matches like the real one (-x: whole name; -f: the command line)
 # against the one process in $AA_PS ("name|command line") proves both names, and not another one, fire the hint.
+check "requirement check watches Codex's config.toml for the codex process" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -cF 'reload_hint "$HOME/.codex/config.toml" codex ')"
 check "requirement check watches Antigravity as agy or antigravity" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -cF "reload_hint \"\$HOME/.gemini/antigravity-cli/settings.json\" '(agy|antigravity)' ")"
 mkdir -p "$aa/psbin"
 cat > "$aa/psbin/pgrep" <<'PGREP'

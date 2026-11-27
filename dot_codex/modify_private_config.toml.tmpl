@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# chezmoi modify script for Codex's ~/.codex/config.toml: Codex writes this file itself (features, hooks and their
+# trust hashes, the TUI's own flags), so only [tui] vim_mode_default and copy_on_select are set and everything else is
+# passed through. The values come from vim_keys and copy_on_select in [agent_usability] in .chezmoidata/agents.toml; a
+# false writes the opposite value (vim_mode_default = false, copy_on_select = "never"), it does not leave the key.
+# Codex has no mouse setting (its [tui] has only mouse_scroll_speed), so that intent does not apply here. It reads the
+# file at start. Runs under bash 3.2, the macOS /bin/bash. Cheatsheet: "Same Keys in Every Agent".
+set -euo pipefail
+# The trailing x keeps the final newlines, which $(...) would strip. && makes a failed read stop the script.
+input="$(cat && printf x)"
+input="${input%x}"
+SECTION=tui
+BLOCK=$'vim_mode_default = {{ .agent_usability.vim_keys }}\ncopy_on_select = "{{ if .agent_usability.copy_on_select }}always{{ else }}never{{ end }}"'
+set_section() {
+{{ template "toml-section-set.awk.sh" . }}
+}
+# If awk is missing or fails, the file stays exactly as it was.
+if updated="$(printf '%s' "$input" | set_section && printf x)"; then
+    printf '%s' "${updated%x}"
+else
+    printf '%s' "$input"
+fi
