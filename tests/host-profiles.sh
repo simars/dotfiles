@@ -695,37 +695,57 @@ if command -v jq > /dev/null 2>&1; then
     render omarchy dot_codex/modify_private_config.toml.tmpl > "$work/codex.sh"
     chezmoi --source . --override-data "$false_data" execute-template < dot_codex/modify_private_config.toml.tmpl > "$work/codex-false.sh"
     codex_shape=$'[features]\nhooks = true\n\n[tui]\nscreen_reader_detection_done = true\n\n[hooks.state]\n\n[hooks.state."/home/u/.codex/hooks.json:session_start:0:0"]\ntrusted_hash = "sha256:abc"\n'
-    toml_parses() { # toml_parses TEXT: yes when python's tomllib accepts it (skipped, as yes, without python3)
-        if ! command -v python3 > /dev/null 2>&1; then echo yes; return; fi
-        if printf '%s' "$1" | python3 -c 'import sys,tomllib; tomllib.loads(sys.stdin.read())' > /dev/null 2>&1; then echo yes; else echo no; fi
+    # Every Codex output that should be TOML is parsed with python's tomllib (3.11+); without it those checks are skipped, not counted.
+    toml_ok=no
+    if python3 -c 'import tomllib' 2> /dev/null; then toml_ok=yes; else echo "SKIP TOML parse checks: python3 with tomllib (3.11+) not found"; fi
+    toml_check() { # toml_check NAME TEXT: TEXT must parse as TOML
+        [[ "$toml_ok" == yes ]] || return 0
+        check "$1" yes "$(if printf '%s' "$2" | python3 -c 'import sys,tomllib; tomllib.loads(sys.stdin.read())' > /dev/null 2>&1; then echo yes; else echo no; fi)"
     }
-    codex_out="$(printf '%s' "$codex_shape" | bash "$work/codex.sh"; printf x)"; codex_out="${codex_out%x}"
-    check "Codex: this machine's file keeps [features] and [hooks.state], [tui] gets both keys" $'[features]\nhooks = true\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"\nscreen_reader_detection_done = true\n\n[hooks.state]\n\n[hooks.state."/home/u/.codex/hooks.json:session_start:0:0"]\ntrusted_hash = "sha256:abc"\n' "$codex_out"
-    check "Codex: that output is TOML" yes "$(toml_parses "$codex_out")"
-    codex_out="$(printf '[features]\nhooks = true\n' | bash "$work/codex.sh")"
-    check "Codex: no [tui] gets one appended at the end" $'[features]\nhooks = true\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$codex_out"
-    check "Codex: the appended [tui] is TOML" yes "$(toml_parses "$codex_out")"
-    codex_out="$(printf '[features]\nhooks = true\n\n\n' | bash "$work/codex.sh")"
-    check "Codex: trailing blank lines before an appended [tui] become one" $'[features]\nhooks = true\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$codex_out"
-    codex_out="$(printf '[tui]\ncopy_on_select = "never"\n[tui.notifications]\nx = 1\n' | bash "$work/codex.sh")"
-    check "Codex: [tui.notifications] is another section" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"\n[tui.notifications]\nx = 1' "$codex_out"
-    check "Codex: copy_on_select is written exactly once" 1 "$(printf '%s\n' "$codex_out" | grep -c '^copy_on_select')"
-    check "Codex: that output is TOML" yes "$(toml_parses "$codex_out")"
-    codex_out="$(printf '[tui.notifications]\nx = 1\n[[tui]]\ncopy_on_select = "never"\n' | bash "$work/codex.sh")"
-    check "Codex: [tui.notifications] and [[tui]] are not [tui]" $'[tui.notifications]\nx = 1\n[[tui]]\ncopy_on_select = "never"\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$codex_out"
-    codex_out="$(printf '[tui]\nvim_mode_default = false\ncopy_on_select = "never"\nmouse_scroll_speed = 3\n[[other]]\ncopy_on_select = "auto"\n' | bash "$work/codex.sh")"
-    check "Codex: keys are replaced only inside [tui], an [[array]] header ends it" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"\nmouse_scroll_speed = 3\n[[other]]\ncopy_on_select = "auto"' "$codex_out"
-    codex_out="$(printf '  [tui]  \n  copy_on_select="never"\n' | bash "$work/codex.sh")"
-    check "Codex: whitespace around the header and the key is allowed" $'  [tui]  \nvim_mode_default = true\ncopy_on_select = "always"' "$codex_out"
-    check "Codex: a missing file gets [tui] and the keys" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$(printf '' | bash "$work/codex.sh")"
-    check "Codex: whitespace-only input gives [tui] and the keys only" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$(printf '  \n\n' | bash "$work/codex.sh")"
-    check "Codex: false intents write false and never" $'[tui]\nvim_mode_default = false\ncopy_on_select = "never"' "$(printf '' | bash "$work/codex-false.sh")"
-    check "Codex: turns the keys back on" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$(printf '[tui]\nvim_mode_default = false\ncopy_on_select = "never"\n' | bash "$work/codex.sh")"
-    check "Codex: false output is TOML" yes "$(toml_parses "$(printf '%s' "$codex_shape" | bash "$work/codex-false.sh")")"
-    check "Codex: second run changes nothing" "$(printf '%s' "$codex_shape" | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n')" "$(printf '%s' "$codex_shape" | bash "$work/codex.sh" | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n')"
-    check "Codex: second run changes nothing when [tui] was appended" "$(printf '[features]\nhooks = true\n' | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n')" "$(printf '[features]\nhooks = true\n' | bash "$work/codex.sh" | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n')"
-    check "Codex: a file with no [tui] keeps its bytes before the new section (no trailing newline too)" $'a = 1\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"' "$(printf 'a = 1' | bash "$work/codex.sh")"
-    check "Codex: a comment line that mentions copy_on_select is kept" $'[tui]\nvim_mode_default = true\ncopy_on_select = "always"\n# copy_on_select = "never"' "$(printf '[tui]\n# copy_on_select = "never"\n' | bash "$work/codex.sh")"
+    codex_run() { # codex_run INPUT [SCRIPT]: the script's output, byte for byte (an x keeps the final newlines)
+        local out
+        out="$(printf '%s' "$1" | bash "$work/${2:-codex.sh}"; printf x)"
+        printf '%s' "${out%x}"
+    }
+    codex_case() { # codex_case NAME EXPECTED INPUT [SCRIPT]: exact output, and it parses as TOML
+        local out
+        out="$(codex_run "$3" "${4:-codex.sh}"; printf x)"; out="${out%x}"
+        check "$1" "$2" "$out"
+        toml_check "$1 (TOML)" "$out"
+    }
+    codex_hex() { printf '%s' "$1" | od -An -tx1 | tr -d ' \n'; }   # hex of an argument
+    codex_runhex() { codex_run "$1" | od -An -tx1 | tr -d ' \n'; }   # hex of one run (a pipe keeps the final newlines)
+    codex_run2hex() { codex_run "$1" | bash "$work/codex.sh" | od -An -tx1 | tr -d ' \n'; }   # hex of a second run on the first's output
+    codex_keys=$'[tui]\nvim_mode_default = true\ncopy_on_select = "always"'
+    codex_case "Codex: this machine's file keeps [features] and [hooks.state], [tui] gets both keys" $'[features]\nhooks = true\n\n[tui]\nvim_mode_default = true\ncopy_on_select = "always"\nscreen_reader_detection_done = true\n\n[hooks.state]\n\n[hooks.state."/home/u/.codex/hooks.json:session_start:0:0"]\ntrusted_hash = "sha256:abc"\n' "$codex_shape"
+    codex_case "Codex: no [tui] gets one appended at the end" $'[features]\nhooks = true\n\n'"$codex_keys"$'\n' $'[features]\nhooks = true\n'
+    codex_case "Codex: trailing blank lines before an appended [tui] become one" $'[features]\nhooks = true\n\n'"$codex_keys"$'\n' $'[features]\nhooks = true\n\n\n'
+    codex_case "Codex: [tui.notifications] is another section" "$codex_keys"$'\n[tui.notifications]\nx = 1\n' $'[tui]\ncopy_on_select = "never"\n[tui.notifications]\nx = 1\n'
+    check "Codex: copy_on_select is written exactly once" 1 "$(codex_run $'[tui]\ncopy_on_select = "never"\n[tui.notifications]\nx = 1\n' | grep -c '^copy_on_select')"
+    # Valid TOML where [tui.notifications] and an array of tables with another name come before any [tui]: one [tui] is appended.
+    codex_out="$(codex_run $'[tui.notifications]\nx = 1\n[[tui_profiles]]\ncopy_on_select = "never"\n')"
+    check "Codex: [tui.notifications] and [[tui_profiles]] are not [tui]: exactly one [tui]" 1 "$(printf '%s\n' "$codex_out" | grep -c '^\[tui\]$')"
+    check "Codex: ... the appended [tui] comes last and [[tui_profiles]] keeps its copy_on_select" $'[tui.notifications]\nx = 1\n[[tui_profiles]]\ncopy_on_select = "never"\n\n'"$codex_keys" "$codex_out"
+    toml_check "Codex: [tui.notifications] and [[tui_profiles]] (TOML)" "$codex_out"
+    codex_case "Codex: keys are replaced only inside [tui], an [[array]] header ends it" "$codex_keys"$'\nmouse_scroll_speed = 3\n[[other]]\ncopy_on_select = "auto"\n' $'[tui]\nvim_mode_default = false\ncopy_on_select = "never"\nmouse_scroll_speed = 3\n[[other]]\ncopy_on_select = "auto"\n'
+    codex_case "Codex: whitespace around the header and the key is allowed" $'  [tui]  \nvim_mode_default = true\ncopy_on_select = "always"\n' $'  [tui]  \n  copy_on_select="never"\n'
+    codex_case "Codex: a missing file gets [tui] and the keys" "$codex_keys"$'\n' ''
+    codex_case "Codex: whitespace-only input gives [tui] and the keys only" "$codex_keys"$'\n' $'  \n\n'
+    codex_case "Codex: false intents write false and never" $'[tui]\nvim_mode_default = false\ncopy_on_select = "never"\n' '' codex-false.sh
+    codex_case "Codex: false intents on this machine's file" $'[features]\nhooks = true\n\n[tui]\nvim_mode_default = false\ncopy_on_select = "never"\nscreen_reader_detection_done = true\n\n[hooks.state]\n\n[hooks.state."/home/u/.codex/hooks.json:session_start:0:0"]\ntrusted_hash = "sha256:abc"\n' "$codex_shape" codex-false.sh
+    codex_case "Codex: turns the keys back on" "$codex_keys"$'\n' $'[tui]\nvim_mode_default = false\ncopy_on_select = "never"\n'
+    check "Codex: second run changes nothing" "$(codex_runhex "$codex_shape")" "$(codex_run2hex "$codex_shape")"
+    check "Codex: second run changes nothing when [tui] was appended" "$(codex_runhex $'[features]\nhooks = true\n')" "$(codex_run2hex $'[features]\nhooks = true\n')"
+    codex_case "Codex: a file with no [tui] and no trailing newline keeps its bytes before the new section" $'a = 1\n\n'"$codex_keys"$'\n' 'a = 1'
+    codex_case "Codex: a comment line that mentions copy_on_select is kept" "$codex_keys"$'\n# copy_on_select = "never"\n' $'[tui]\n# copy_on_select = "never"\n'
+    # [tui] already defined without a header: a second [tui] would be invalid TOML (Codex refuses to start), so the file comes back byte for byte.
+    for codex_in in $'tui.vim_mode_default = false\n' $'tui.copy_on_select = "never"\n[features]\nhooks = true\n' $'tui = { copy_on_select = "never" }\n[features]\nhooks = true\n' $'"tui".copy_on_select = "never"\n' $'  tui . copy_on_select = "never"\n'; do
+        check "Codex: [tui] defined without a header comes back byte for byte: $(printf '%s' "$codex_in" | head -1)" "$(codex_hex "$codex_in")" "$(codex_runhex "$codex_in")"
+    done
+    codex_in=$'[features]\ntui.x = 1\n'
+    check "Codex: a dotted tui key under another header is not the tui table" "$(codex_hex "$codex_in"$'\n'"$codex_keys"$'\n')" "$(codex_runhex "$codex_in")"
+    codex_in=$'tuix = 1\n# tui.x = 1\n'
+    check "Codex: a key that only starts with tui, and a comment, are not the tui table" "$(codex_hex "$codex_in"$'\n'"$codex_keys"$'\n')" "$(codex_runhex "$codex_in")"
     check "Codex: config.toml is private, the folder is not" "yes" "$([[ -f dot_codex/modify_private_config.toml.tmpl && ! -e private_dot_codex ]] && echo yes || echo no)"
     if command -v shellcheck > /dev/null 2>&1; then
         check "Codex: the rendered script passes shellcheck" "" "$(shellcheck -S warning -s bash "$work/codex.sh" 2>&1)"

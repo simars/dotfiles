@@ -10,11 +10,12 @@ set -euo pipefail
 input="$(cat && printf x)"
 input="${input%x}"
 SECTION=tui
-BLOCK=$'vim_mode_default = {{ .agent_usability.vim_keys }}\ncopy_on_select = "{{ if .agent_usability.copy_on_select }}always{{ else }}never{{ end }}"'
+BLOCK=$'vim_mode_default = {{ if .agent_usability.vim_keys }}true{{ else }}false{{ end }}\ncopy_on_select = "{{ if .agent_usability.copy_on_select }}always{{ else }}never{{ end }}"'
 set_section() {
 {{ template "toml-section-set.awk.sh" . }}
 }
-# If awk is missing or fails, the file stays exactly as it was.
+# If awk is missing or fails, or [tui] is already defined without a header (tui.key = ..., tui = { ... }), the file stays
+# exactly as it was.
 if updated="$(printf '%s' "$input" | set_section && printf x)"; then
     printf '%s' "${updated%x}"
 else

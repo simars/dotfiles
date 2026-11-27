@@ -7,6 +7,9 @@
 # A header is any line whose first non-blank character is "[": [SECTION.sub] and [[array]] are other sections, and they
 # end this one. Quoted dotted headers such as [hooks.state."/path:x"] are just other headers. Not handled: a line that
 # starts with "[" inside a multi-line array or string is read as a header.
+# If the table is already defined without a header (before the first header: a dotted key "SECTION.key = ...", or an
+# inline table "SECTION = { ... }"), a second [SECTION] would make the file invalid TOML, so awk exits 1 and the caller
+# leaves the file as it is.
 # Values go through the environment, not -v: macOS's awk rejects a newline inside a -v value. POSIX awk only.
 SECTION="$SECTION" BLOCK="$BLOCK" awk '
 function header(line) {
@@ -24,8 +27,19 @@ function keyof(line,    key) {
     gsub(/^["\047]|["\047]$/, "", key)
     return key
 }
+function firstpart(line,    q, rest) {
+    sub(/^[[:space:]]+/, "", line)
+    if (line ~ /^["\047]/) {
+        q = substr(line, 1, 1)
+        rest = substr(line, 2)
+        return substr(rest, 1, index(rest, q) - 1)
+    }
+    sub(/[[:space:]=.].*$/, "", line)
+    return line
+}
 BEGIN {
-    target = "[" ENVIRON["SECTION"] "]"
+    name = ENVIRON["SECTION"]
+    target = "[" name "]"
     block = ENVIRON["BLOCK"]
     n = split(block, wanted, "\n")
     for (i = 1; i <= n; i++) {
@@ -36,6 +50,7 @@ BEGIN {
 {
     h = header($0)
     if (h != "") {
+        seen_header = 1
         inside = (h == target)
         lines[++count] = $0
         if (inside && !found) {
@@ -44,10 +59,15 @@ BEGIN {
         }
         next
     }
+    if (!seen_header && $0 !~ /^[[:space:]]*(#|$)/ && firstpart($0) == name) {
+        defined_elsewhere = 1
+        exit 1
+    }
     if (inside && keyof($0) in want) next
     lines[++count] = $0
 }
 END {
+    if (defined_elsewhere) exit 1
     if (!found) {
         while (count > 0 && lines[count] ~ /^[[:space:]]*$/) count--
         if (count > 0) lines[++count] = ""
