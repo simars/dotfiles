@@ -1134,29 +1134,89 @@ check "only installed agents get aliases" "cdxy agyy" "$(agent_shell "$work/agen
 check "cld and csr are gone" "" "$(agent_shell "$work/agents/bin:$PATH" 'alias cld csr 2> /dev/null')"
 check "codex and agy never run under with-op" "" "$(agent_shell "$work/agents/bin:$PATH" 'alias | grep -E "with-op (codex|agy)"')"
 
-# claude-a: plain claude with the alternate account's token in CLAUDE_CODE_OAUTH_TOKEN, read (never sourced) from the
-# secrets file's last CLAUDE_A_OAUTH_TOKEN= line, or from CLAUDE_A_OAUTH_TOKEN in the environment, which wins. A stub
-# `claude` prints the token it got and its arguments.
+# claude-a: claude with the alternate account's token in CLAUDE_CODE_OAUTH_TOKEN and its own CLAUDE_CONFIG_DIR, synced
+# from the main config first: entries linked except the per-account ones, ~/.claude.json copied without its account
+# keys. The token is read (never sourced) from the secrets file's last CLAUDE_A_OAUTH_TOKEN= line, or from
+# CLAUDE_A_OAUTH_TOKEN in the environment, which wins. A stub `claude` prints what it got. Run through bash: the
+# source file is not executable.
 claude_a="$repo/dot_local/bin/executable_claude-a"
-mkdir -p "$work/claude-a/bin"
-printf '#!/bin/sh\necho "token=$CLAUDE_CODE_OAUTH_TOKEN args=$* other=${OTHER_SECRET-unset}"\n' > "$work/claude-a/bin/claude"
-chmod +x "$work/claude-a/bin/claude"
-printf 'OTHER_SECRET=x\nCLAUDE_A_OAUTH_TOKEN=old\nexport CLAUDE_A_OAUTH_TOKEN="tok-file"\n' > "$work/claude-a/secrets.env"
-claude_a_run() { # env assignments, then claude-a's arguments
-    env -u CLAUDE_A_OAUTH_TOKEN -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
-        PATH="$work/claude-a/bin:$PATH" CLAUDE_A_SECRETS_FILE="$work/claude-a/secrets.env" "$@"
+ca="$work/claude-a"
+mkdir -p "$ca/bin"
+printf '#!/bin/sh\necho "cfg=${CLAUDE_CONFIG_DIR##*/} token=$CLAUDE_CODE_OAUTH_TOKEN args=$* other=${OTHER_SECRET-unset}"\n' > "$ca/bin/claude"
+chmod +x "$ca/bin/claude"
+printf 'OTHER_SECRET=x\nCLAUDE_A_OAUTH_TOKEN=old\nexport CLAUDE_A_OAUTH_TOKEN="tok-file"\n' > "$ca/secrets.env"
+claude_a_main() { # claude_a_main DIR: a main config in DIR/main and DIR/main.json
+    mkdir -p "$1/main/skills" "$1/main/projects" "$1/main/sessions" "$1/main/plugins"
+    echo '{}' > "$1/main/settings.json"
+    echo x > "$1/main/.credentials.json"
+    echo x > "$1/main/policy-limits.json"
+    echo x > "$1/main/daemon.lock"
+    echo '{"oauthAccount":{"accountUuid":"MAIN"},"cachedUsageUtilization":1,"orgModelDefaultCache":1,"theme":"dark","mcpServers":{"m":{}},"projects":{"/p":{"hasTrustDialogAccepted":true}}}' > "$1/main.json"
 }
-check "claude-a passes the secrets file's token and every argument" "token=tok-file args=--resume fix the bug other=unset" \
-    "$(claude_a_run bash "$claude_a" --resume "fix the bug" 2>&1)"
-check "claude-a prefers CLAUDE_A_OAUTH_TOKEN from the environment" "token=tok-env args=-p hi other=unset" \
-    "$(claude_a_run CLAUDE_A_OAUTH_TOKEN=tok-env bash "$claude_a" -p hi 2>&1)"
-claude_a_out="$(claude_a_run CLAUDE_A_SECRETS_FILE="$work/claude-a/missing" bash "$claude_a" 2>&1)" && claude_a_rc=0 || claude_a_rc=$?
-check "claude-a without a token fails before running claude" "1 claude-a: no token." "$claude_a_rc ${claude_a_out%% Add*}"
+claude_a_run() { # claude_a_run DIR VAR=VALUE... -- ARGS...: claude-a against the main config in DIR
+    local dir="$1"
+    shift
+    local vars=()
+    while [[ "$1" != -- ]]; do vars+=("$1"); shift; done
+    shift
+    env -u CLAUDE_A_OAUTH_TOKEN -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
+        PATH="$ca/bin:$PATH" CLAUDE_A_SECRETS_FILE="$ca/secrets.env" CLAUDE_A_MAIN_DIR="$dir/main" \
+        CLAUDE_A_MAIN_JSON="$dir/main.json" CLAUDE_A_CONFIG_DIR="$dir/alt" "${vars[@]}" bash "$claude_a" "$@"
+}
+claude_a_main "$ca/run"
+check "claude-a runs claude in its own config with the secrets file's token and every argument" \
+    "cfg=alt token=tok-file args=--resume fix the bug other=unset" "$(claude_a_run "$ca/run" -- --resume "fix the bug" 2>&1)"
+check "claude-a prefers CLAUDE_A_OAUTH_TOKEN from the environment" "cfg=alt token=tok-env args=-p hi other=unset" \
+    "$(claude_a_run "$ca/run" CLAUDE_A_OAUTH_TOKEN=tok-env -- -p hi 2>&1)"
+claude_a_out="$(claude_a_run "$ca/run" CLAUDE_A_SECRETS_FILE="$ca/missing" -- 2>&1)" && claude_a_rc=0 || claude_a_rc=$?
+check "claude-a without a login or token fails before running claude" "1 claude-a: no login or token." \
+    "$claude_a_rc ${claude_a_out%% Sign*}"
 check "claude-a warns when an API key outranks its token" "yes" \
-    "$(claude_a_run ANTHROPIC_API_KEY=k bash "$claude_a" 2>&1 | grep -q 'warning: ANTHROPIC_API_KEY is set' && echo yes)"
-tty_check "claude-a echoes the command, never the token" "→ claude --resume  (CLAUDE_CODE_OAUTH_TOKEN = CLAUDE_A_OAUTH_TOKEN from $work/claude-a/secrets.env)
-token=tok-file args=--resume other=unset" "$work" env -u CLAUDE_A_OAUTH_TOKEN PATH="$work/claude-a/bin:$PATH" \
-    CLAUDE_A_SECRETS_FILE="$work/claude-a/secrets.env" bash "$claude_a" --resume
+    "$(claude_a_run "$ca/run" ANTHROPIC_API_KEY=k -- 2>&1 | grep -q 'warning: ANTHROPIC_API_KEY is set' && echo yes)"
+claude_a_main "$ca/login"
+claude_a_run "$ca/login" -- --sync 2> /dev/null
+jq '.oauthAccount = {"accountUuid":"ALT"}' "$ca/login/alt/.claude.json" > "$ca/t"
+mv "$ca/t" "$ca/login/alt/.claude.json"
+check "claude-a uses its own login when it has one, never a token" "cfg=alt token= args=-p hi other=unset" \
+    "$(claude_a_run "$ca/login" CLAUDE_CODE_OAUTH_TOKEN=inherited CLAUDE_A_SECRETS_FILE="$ca/missing" -- -p hi 2>&1)"
+check "claude-a keeps its own login across syncs" '"ALT"' \
+    "$(claude_a_run "$ca/login" -- --sync 2> /dev/null; jq -c .oauthAccount.accountUuid "$ca/login/alt/.claude.json")"
+check "claude-a links shared entries, never the per-account ones" \
+    ".claude.json .sync.jq plugins@ projects@ settings.json@ skills@" \
+    "$(cd "$ca/run/alt" && for f in $(ls -A | LC_ALL=C sort); do [[ -L "$f" ]] && f="$f@"; printf '%s ' "$f"; done | sed 's/ $//')"
+check "claude-a copies ~/.claude.json without its account keys" \
+    '{"mcpServers":{"m":{}},"projects":{"/p":{"hasTrustDialogAccepted":true}},"theme":"dark"}' "$(jq -cS . "$ca/run/alt/.claude.json")"
+check "claude-a keeps its .claude.json private" "600" \
+    "$(stat -c %a "$ca/run/alt/.claude.json" 2> /dev/null || stat -f %Lp "$ca/run/alt/.claude.json")"
+
+# Later syncs: main changes follow, the alternate account's own account keys and projects stay, its own entry where
+# a link now belongs moves to .pre-link, a link to a removed entry goes, and a sync with nothing new only reads.
+claude_a_main "$ca/sync"
+claude_a_run "$ca/sync" -- --sync 2> /dev/null
+jq '.oauthAccount = {"accountUuid":"ALT"} | .projects["/q"] = {"hasTrustDialogAccepted":true}' "$ca/sync/alt/.claude.json" > "$ca/t"
+mv "$ca/t" "$ca/sync/alt/.claude.json"
+jq '.theme = "light"' "$ca/sync/main.json" > "$ca/t"
+mv "$ca/t" "$ca/sync/main.json"
+mkdir "$ca/sync/alt/agents" "$ca/sync/main/agents"
+rmdir "$ca/sync/main/plugins"
+check "claude-a --sync prints each command it runs" "mkdir mv ln rm jq mv" \
+    "$(claude_a_run "$ca/sync" -- --sync 2>&1 | awk '{printf "%s%s", sep, $2; sep=" "}')"
+check "claude-a merges .claude.json: main settings, its own account keys and projects" \
+    '{"mcpServers":{"m":{}},"oauthAccount":{"accountUuid":"ALT"},"projects":{"/p":{"hasTrustDialogAccepted":true},"/q":{"hasTrustDialogAccepted":true}},"theme":"light"}' \
+    "$(jq -cS . "$ca/sync/alt/.claude.json")"
+check "claude-a keeps its own entry aside before linking" "agents yes" \
+    "$(ls "$ca/sync/alt/.pre-link" | sed 's/\..*//') $([[ -L "$ca/sync/alt/agents" && ! -e "$ca/sync/alt/plugins" ]] && echo yes)"
+check "claude-a --sync with nothing new only reads" "jq" \
+    "$(claude_a_run "$ca/sync" -- --sync 2>&1 | awk '{printf "%s%s", sep, $2; sep=" "}')"
+claude_a_main "$ca/dry"
+check "claude-a --sync --dry-run prints and changes nothing" "mkdir ln ln ln ln printf echo jq mv absent" \
+    "$(claude_a_run "$ca/dry" -- --sync --dry-run 2>&1 | awk '{printf "%s ", $2}')$([[ -e "$ca/dry/alt" ]] || echo absent)"
+
+tty_check "claude-a echoes its commands, never the token" "→ jq --slurpfile a $ca/run/alt/.claude.json -f $ca/run/alt/.sync.jq $ca/run/main.json > $ca/run/alt/.claude.json.sync
+→ CLAUDE_CONFIG_DIR=$ca/run/alt claude --resume  (CLAUDE_CODE_OAUTH_TOKEN = CLAUDE_A_OAUTH_TOKEN from $ca/secrets.env)
+cfg=alt token=tok-file args=--resume other=unset" "$work" env -u CLAUDE_A_OAUTH_TOKEN PATH="$ca/bin:$PATH" \
+    CLAUDE_A_SECRETS_FILE="$ca/secrets.env" CLAUDE_A_MAIN_DIR="$ca/run/main" CLAUDE_A_MAIN_JSON="$ca/run/main.json" \
+    CLAUDE_A_CONFIG_DIR="$ca/run/alt" bash "$claude_a" --resume
 
 # with-op prints the command it runs, to a terminal only (the two checks above capture stderr and see nothing).
 mkdir -p "$work/no-secrets"

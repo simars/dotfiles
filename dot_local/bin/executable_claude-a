@@ -2,27 +2,141 @@
 #
 # claude-a: Claude Code on the alternate account ("a"), for when the main account's credits run out.
 #
-# It is plain `claude` with the same config (~/.claude, ~/.claude.json): settings, plugins, MCP servers, memory and
-# session history are shared, so `claude-a --resume` continues a session the main account started. Only the
-# credential differs: CLAUDE_CODE_OAUTH_TOKEN, set for this process alone, outranks the /login sign-in without
-# touching it (https://code.claude.com/docs/en/authentication#authentication-precedence).
+#   claude-a [claude args...]     sync ~/.claude-a from the main config, then run claude on the alternate account
+#   claude-a --sync [--dry-run]   only sync; --dry-run prints the commands without running them
 #
-# The token comes from `claude setup-token`, approved in a browser signed in as the alternate account. claude-a
-# reads it as CLAUDE_A_OAUTH_TOKEN, from the environment or else from the secrets file. The name differs from
-# CLAUDE_CODE_OAUTH_TOKEN on purpose: anything that sources the secrets file must not move plain `claude` to the
-# other account.
+# Why its own config directory: with the main one, claude sends the main account's ID (cached in ~/.claude.json)
+# with every request, so usage shows against the main login although the token pays. ~/.claude-a keeps what is
+# per account and takes everything else from the main config:
+#   - linked, so both see a change at once: every entry of ~/.claude except the per-account and per-process ones
+#     listed in $keep (sign-in, org policy and settings caches, sessions, jobs, telemetry), so settings, CLAUDE.md,
+#     rules, skills, commands, hooks, plugins, themes, projects (session history and memory: `claude-a --resume`
+#     continues a main-account session) and history. A new entry in ~/.claude is linked on the next start;
+#   - copied at every start: ~/.claude.json without the keys about the signed-in account (oauthAccount, cached
+#     usage, org and model data; $acct), so MCP servers, preferences and project trust follow. The alternate account
+#     keeps its own values for those keys, and project entries are merged, so a folder trusted in either stays
+#     trusted here.
 #
-# Inside claude-a:
-#   - never run /login or /logout: they write the sign-in that plain `claude` shares;
-#   - a token makes model requests only, so claude.ai connectors, Remote Control and /schedule are off;
-#   - the banner and /usage show the main account, cached in ~/.claude.json; requests still use the token.
+# Sign-in, either:
+#   - its own login, stored for ~/.claude-a only (`CLAUDE_CONFIG_DIR=~/.claude-a claude auth login`, in a browser
+#     signed in as the alternate account): used whenever ~/.claude-a/.claude.json has an oauthAccount, which a login
+#     writes and a token never does. Brings claude.ai connectors, the organisation's plugins and Remote Control;
+#   - or a long-lived token from `claude setup-token`, approved in that browser, read as CLAUDE_A_OAUTH_TOKEN from
+#     the environment or else from the secrets file. The name differs from CLAUDE_CODE_OAUTH_TOKEN on purpose:
+#     anything that sources the secrets file must not move plain `claude` to the other account. A token makes model
+#     requests only, so claude.ai connectors, the organisation's plugins, Remote Control and /schedule are off.
 set -euo pipefail
+umask 077 # ~/.claude-a/.claude.json holds project paths and MCP settings, like the 600 ~/.claude.json
 
+main_dir="${CLAUDE_A_MAIN_DIR:-$HOME/.claude}"
+main_json="${CLAUDE_A_MAIN_JSON:-$HOME/.claude.json}"
+alt_dir="${CLAUDE_A_CONFIG_DIR:-$HOME/.claude-a}"
 secrets="${CLAUDE_A_SECRETS_FILE:-$HOME/.config/ai-tooling/secrets.env}"
-case "$secrets" in
-  "$HOME"/*) shown="~${secrets#"$HOME"}" ;;
-  *) shown="$secrets" ;;
-esac
+
+# Entries of the main config that stay per account or per process: shell patterns, separated by |.
+keep='.credentials.json|.claude.json|.claude.json.*|backups|cache|daemon|daemon[.-]*|jobs|state|session-env|sessions|shell-snapshots|telemetry|statsig|ide|debug|policy-limits.json*|remote-settings.json*|stats-cache.json|mcp-needs-auth-cache.json|.last-cleanup|*.lock|.pre-link|.sync.jq'
+# Keys of ~/.claude.json about the signed-in account: a jq regex.
+acct='^(oauthAccount|userID|machineID|primaryApiKey|customApiKeyResponses|claudeCodeFirstTokenDate|claudeAi.*|cached.*|.*Cache|.*CacheSlots|.*CacheByPrincipal|org.*|.*Org|.*Org[A-Z].*|.*Usage.*|.*[Oo]verage.*|.*[Ss]ubscription.*|additionalModel.*|promoCredit.*|metricsStatus.*|mcpNeedsAuth.*|passes.*|grove.*|s1m.*)$'
+# Main file without account keys, plus the alternate account's own account keys; projects merged, main winning.
+filter="def acct: test(\"$acct\");
+((\$a[0] // {}) | if type == \"object\" then . else {} end) as \$alt
+| with_entries(select(.key | acct | not))
+| . + (\$alt | with_entries(select(.key | acct)))
+| .projects = ((\$alt.projects // {}) * (.projects // {}))"
+
+dry=0 show=0
+say() { # say CMD...: print the command, shell-quoted (always with --sync, else to a terminal only)
+  if [ "$show" = 1 ] || [ -t 2 ]; then
+    printf '→' >&2
+    printf ' %q' "$@" >&2
+  fi
+}
+run() { # run CMD...: print it, then run it unless --dry-run
+  say "$@"
+  if [ "$show" = 1 ] || [ -t 2 ]; then printf '\n' >&2; fi
+  [ "$dry" = 1 ] || "$@"
+}
+run_to() { # run_to FILE CMD...: print `CMD > FILE`, then run it unless --dry-run
+  local out="$1"
+  shift
+  say "$@"
+  if [ "$show" = 1 ] || [ -t 2 ]; then printf ' > %q\n' "$out" >&2; fi
+  [ "$dry" = 1 ] || "$@" > "$out"
+}
+kept() { # kept NAME: whether NAME matches a pattern in $keep
+  local pattern patterns
+  IFS='|' read -r -a patterns <<< "$keep"
+  for pattern in "${patterns[@]}"; do
+    # shellcheck disable=SC2254 # a pattern, on purpose
+    case "$1" in $pattern) return 0 ;; esac
+  done
+  return 1
+}
+
+sync_config() {
+  local entry name link stamp current="$alt_dir/.claude.json" next="$alt_dir/.claude.json.sync"
+  [ -d "$main_dir" ] || { echo "claude-a: no main config at $main_dir" >&2; return 1; }
+  [ -d "$alt_dir" ] || run mkdir -p -m 700 "$alt_dir"
+
+  stamp="$(date +%Y%m%d%H%M%S)"
+  for entry in "$main_dir"/* "$main_dir"/.[!.]*; do
+    [ -e "$entry" ] || [ -L "$entry" ] || continue
+    name="${entry##*/}"
+    kept "$name" && continue
+    link="$alt_dir/$name"
+    [ -L "$link" ] && [ "$(readlink "$link")" = "$entry" ] && continue
+    if [ -e "$link" ] || [ -L "$link" ]; then # something of its own where a link belongs: keep it aside
+      [ -d "$alt_dir/.pre-link" ] || run mkdir -p "$alt_dir/.pre-link"
+      run mv "$link" "$alt_dir/.pre-link/$name.$stamp"
+    fi
+    run ln -s "$entry" "$link"
+  done
+  for link in "$alt_dir"/* "$alt_dir"/.[!.]*; do # links to entries the main config no longer has
+    [ -L "$link" ] && [ ! -e "$link" ] || continue
+    case "$(readlink "$link")" in "$main_dir"/*) run rm "$link" ;; esac
+  done
+
+  [ -f "$main_json" ] || return 0
+  if [ ! -f "$alt_dir/.sync.jq" ] || [ "$(cat "$alt_dir/.sync.jq")" != "$filter" ]; then
+    run_to "$alt_dir/.sync.jq" printf '%s\n' "$filter"
+  fi
+  [ -f "$current" ] || run_to "$current" echo '{}'
+  run_to "$next" jq --slurpfile a "$current" -f "$alt_dir/.sync.jq" "$main_json"
+  [ "$dry" = 1 ] && { run mv "$next" "$current"; return 0; }
+  if [ "$(jq -S . "$next")" = "$(jq -S . "$current")" ]; then
+    rm -f "$next"
+  else
+    run mv "$next" "$current"
+  fi
+}
+
+if [ "${1:-}" = --sync ]; then
+  show=1
+  [ "${2:-}" = --dry-run ] && dry=1
+  sync_config
+  exit
+fi
+
+# A failed sync still starts claude: the alternate account is what is left when the main one is out of credits.
+sync_config || echo "claude-a: warning: sync from $main_dir failed; starting anyway" >&2
+
+# These outrank both its login and its token; with either set, requests would bill elsewhere.
+for var in ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY; do
+  if [ -n "${!var:-}" ]; then
+    echo "claude-a: warning: $var is set and outranks the alternate account's sign-in (unset it to use account a)" >&2
+  fi
+done
+
+if [ -f "$alt_dir/.claude.json" ] && jq -e '.oauthAccount.accountUuid // empty' "$alt_dir/.claude.json" > /dev/null 2>&1; then
+  if [ -t 2 ]; then
+    printf '→ CLAUDE_CONFIG_DIR=%q' "$alt_dir" >&2
+    printf ' %q' claude "$@" >&2
+    printf '  (its own login)\n' >&2
+  fi
+  unset CLAUDE_CODE_OAUTH_TOKEN
+  export CLAUDE_CONFIG_DIR="$alt_dir"
+  exec claude "$@"
+fi
 
 token="${CLAUDE_A_OAUTH_TOKEN:-}"
 from="the environment"
@@ -32,25 +146,19 @@ if [ -z "$token" ] && [ -r "$secrets" ]; then
   token="$(sed -n 's/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}CLAUDE_A_OAUTH_TOKEN=//p' "$secrets" | tail -n 1)"
   token="${token#\"}" token="${token%\"}"
   token="${token#\'}" token="${token%\'}"
-  from="$shown"
+  from="$secrets"
 fi
 if [ -z "$token" ]; then
-  echo "claude-a: no token. Add CLAUDE_A_OAUTH_TOKEN=<token> to $shown (chmod 600); make the token with" \
-    "'claude setup-token', approved in a browser signed in as the alternate account." >&2
+  echo "claude-a: no login or token. Sign in with 'CLAUDE_CONFIG_DIR=$alt_dir claude auth login', or add" \
+    "CLAUDE_A_OAUTH_TOKEN=<token> to $secrets (chmod 600) from 'claude setup-token'; either in a browser signed in" \
+    "as the alternate account." >&2
   exit 1
 fi
 
-# These outrank CLAUDE_CODE_OAUTH_TOKEN; with either set, requests would bill elsewhere.
-for var in ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY; do
-  if [ -n "${!var:-}" ]; then
-    echo "claude-a: warning: $var is set and outranks the alternate account's token (unset it to use account a)" >&2
-  fi
-done
-
 if [ -t 2 ]; then
-  printf '→' >&2
+  printf '→ CLAUDE_CONFIG_DIR=%q' "$alt_dir" >&2
   printf ' %q' claude "$@" >&2
   printf '  (CLAUDE_CODE_OAUTH_TOKEN = CLAUDE_A_OAUTH_TOKEN from %s)\n' "$from" >&2
 fi
-export CLAUDE_CODE_OAUTH_TOKEN="$token"
+export CLAUDE_CONFIG_DIR="$alt_dir" CLAUDE_CODE_OAUTH_TOKEN="$token"
 exec claude "$@"
