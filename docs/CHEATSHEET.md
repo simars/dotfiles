@@ -457,7 +457,7 @@ Listed in `.chezmoidata/omarchy.toml`; `chezmoi apply` on Omarchy does what it c
 
 | What | Listed as | Done by `chezmoi apply` | If missing |
 | :--- | :--- | :--- | :--- |
-| Runtimes `python`, `go` (`omarchy install dev-env`) | `omarchy_dev_env` | yes, from a terminal (needs sudo); otherwise prints the command | `omarchy install dev-env <lang>` |
+| Runtime `go` (`omarchy install dev-env`). Never `python`: python3 outside projects stays Arch's; the check warns about a global mise Python | `omarchy_dev_env` | yes, from a terminal (needs sudo); otherwise prints the command | `omarchy install dev-env <lang>`; for Python: `mise unuse -g --no-prune python` |
 | Tailscale (service, login, operator, Taildrop, bar widget) and 1Password (+ CLI, browser extension) | `omarchy_installers` | yes, from a terminal, when the package is missing | `omarchy install service tailscale` / `service 1password` |
 | Shell plugins: monitor-layout (replaces Omarchy's display widget), drawing-tablet, sandman | `omarchy_plugins` | yes: `omarchy plugin add <url>` (latest version), enabled in the bar's right section | `omarchy plugin add <url> --enable` |
 | Guides `zsh`, `terminals-clipboard`, `wave-keys`, `window-rescue`, `window-keys`, `caps-prefix` (`~/guides/omarchy`, private `~/.cfg`) | `omarchy_guides` | **no**, only reported | `setup-guides apply` (`setup-guides` alone shows each guide's verdict) |

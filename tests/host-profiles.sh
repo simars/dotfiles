@@ -1298,6 +1298,8 @@ check "omarchy setup adds the three shell plugins" 3 "$(grep -cE '^    if omarch
 check "omarchy setup turns off Omarchy's display widget for monitor-layout" 1 "$(grep -c 'omarchy plugin disable "omarchy.monitor"' "$work/omarchy.setup")"
 check "omarchy setup installs dev-env only from a terminal" 1 "$(grep -c '^elif \[\[ -t 0 && -t 1 \]\]; then$' "$work/omarchy.setup")"
 check "omarchy setup never applies guides" 0 "$(grep -cE 'apply\.sh' "$work/omarchy.setup")"
+check "omarchy setup never installs a global python (dev-env go only)" 'for lang in "go" ; do' "$(grep '^for lang in' "$work/omarchy.setup")"
+check "omarchy requirement check warns about a global mise Python" 1 "$(render omarchy run_after_99_assert_requirements.sh.tmpl | grep -c 'Fix: mise unuse -g --no-prune python')"
 for host in darwin intel arch ubuntu; do
     check "$host gets no Omarchy setup script" "" "$(render "$host" run_onchange_after_91_omarchy_setup.sh.tmpl | tr -d '[:space:]')"
     check "$host gets no setup-guides" no "$(manages "$host" .local/bin/setup-guides)"

@@ -21,7 +21,11 @@ omarchy_mise_project_settings = true
 #
 # omarchy_dev_env: runtimes from `omarchy install dev-env <lang>` (Omarchy's mise config). Needs sudo, so it runs only
 #   when `chezmoi apply` runs in a terminal; otherwise the command is printed. Never ruby (AGENTS.md 4.2).
-omarchy_dev_env = ["python", "go"]
+#   Never python (since 2026-11-27): outside projects python3 stays Arch's /usr/bin/python3, as on stock Omarchy, so
+#   desktop apps' and pacman tools' `#!/usr/bin/env python3` scripts find pacman's python-* modules; projects pin
+#   their Python (.python-version, mise.local.toml). The requirement check warns if a global mise Python comes back.
+#   Go stays: Arch ships no Go, so a global mise Go has nothing to shadow, and project pins still win.
+omarchy_dev_env = ["go"]
 # omarchy_guides: guides in ~/guides/omarchy (from the private ~/.cfg) that every Omarchy machine gets. Not applied by
 #   chezmoi: the requirement check reports the ones not active, and `setup-guides apply` applies them.
 omarchy_guides = ["zsh", "terminals-clipboard", "wave-keys", "window-rescue", "window-keys", "caps-prefix"]

@@ -100,6 +100,13 @@ if [[ -z "$need" ]]; then
 else
     report warn "Omarchy dev-env runtimes missing: ${need% }. Fix: $(for l in $need; do printf 'omarchy install dev-env %s && ' "$l"; done | sed 's/ && $//')"
 fi
+# No global mise Python on Omarchy (omarchy.toml, omarchy_dev_env): outside projects python3 is Arch's, with its
+# python-* modules, in terminals, desktop apps and login shells. `omarchy install dev-env python` adds one back.
+if mise ls --global python 2> /dev/null | grep -q .; then
+    report warn "mise has a global Python (~/.config/mise/config.toml), so python3 outside projects is mise's, without Arch's python-* modules. Fix: mise unuse -g --no-prune python"
+else
+    echo "OK:   no global mise Python: python3 outside projects is Arch's, projects pin theirs"
+fi
 {{- range .omarchy_installers }}
 if omarchy pkg missing {{ .package | quote }}; then
     report warn "{{ .package }} is not installed. Fix: omarchy install {{ .command }}"
